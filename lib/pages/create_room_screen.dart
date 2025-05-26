@@ -29,7 +29,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
   @override
   void initState() {
     super.initState();
-    _players.add(GamePlayer(id: 'host', name: 'Host (You)', isHost: true));
+    _players.add(GamePlayer(id: 'host', name: widget.userName, isHost: true));
     _initService();
   }
 
@@ -53,7 +53,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     // 1) init: advertise & browse
     await nearbyService.init(
       serviceType: 'deckly',
-      deviceName: "Deckly-" + devInfo + '-' + _roomCode + '-host',
+      deviceName: "Deckly-" + widget.userName + '-' + _roomCode + '-host',
 
       strategy: Strategy.P2P_CLUSTER,
       callback: (isRunning) async {
@@ -84,6 +84,10 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
         });
 
         setState(() {
+          _players.clear();
+          _players.add(
+            GamePlayer(id: 'host', name: widget.userName, isHost: true),
+          );
           _players.addAll(
             devicesList
                 .where((d) => d.state == SessionState.connected)
@@ -95,6 +99,27 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                   ),
                 ),
           );
+          List<GamePlayer> allPlayers =
+              devicesList
+                  .where((d) => d.state == SessionState.connected)
+                  .map(
+                    (d) => GamePlayer(
+                      id: d.deviceId,
+                      name: d.deviceName.split("-")[1],
+                      isHost: d.deviceName.contains("host"),
+                    ),
+                  )
+                  .toList();
+          for (var player in allPlayers) {
+            if (!player.isHost) {
+              List<Map<String, dynamic>> playerData =
+                  _players.map((p) => p.toMap()).toList();
+              nearbyService.sendMessage(
+                player.id,
+                jsonEncode({'type': 'playerList', 'players': playerData}),
+              );
+            }
+          }
         });
       },
     );

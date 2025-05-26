@@ -59,6 +59,8 @@ class HomeScreen extends StatelessWidget {
                           TextButton(
                             child: Text("Create Room"),
                             onPressed: () {
+                              // Close the dialog
+                              Navigator.of(context).pop();
                               // Navigate to the browser screen with the room code
                               Navigator.push(
                                 context,

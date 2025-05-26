@@ -18,11 +18,11 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
   late NearbyService nearbyService;
   late StreamSubscription<dynamic> _stateSub;
   late StreamSubscription<dynamic> _dataSub;
-
+  final List<GamePlayer> _players = [];
   final TextEditingController _codeCtrl = TextEditingController();
   final TextEditingController _nameCtrl = TextEditingController();
   bool _initialized = false;
-  bool _sentJoin = false;
+  bool joinedRoom = false;
 
   @override
   void dispose() {
@@ -100,7 +100,50 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
               deviceID: device.deviceId,
               deviceName: device.deviceName,
             );
+
+            // nearbyService.stopBrowsingForPeers();
+          } else if (device.state == SessionState.connected) {
+            // Successfully connected to the room
+            setState(() {
+              joinedRoom = true;
+            });
           }
+        }
+      },
+    );
+
+    _dataSub = nearbyService.dataReceivedSubscription(
+      callback: (data) {
+        print("dataReceivedSubscription: ${jsonEncode(data)}");
+        Map<String, dynamic> dataMap;
+
+        if (data is String) {
+          // If data is a string, decode it
+          try {
+            dataMap = jsonDecode(data);
+          } catch (e) {
+            print("Error decoding JSON string: $e");
+            return;
+          }
+        } else if (data is Map) {
+          // If data is already a map, cast it
+          dataMap = jsonDecode(Map<String, dynamic>.from(data)["message"]);
+        } else {
+          print("Unexpected data type: ${data.runtimeType}");
+          return;
+        }
+        print("Type of data: ${dataMap['type']}");
+        if (dataMap['type'] == 'playerList') {
+          final playersData = dataMap['players'] as List;
+          print("Received player list: ${jsonEncode(playersData)}");
+          setState(() {
+            _players.clear();
+            _players.addAll(
+              playersData
+                  .map((p) => GamePlayer.fromMap(p as Map<String, dynamic>))
+                  .toList(),
+            );
+          });
         }
       },
     );
@@ -121,36 +164,67 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
       appBar: AppBar(title: const Text('Join Deckly Room')),
       body: Padding(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            TextField(
-              controller: _codeCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Room Code',
-                counterText: '',
-              ),
-              keyboardType: TextInputType.number,
-              maxLength: 4,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _nameCtrl,
-              decoration: const InputDecoration(labelText: 'Your Name'),
-            ),
-            const SizedBox(height: 24),
-            Spacer(),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _joinRoom,
-                child:
-                    _initialized
-                        ? const Text('Scanning…')
-                        : const Text('Join Room'),
-              ),
-            ),
-          ],
-        ),
+        child:
+            joinedRoom
+                ? Column(
+                  children: [
+                    Text(
+                      'You have joined the room!',
+                      style: const TextStyle(fontSize: 24),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Players (${_players.length}):',
+                      style: const TextStyle(fontSize: 18),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: ListView(
+                        children:
+                            _players
+                                .map(
+                                  (p) => ListTile(
+                                    leading: Icon(
+                                      p.isHost ? Icons.star : Icons.person,
+                                    ),
+                                    title: Text(p.name),
+                                  ),
+                                )
+                                .toList(),
+                      ),
+                    ),
+                  ],
+                )
+                : Column(
+                  children: [
+                    TextField(
+                      controller: _codeCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Room Code',
+                        counterText: '',
+                      ),
+                      keyboardType: TextInputType.number,
+                      maxLength: 4,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _nameCtrl,
+                      decoration: const InputDecoration(labelText: 'Your Name'),
+                    ),
+                    const SizedBox(height: 24),
+                    Spacer(),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _joinRoom,
+                        child:
+                            _initialized
+                                ? const Text('Scanning…')
+                                : const Text('Join Room'),
+                      ),
+                    ),
+                  ],
+                ),
       ),
     );
   }
