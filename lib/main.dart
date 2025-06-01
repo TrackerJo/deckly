@@ -1,97 +1,54 @@
 // main.dart
 
 import 'package:deckly/constants.dart';
+
+import 'package:deckly/pages/dutch_blitz.dart';
+
 import 'package:deckly/pages/create_room_screen.dart';
+import 'package:deckly/pages/home_screen.dart';
 import 'package:deckly/pages/join_room_screen.dart';
+import 'package:deckly/styling.dart';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_nearby_connections/flutter_nearby_connections.dart';
+
+final NearbyService nearbyService = NearbyService();
+final Styling styling = Styling();
 
 void main() => runApp(MyApp());
 
 /// Simple model for a player
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    super.dispose();
+    try {
+      nearbyService.stopAdvertisingPeer();
+      nearbyService.stopBrowsingForPeers();
+    } catch (e) {
+      // ignore: avoid_print
+      print('Error disposing NearbyService: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Deckly',
       theme: ThemeData(primarySwatch: Colors.purple),
+      debugShowCheckedModeBanner: false,
       home: HomeScreen(),
     );
   }
 }
 
 /// Home chooses Create vs Join
-class HomeScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Deckly Lobby')),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            Spacer(),
-            ActionButton(
-              color: Colors.green,
-              label: 'Create Room',
-              onTap:
-                  () => showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      final myController = TextEditingController();
-                      return AlertDialog(
-                        title: Text("Enter Your Name"),
-                        content: TextField(
-                          controller: myController,
-
-                          decoration: InputDecoration(hintText: "Your Name"),
-                        ),
-                        actions: [
-                          TextButton(
-                            child: Text("Cancel"),
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                          ),
-                          TextButton(
-                            child: Text("Create Room"),
-                            onPressed: () {
-                              // Close the dialog
-                              Navigator.of(context).pop();
-                              // Navigate to the browser screen with the room code
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder:
-                                      (_) => CreateRoomScreen(
-                                        userName: myController.text,
-                                      ),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-            ),
-            const SizedBox(height: 16),
-            ActionButton(
-              color: Colors.blue,
-              label: 'Join Room',
-              onTap:
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => JoinRoomScreen()),
-                  ),
-            ),
-            Spacer(),
-          ],
-        ),
-      ),
-    );
-  }
-}

@@ -1,7 +1,7 @@
 name: deckly
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.1.0
+version: 0.1.0+2
 
 environment:
   sdk: ^3.7.2
@@ -21,7 +21,10 @@ dependencies:
   flutter_blue_plus: ^1.32.4
   permission_handler: ^12.0.0+1
   flutter_ble_peripheral: ^1.2.6
-  flutter_nearby_connections: ^1.1.2
+  nearby_connections: ^4.3.0
+  flutter_nearby_connections:
+    path: ./plugins/flutter_nearby_connections
+  location: ^8.0.0
   device_info_plus: ^11.4.0
   flutter_styled_toast: ^2.0.0
 
@@ -45,3 +48,12 @@ flutter_launcher_icons:
   image_path: "assets/icon.png"
   min_sdk_android: 21 # android min sdk min:16, default 21
   remove_alpha_ios: true
+
+flutter_native_splash:
+  image: "assets/android_splash_icon.png"
+  color: "#0b1344"
+  android: true
+  ios: true
+  android_12:
+    color: "#0b1344"
+    image: "assets/android_splash_icon.png"

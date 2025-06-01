@@ -1,7 +1,20 @@
+import com.android.build.gradle.BaseExtension
+
 allprojects {
     repositories {
         google()
         mavenCentral()
+    }
+    subprojects {
+        afterEvaluate {
+            if (plugins.hasPlugin("com.android.application") || plugins.hasPlugin("com.android.library")) {
+                extensions.findByType(BaseExtension::class.java)?.let { androidExt ->
+                    if (androidExt.namespace == null) {
+                        androidExt.namespace = name
+                    }
+                }
+            }
+        }
     }
 }
 
