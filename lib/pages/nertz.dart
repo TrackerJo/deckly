@@ -12,16 +12,16 @@ import 'package:deckly/widgets/fancy_text.dart';
 import 'package:deckly/widgets/fancy_widget.dart';
 import 'package:flutter/material.dart';
 
-class DutchBlitz extends StatefulWidget {
+class Nertz extends StatefulWidget {
   final GamePlayer player;
   final List<GamePlayer> players;
-  const DutchBlitz({super.key, required this.player, required this.players});
-  // const DutchBlitz({super.key});
+  const Nertz({super.key, required this.player, required this.players});
+  // const Nertz({super.key});
   @override
-  _DutchBlitzState createState() => _DutchBlitzState();
+  _NertzState createState() => _NertzState();
 }
 
-class _DutchBlitzState extends State<DutchBlitz> {
+class _NertzState extends State<Nertz> {
   List<DropZoneData> dropZones = [];
   List<CardData> deckCards = [];
   List<CardData> blitzDeck = [];
@@ -113,7 +113,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Text(
-                          player.name + " has Blitzed!",
+                          player.name + " has Nertzed!",
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 24,
@@ -149,9 +149,9 @@ class _DutchBlitzState extends State<DutchBlitz> {
   List<BlitzPlayer> scoreGame() {
     List<BlitzPlayer> newPlayers = [...players];
     newPlayers.where((p) => p.id != currentPlayer!.id).forEach((player) {
-      player.score -= (player.blitzDeckSize * 2);
+      player.score -= player.blitzDeckSize;
     });
-
+    newPlayers.firstWhere((p) => p.id == currentPlayer!.id).score += 5;
     //get all the public drop zones
     List<DropZoneData> publicZones =
         dropZones
@@ -171,14 +171,11 @@ class _DutchBlitzState extends State<DutchBlitz> {
 
   void onBlitz() async {
     List<BlitzPlayer> scoredPlayers = scoreGame();
-    // Send all messages at the same time, but await the last one to finish
-
     await connectionService.broadcastMessage({
       'type': 'blitz',
       'player': currentPlayer!.toMap(),
       'players': scoredPlayers.map((p) => p.toMap()).toList(),
     }, currentPlayer!.id);
-
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -215,7 +212,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
-                    "You Blitzed!",
+                    "You Nertzed!",
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 24,
@@ -236,7 +233,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
       id: widget.player.id,
       name: widget.player.name,
       score: 0,
-      blitzDeckSize: 10,
+      blitzDeckSize: 13,
     );
     players =
         widget.players.map((p) {
@@ -244,17 +241,17 @@ class _DutchBlitzState extends State<DutchBlitz> {
             id: p.id,
             name: p.name,
             score: 0,
-            blitzDeckSize: 10,
+            blitzDeckSize: 13,
           );
         }).toList();
     // players = [
-    //   BlitzPlayer(id: '1', name: 'Player 1', score: 0, blitzDeckSize: 10),
-    //   BlitzPlayer(id: '2', name: 'Player 2', score: 0, blitzDeckSize: 10),
-    //   BlitzPlayer(id: '3', name: 'Player 3', score: 0, blitzDeckSize: 10),
-    //   BlitzPlayer(id: '4', name: 'Player 4', score: 0, blitzDeckSize: 10),
+    //   BlitzPlayer(id: '1', name: 'Player 1', score: 0, blitzDeckSize: 13),
+    //   BlitzPlayer(id: '2', name: 'Player 2', score: 0, blitzDeckSize: 13),
+    //   BlitzPlayer(id: '3', name: 'Player 3', score: 0, blitzDeckSize: 13),
+    //   BlitzPlayer(id: '4', name: 'Player 4', score: 0, blitzDeckSize: 13),
     // ];
     // currentPlayer = players.firstWhere((p) => p.id == '1');
-    List<CardData> shuffledDeck = [...fullBlitzDeck];
+    List<CardData> shuffledDeck = [...fullDeck];
     shuffledDeck.shuffle();
     // Bottom 4 drop zones
     dropZones = [
@@ -294,8 +291,20 @@ class _DutchBlitzState extends State<DutchBlitz> {
         ),
         scale: 1.0,
       ),
+      DropZoneData(
+        id: 'pile4',
+        stackMode: StackMode.spaced,
+        cards: [shuffledDeck[3]],
+        rules: DropZoneRules(
+          cardOrder: CardOrder.descending,
+          allowedCards: AllowedCards.alternateColor,
+          startingCards: [],
+          bannedCards: [],
+        ),
+        scale: 1.0,
+      ),
     ];
-    shuffledDeck = shuffledDeck.sublist(3);
+    shuffledDeck = shuffledDeck.sublist(4);
 
     // Add middle drop zones (goal zones)
     for (int i = 0; i < players.length * 4; i++) {
@@ -321,10 +330,10 @@ class _DutchBlitzState extends State<DutchBlitz> {
         ),
       );
     }
-    blitzDeck = shuffledDeck.sublist(0, 10);
+    blitzDeck = shuffledDeck.sublist(0, 13);
 
     // Initialize deck cards
-    deckCards = shuffledDeck.sublist(10);
+    deckCards = shuffledDeck.sublist(13);
 
     // Initialize blitz deck with some cards
 
@@ -365,7 +374,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
   }
 
   List<CardData> _getCardsFromIndex(String zoneId, int index) {
-    if (zoneId == 'hand') {
+    if (zoneId == 'deck' || zoneId == 'pile' || zoneId == 'blitz_deck') {
       return <CardData>[];
     }
     final zone = dropZones.firstWhere((zone) => zone.id == zoneId);
@@ -418,7 +427,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
     // Bottom: 4 drop zones + deck area
     final dropZoneBaseWidth = 116.0; // card width + padding
     final bottomZonesWidth =
-        (3 * dropZoneBaseWidth) + (3 * 8.0); // 4 zones + 3 gaps
+        (4 * dropZoneBaseWidth) + (3 * 8.0); // 4 zones + 3 gaps
     final deckWidth = 288.5; // deck + pile area (100+20+100)
     final totalBottomWidth = bottomZonesWidth + 16.0 + deckWidth;
 
@@ -451,25 +460,27 @@ class _DutchBlitzState extends State<DutchBlitz> {
     if (currentPlayer!.isHost) {
       // Reset blitz deck for all players
       for (var player in players) {
-        player.blitzDeckSize = 10;
+        player.blitzDeckSize = 13;
       }
       connectionService.broadcastMessage({
         'type': 'update_player',
         'player': currentPlayer!.toMap(),
       }, currentPlayer!.id);
-      connectionService.broadcastMessage({'type': 'next_round'}, currentPlayer!.id);
+      connectionService.broadcastMessage({
+        'type': 'next_round',
+      }, currentPlayer!.id);
     }
     // Reset deck cards
     deckCards.clear();
-    List<CardData> shuffledDeck = [...fullBlitzDeck];
+    List<CardData> shuffledDeck = [...fullDeck];
     shuffledDeck.shuffle();
     // Remove the first 13 cards for blitz deck
-    blitzDeck = shuffledDeck.sublist(0, 10);
+    blitzDeck = shuffledDeck.sublist(0, 13);
     //Take 4 cards for the bottom piles
     dropZones[0].cards = [shuffledDeck[0]];
     dropZones[1].cards = [shuffledDeck[1]];
     dropZones[2].cards = [shuffledDeck[2]];
-
+    dropZones[3].cards = [shuffledDeck[3]];
     // Remaining cards for deck
     deckCards = shuffledDeck.sublist(4);
 
@@ -508,7 +519,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(kToolbarHeight),
           child: CustomAppBar(
-            title: "Dutch Blitz",
+            title: "Nertz",
             showBackButton: true,
             onBackButtonPressed: (context) {
               connectionService.dispose();
@@ -566,7 +577,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
                           ),
                           SizedBox(height: 4.0),
                           Text(
-                            '${player.blitzDeckSize} blitz cards left',
+                            '${player.blitzDeckSize} nertz cards left',
                             style: TextStyle(
                               fontSize: 14.0,
                               color: Colors.white,
@@ -644,7 +655,6 @@ class _DutchBlitzState extends State<DutchBlitz> {
                             getCardsFromIndex: _getCardsFromIndex,
                             onDragStarted: _onDragStarted,
                             onDragEnd: _onDragEnd,
-                            isDutchBlitz: true,
                           ),
                         )
                         .toList(),
@@ -667,9 +677,9 @@ class _DutchBlitzState extends State<DutchBlitz> {
                   mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (int i = 0; i < 3; i++)
+                    for (int i = 0; i < 4; i++)
                       Container(
-                        margin: EdgeInsets.only(right: i < 2 ? 8.0 : 0.0),
+                        margin: EdgeInsets.only(right: i < 3 ? 8.0 : 0.0),
                         child: DropZoneWidget(
                           zone: dropZones[i],
                           currentDragData: currentDragData,
@@ -677,7 +687,6 @@ class _DutchBlitzState extends State<DutchBlitz> {
                           getCardsFromIndex: _getCardsFromIndex,
                           onDragStarted: _onDragStarted,
                           onDragEnd: _onDragEnd,
-                          isDutchBlitz: true,
                         ),
                       ),
                   ],
@@ -711,7 +720,6 @@ class _DutchBlitzState extends State<DutchBlitz> {
                       controller: blitzDeckController,
                       onDragCompleted: onPlayedFromBlitzDeck,
                       onTapBlitz: onBlitz,
-                      isDutchBlitz: true,
                     ),
                     CardDeck(
                       cards: deckCards,
@@ -721,7 +729,6 @@ class _DutchBlitzState extends State<DutchBlitz> {
                       deckId: 'deck',
                       controller: deckController,
                       scale: calculatedScale,
-                      isDutchBlitz: true,
                     ),
                   ],
                 ),
@@ -790,7 +797,9 @@ class _DutchBlitzState extends State<DutchBlitz> {
         if (currentPlayer!.getIsHost())
           ActionButton(
             onTap: () {
-              connectionService.broadcastMessage({'type': 'end_game'}, currentPlayer!.id);
+              connectionService.broadcastMessage({
+                'type': 'end_game',
+              }, currentPlayer!.id);
 
               setState(() {
                 gameState = NertzGameState.gameOver;

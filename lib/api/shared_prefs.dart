@@ -14,6 +14,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 class SharedPrefs {
   static String hapticSettingsKey = "HAPTICSETTINGSKEY";
+  static String lastUsedNameKey = "LASTUSEDNAMEKEY";
 
   static Future<bool> setHapticSettings(HapticLevel val) async {
     SharedPreferences sf = await SharedPreferences.getInstance();
@@ -40,6 +41,7 @@ class SharedPrefs {
         HapticFeedback.heavyImpact();
         break;
       default:
+        HapticFeedback.mediumImpact();
         break;
     }
   }
@@ -59,7 +61,18 @@ class SharedPrefs {
         HapticFeedback.mediumImpact();
         break;
       default:
+        HapticFeedback.selectionClick();
         break;
     }
+  }
+
+  static Future<String> getLastUsedName() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return sf.getString(lastUsedNameKey) ?? '';
+  }
+
+  static Future<bool> setLastUsedName(String name) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return await sf.setString(lastUsedNameKey, name);
   }
 }

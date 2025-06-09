@@ -1,5 +1,8 @@
 import 'package:deckly/constants.dart';
+import 'package:deckly/main.dart';
+import 'package:deckly/widgets/action_button.dart';
 import 'package:deckly/widgets/playing_card.dart';
+import 'package:deckly/widgets/solid_action_button.dart';
 import 'package:flutter/material.dart';
 
 class BlitzDeckController {
@@ -22,19 +25,24 @@ class BlitzDeck extends StatefulWidget {
   final DragData currentDragData;
   final Function(DragData) onDragStarted;
   final Function() onDragEnd;
+  final Function() onDragCompleted;
+  final Function() onTapBlitz;
   final List<CardData> blitzDeck;
   final double scale;
   final BlitzDeckController? controller;
+  final bool isDutchBlitz;
 
   const BlitzDeck({
     Key? key,
     required this.blitzDeck,
     required this.currentDragData,
-
+    required this.onDragCompleted,
     required this.onDragStarted,
     required this.onDragEnd,
     required this.scale,
+    required this.onTapBlitz,
     this.controller,
+    this.isDutchBlitz = false,
   }) : super(key: key);
 
   @override
@@ -88,16 +96,13 @@ class _BlitzDeckState extends State<BlitzDeck> {
                 child: SizedBox(
                   height: 70 * widget.scale,
                   width: 200 * widget.scale,
-                  child: ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8 * widget.scale),
-                      ),
-                    ),
-                    child: Text(
-                      'Blitz!',
+                  child: ActionButton(
+                    onTap: () {
+                      widget.onTapBlitz();
+                    },
+
+                    text: Text(
+                      widget.isDutchBlitz ? 'Blitz!' : 'Nertz!',
                       style: TextStyle(
                         fontSize: 24 * widget.scale,
                         color: Colors.white,
@@ -151,6 +156,7 @@ class _BlitzDeckState extends State<BlitzDeck> {
                                   },
                                   onDragEnd: widget.onDragEnd,
                                   onDragCompleted: () {
+                                    widget.onDragCompleted();
                                     // Remove the card from pile when drag is completed successfully
                                     widget.controller?.removeCardFromPile(
                                       card.id,
@@ -158,9 +164,11 @@ class _BlitzDeckState extends State<BlitzDeck> {
                                   },
                                   stackMode: StackMode.overlay,
                                   scale: widget.scale,
+                                  isDutchBlitz: widget.isDutchBlitz,
                                 )
                                 : CardContent(
                                   scale: widget.scale,
+                                  isDutchBlitz: widget.isDutchBlitz,
                                   card: CardData(
                                     id: 'deck_back',
                                     value: 1,
@@ -172,6 +180,7 @@ class _BlitzDeckState extends State<BlitzDeck> {
                     }).toList(),
               ),
             ),
+            SizedBox(width: 4 * widget.scale), // Spacing between cards and text
             //Cards left indicator
             if (blitzDeck.isNotEmpty)
               Container(
@@ -180,7 +189,7 @@ class _BlitzDeckState extends State<BlitzDeck> {
                   child: Text(
                     '${blitzDeck.length} ${blitzDeck.length == 1 ? 'Card' : 'Cards'} Left',
                     style: TextStyle(
-                      color: Colors.black,
+                      color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 20 * widget.scale,
                     ),

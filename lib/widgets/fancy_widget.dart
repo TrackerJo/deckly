@@ -6,12 +6,14 @@ class FancyWidget extends StatelessWidget {
   final double borderRadius;
   final double borderWidth;
   final Color? borderColor;
+  final bool isFilled;
   const FancyWidget({
     super.key,
     required this.child,
     this.borderRadius = 8.0,
     this.borderWidth = 2.0,
     this.borderColor,
+    this.isFilled = false,
   });
 
   @override
@@ -25,22 +27,28 @@ class FancyWidget extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(borderRadius),
       ),
-      child: Container(
-        margin: EdgeInsets.all(borderWidth), // Creates the border thickness
-        decoration: BoxDecoration(
-          color: styling.backgroundColor,
-          borderRadius: BorderRadius.circular(
-            borderRadius - 2,
-          ), // Slightly smaller radius
-          border: Border.all(
-            color:
-                borderColor ??
-                Colors.transparent, // Default to white if no color provided
-            width: borderWidth,
-          ),
-        ),
-        child: child,
-      ),
+      child:
+          isFilled
+              ? child
+              : Container(
+                margin: EdgeInsets.all(
+                  borderWidth,
+                ), // Creates the border thickness
+                decoration: BoxDecoration(
+                  color: styling.backgroundColor,
+                  borderRadius: BorderRadius.circular(
+                    borderRadius - 2,
+                  ), // Slightly smaller radius
+                  border: Border.all(
+                    color:
+                        borderColor ??
+                        Colors
+                            .transparent, // Default to white if no color provided
+                    width: borderWidth,
+                  ),
+                ),
+                child: child,
+              ),
     );
   }
 }

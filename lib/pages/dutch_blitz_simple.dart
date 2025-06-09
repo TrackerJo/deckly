@@ -388,6 +388,8 @@ class _DraggableCardsPageState extends State<DraggableCardsPage> {
                                 onDragEnd: _onDragEnd,
                                 scale: calculatedScale,
                                 controller: blitzDeckController,
+                                onDragCompleted: () {},
+                                onTapBlitz: () {},
                               ),
                               CardDeck(
                                 cards: deckCards,

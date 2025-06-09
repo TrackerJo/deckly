@@ -1,44 +1,136 @@
 import 'dart:async';
-import 'dart:convert';
+
 import 'dart:io';
-import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:deckly/api/shared_prefs.dart';
 import 'package:deckly/constants.dart';
 import 'package:deckly/main.dart';
 import 'package:deckly/pages/dutch_blitz.dart';
-import 'package:deckly/pages/game_screen.dart';
+import 'package:deckly/pages/euchre.dart';
+import 'package:deckly/pages/nertz.dart';
+
 import 'package:deckly/widgets/action_button.dart';
 import 'package:deckly/widgets/custom_app_bar.dart';
+import 'package:deckly/widgets/fancy_widget.dart';
 import 'package:deckly/widgets/gradient_input_field.dart';
-import 'package:device_info_plus/device_info_plus.dart';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_nearby_connections/flutter_nearby_connections.dart';
+
 import 'package:location/location.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:nearby_connections/nearby_connections.dart' as nearby;
+
+import 'package:deckly/api/connection_service.dart' as blue;
 
 class JoinRoomScreen extends StatefulWidget {
+  const JoinRoomScreen({super.key});
   @override
   _JoinRoomScreenState createState() => _JoinRoomScreenState();
 }
 
 class _JoinRoomScreenState extends State<JoinRoomScreen> {
-  late StreamSubscription<dynamic> _stateSub;
-  late StreamSubscription<dynamic> _dataSub;
-  final List<GamePlayer> _players = [];
+  late StreamSubscription<List<GamePlayer>> _playersSubscription;
+  late StreamSubscription<blue.ConnectionState> _stateSubscription;
+  late StreamSubscription<Map<String, dynamic>> _gameDataSubscription;
+  List<GamePlayer> _players = [];
   final TextEditingController _codeCtrl = TextEditingController();
   final TextEditingController _nameCtrl = TextEditingController();
+  blue.ConnectionState _connectionState = blue.ConnectionState.disconnected;
+
   bool _initialized = false;
   bool joinedRoom = false;
 
+  Game? game;
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    _initSubscriptions();
+    SharedPrefs.getLastUsedName().then((name) {
+      if (name.isEmpty) {
+        return;
+      }
+      _nameCtrl.text = name;
+      if (!mounted) return;
+      setState(() {});
+    });
+  }
+
+  void _initSubscriptions() {
+    _playersSubscription = connectionService.playersStream.listen((players) {
+      setState(() {
+        _players = players;
+      });
+    });
+
+    _stateSubscription = connectionService.connectionStateStream.listen((
+      state,
+    ) {
+      setState(() {
+        _connectionState = state;
+      });
+    });
+
+    _gameDataSubscription = connectionService.gameDataStream.listen((data) {
+      if (data['type'] == 'startGame') {
+        switch (game) {
+          case Game.blitz:
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder:
+                    (context) => DutchBlitz(
+                      players: _players,
+                      player: _players.firstWhere(
+                        (p) => p.name == _nameCtrl.text,
+                      ),
+                    ),
+              ),
+            );
+            break;
+          case Game.nertz:
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder:
+                    (context) => Nertz(
+                      players: _players,
+                      player: _players.firstWhere(
+                        (p) => p.name == _nameCtrl.text,
+                      ),
+                    ),
+              ),
+            );
+            break;
+          case Game.euchre:
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder:
+                    (context) => Euchre(
+                      players: _players,
+                      player: _players.firstWhere(
+                        (p) => p.name == _nameCtrl.text,
+                      ),
+                    ),
+              ),
+            );
+          default:
+            // Handle other game types if needed
+            break;
+        }
+      } else if (data['type'] == 'game_type') {
+        game = Game.fromString(data['game_type']);
+        setState(() {});
+      }
+    });
+  }
+
   @override
   void dispose() {
-    if (_initialized && Platform.isIOS) {
-      _stateSub.cancel();
-      _dataSub.cancel();
-    }
+    _playersSubscription.cancel();
+    _stateSubscription.cancel();
+    _gameDataSubscription.cancel();
     _codeCtrl.dispose();
     _nameCtrl.dispose();
     super.dispose();
@@ -100,191 +192,8 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
       await [Permission.locationWhenInUse].request();
       await requestAndroidPermissions();
     }
-
-    if (Platform.isIOS) {
-      await nearbyService.init(
-        serviceType: 'deckly',
-        deviceName: "Deckly-" + _nameCtrl.text + '-' + roomCode,
-        strategy: Strategy.P2P_CLUSTER,
-        callback: (isRunning) async {
-          if (isRunning) {
-            await nearbyService.stopBrowsingForPeers();
-            await Future.delayed(Duration(microseconds: 200));
-            await nearbyService.startBrowsingForPeers();
-          }
-        },
-      );
-
-      _stateSub = nearbyService.stateChangedSubscription(
-        callback: (devicesList) async {
-          devicesList.forEach((element) {
-            print(
-              " deviceId: ${element.deviceId} | deviceName: ${element.deviceName} | state: ${element.state}",
-            );
-
-            if (Platform.isAndroid) {
-              if (element.state == SessionState.connected) {
-                nearbyService.stopBrowsingForPeers();
-              } else {
-                nearbyService.startBrowsingForPeers();
-              }
-            }
-          });
-
-          List<Device> filteredDevices =
-              devicesList
-                  .where(
-                    (d) =>
-                        d.deviceName.startsWith('Deckly-') &&
-                        d.deviceName.contains("-${roomCode}"),
-                  )
-                  .toList();
-          if (filteredDevices.isNotEmpty) {
-            final device = filteredDevices.first;
-            if (device.state == SessionState.notConnected) {
-              await nearbyService.invitePeer(
-                deviceID: device.deviceId,
-                deviceName: device.deviceName,
-              );
-              print("Invited peer: ${device.deviceId}");
-
-              // nearbyService.stopBrowsingForPeers();
-            } else if (device.state == SessionState.connected) {
-              // Successfully connected to the room
-              setState(() {
-                joinedRoom = true;
-              });
-            }
-          }
-        },
-      );
-
-      _dataSub = nearbyService.dataReceivedSubscription(
-        callback: (data) {
-          print("dataReceivedSubscription: ${jsonEncode(data)}");
-          Map<String, dynamic> dataMap;
-
-          if (data is String) {
-            // If data is a string, decode it
-            try {
-              dataMap = jsonDecode(data);
-            } catch (e) {
-              print("Error decoding JSON string: $e");
-              return;
-            }
-          } else if (data is Map) {
-            // If data is already a map, cast it
-            dataMap = jsonDecode(Map<String, dynamic>.from(data)["message"]);
-          } else {
-            print("Unexpected data type: ${data.runtimeType}");
-            return;
-          }
-          print("Type of data: ${dataMap['type']}");
-          if (dataMap['type'] == 'playerList') {
-            final playersData = dataMap['players'] as List;
-            print("Received player list: ${jsonEncode(playersData)}");
-            setState(() {
-              _players.clear();
-              _players.addAll(
-                playersData
-                    .map((p) => GamePlayer.fromMap(p as Map<String, dynamic>))
-                    .toList(),
-              );
-            });
-          } else if (dataMap['type'] == 'startGame') {
-            // Navigate to the game screen
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder:
-                    (context) => DutchBlitz(
-                      players: _players,
-                      player: _players.firstWhere(
-                        (p) => p.name == _nameCtrl.text,
-                      ),
-                    ),
-              ),
-            );
-          }
-        },
-      );
-    } else {
-      //Android implementation
-      await nearby.Nearby().startDiscovery(
-        "Deckly-" + _nameCtrl.text + '-' + roomCode,
-        nearby.Strategy.P2P_CLUSTER,
-        onEndpointFound: (String id, String userName, String serviceId) {
-          print("Endpoint found: $id, $userName, $serviceId");
-          if (userName.startsWith('Deckly-') &&
-              userName.contains("-$roomCode")) {
-            nearby.Nearby().requestConnection(
-              userName,
-              id,
-              onConnectionInitiated: (endpointId, info) async {
-                print("Connection initiated with $endpointId");
-                await nearby.Nearby().acceptConnection(
-                  endpointId,
-                  onPayLoadRecieved: (endpointId, payload) {
-                    print("Payload received from $endpointId: ${payload.type}");
-                    if (payload.type == nearby.PayloadType.BYTES) {
-                      final data = utf8.decode(payload.bytes!);
-                      print("Data: $data");
-                      Map<String, dynamic> dataMap = jsonDecode(data);
-                      if (dataMap['type'] == 'playerList') {
-                        final playersData = dataMap['players'] as List;
-                        setState(() {
-                          _players.clear();
-                          _players.addAll(
-                            playersData
-                                .map(
-                                  (p) => GamePlayer.fromMap(
-                                    p as Map<String, dynamic>,
-                                  ),
-                                )
-                                .toList(),
-                          );
-                        });
-                      } else if (dataMap['type'] == 'startGame') {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder:
-                                (context) => DutchBlitz(
-                                  players: _players,
-                                  player: _players.firstWhere(
-                                    (p) => p.name == _nameCtrl.text,
-                                  ),
-                                ),
-                          ),
-                        );
-                      }
-                    }
-                  },
-                );
-              },
-              onConnectionResult: (endpointId, status) {
-                print("Connection result for $endpointId: $status");
-                if (status == nearby.Status.CONNECTED) {
-                  print("Successfully connected to $endpointId");
-                  setState(() {
-                    joinedRoom = true;
-                  });
-                } else {
-                  print("Failed to connect to $endpointId");
-                }
-              },
-              onDisconnected: (endpointId) {
-                print("Disconnected from $endpointId");
-              },
-            );
-          }
-        },
-        onEndpointLost: (endpointId) {
-          print("Endpoint lost: $endpointId");
-        },
-        serviceId: 'deckly',
-      );
-    }
+    SharedPrefs.setLastUsedName(_nameCtrl.text);
+    await connectionService.initAsClient(_nameCtrl.text, roomCode);
 
     setState(() => _initialized = true);
   }
@@ -294,15 +203,13 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final canJoin =
-        !_initialized &&
-        _codeCtrl.text.length == 4 &&
-        _nameCtrl.text.isNotEmpty;
+    final isConnected = _connectionState == blue.ConnectionState.connected;
+
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(kToolbarHeight),
         child: CustomAppBar(
-          title: "Join Deckly Room",
+          title: game == null ? "Join Game" : game!.toString(),
           showBackButton: true,
           onBackButtonPressed: (context) {
             Navigator.pop(context);
@@ -313,32 +220,44 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
       body: Padding(
         padding: const EdgeInsets.all(24),
         child:
-            joinedRoom
+            isConnected
                 ? Column(
                   children: [
                     Text(
-                      'You have joined the room!',
-                      style: const TextStyle(fontSize: 24),
+                      'You have joined the game!',
+                      style: const TextStyle(fontSize: 24, color: Colors.white),
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'Players (${_players.length}):',
-                      style: const TextStyle(fontSize: 18),
+                      'Players:',
+                      style: const TextStyle(fontSize: 18, color: Colors.white),
                     ),
                     const SizedBox(height: 12),
                     Expanded(
-                      child: ListView(
-                        children:
-                            _players
-                                .map(
-                                  (p) => ListTile(
-                                    leading: Icon(
-                                      p.isHost ? Icons.star : Icons.person,
+                      child: FancyWidget(
+                        child: ListView(
+                          children:
+                              _players
+                                  .map(
+                                    (p) => ListTile(
+                                      leading: Icon(
+                                        p.isHost ? Icons.star : Icons.person,
+                                        color:
+                                            p.isHost
+                                                ? Colors.yellow
+                                                : Colors.white,
+                                      ),
+                                      title: Text(
+                                        p.name,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 18,
+                                        ),
+                                      ),
                                     ),
-                                    title: Text(p.name),
-                                  ),
-                                )
-                                .toList(),
+                                  )
+                                  .toList(),
+                        ),
                       ),
                     ),
                   ],
@@ -381,13 +300,41 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ActionButton(
-                        onTap: _joinRoom,
-                        label: _initialized ? 'Scanning…' : 'Join Room',
+                        onTap:
+                            !_initialized &&
+                                    _connectionState ==
+                                        blue.ConnectionState.disconnected
+                                ? _joinRoom
+                                : () {},
+                        text: Text(
+                          _getButtonText(),
+                          style: TextStyle(
+                            color:
+                                Colors
+                                    .white, // This will be masked by the gradient
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     ),
                   ],
                 ),
       ),
     );
+  }
+
+  String _getButtonText() {
+    switch (_connectionState) {
+      case blue.ConnectionState.connecting:
+        return 'Connecting...';
+      case blue.ConnectionState.connected:
+        return 'Connected';
+      case blue.ConnectionState.searching:
+        return 'Searching for game...';
+      default:
+        return _initialized ? 'Scanning...' : 'Join Game';
+    }
   }
 }

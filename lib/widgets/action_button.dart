@@ -3,13 +3,24 @@ import 'package:deckly/main.dart';
 import 'package:flutter/material.dart';
 
 class ActionButton extends StatelessWidget {
-  final String label;
+  final Text text;
   final VoidCallback? onTap;
-  const ActionButton({required this.label, required this.onTap});
+  final double width;
+  final double height;
+  final bool useFancyText;
+  const ActionButton({
+    required this.text,
+    required this.onTap,
+    this.width = double.infinity,
+    this.height = 50,
+    this.useFancyText = true,
+    super.key,
+  });
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
+      width: width,
+      height: height,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -19,46 +30,45 @@ class ActionButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Container(
-        margin: EdgeInsets.all(2), // Creates the border thickness
+        margin: EdgeInsets.all(2),
+        // Creates the border thickness
         decoration: BoxDecoration(
           color: styling.backgroundColor,
           borderRadius: BorderRadius.circular(6), // Slightly smaller radius
         ),
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
+        child: Material(
+          color: Colors.transparent, // Makes the Material transparent
+          borderRadius: BorderRadius.circular(6),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(6),
+            splashColor: styling.primaryColor.withOpacity(0.3),
+            highlightColor: styling.primaryColor.withOpacity(0.3),
+            onTap: () {
+              if (onTap != null) {
+                SharedPrefs.hapticButtonPress();
+                onTap!();
+              }
+            },
+            child: Center(
+              child:
+                  useFancyText
+                      ? ShaderMask(
+                        shaderCallback:
+                            (bounds) => LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                styling.primaryColor,
+                                styling.secondaryColor,
+                              ],
+                            ).createShader(
+                              Rect.fromLTWH(0, 0, bounds.width, bounds.height),
+                            ),
+                        child: text,
+                      )
+                      : text,
             ),
-            backgroundColor: Colors.transparent,
-            shadowColor: Colors.transparent,
-            padding: const EdgeInsets.symmetric(vertical: 16),
           ),
-          child: ShaderMask(
-            shaderCallback:
-                (bounds) => LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [styling.primaryColor, styling.secondaryColor],
-                ).createShader(
-                  Rect.fromLTWH(0, 0, bounds.width, bounds.height),
-                ),
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Colors.white, // This will be masked by the gradient
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          onPressed:
-              onTap != null
-                  ? () async {
-                    SharedPrefs.hapticButtonPress();
-                    onTap!();
-                  }
-                  : null,
         ),
       ),
     );

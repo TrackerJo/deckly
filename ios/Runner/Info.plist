@@ -28,6 +28,8 @@
 		<true/>
 		<key>ITSAppUsesNonExemptEncryption</key>
 		<false/>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>This app uses location to help discover Bluetooth peripherals.</string>
 		<key>NSBluetoothAlwaysUsageDescription</key>
 		<string>This app uses Bluetooth to find and join nearby game rooms.</string>
 		<key>NSBluetoothPeripheralUsageDescription</key>

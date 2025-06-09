@@ -1,19 +1,26 @@
 // main.dart
 
+import 'dart:async';
+
+import 'package:deckly/api/connection_service.dart';
 import 'package:deckly/constants.dart';
+import 'package:deckly/pages/euchre.dart';
 
-import 'package:deckly/pages/dutch_blitz.dart';
-
-import 'package:deckly/pages/create_room_screen.dart';
 import 'package:deckly/pages/home_screen.dart';
-import 'package:deckly/pages/join_room_screen.dart';
+
 import 'package:deckly/styling.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_nearby_connections/flutter_nearby_connections.dart';
+import 'package:nearby_connections/nearby_connections.dart';
 
 final NearbyService nearbyService = NearbyService();
+final Nearby androidNearby = Nearby();
 final Styling styling = Styling();
+final ConnectionService connectionService = ConnectionService();
+
+final bluetoothDataStream = StreamController<Payload>.broadcast();
+final bluetoothStateStream = StreamController.broadcast();
 
 void main() => runApp(MyApp());
 
@@ -31,13 +38,7 @@ class _MyAppState extends State<MyApp> {
   void dispose() {
     // TODO: implement dispose
     super.dispose();
-    try {
-      nearbyService.stopAdvertisingPeer();
-      nearbyService.stopBrowsingForPeers();
-    } catch (e) {
-      // ignore: avoid_print
-      print('Error disposing NearbyService: $e');
-    }
+    connectionService.dispose();
   }
 
   @override
@@ -47,6 +48,19 @@ class _MyAppState extends State<MyApp> {
       theme: ThemeData(primarySwatch: Colors.purple),
       debugShowCheckedModeBanner: false,
       home: HomeScreen(),
+      // home: Euchre(
+      //   player: GamePlayer(
+      //     id: "Deckly-test-1704-host",
+      //     name: "test",
+      //     isHost: true,
+      //   ),
+      //   players: [
+      //     GamePlayer(id: "Deckly-test-1704-host", name: "test", isHost: true),
+      //     GamePlayer(id: "Deckly-test3-1704", name: "test"),
+      //     GamePlayer(id: "Deckly-test2-1704", name: "test"),
+      //     GamePlayer(id: "Deckly-test1-1704", name: "test"),
+      //   ],
+      // ),
     );
   }
 }

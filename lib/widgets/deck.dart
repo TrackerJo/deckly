@@ -1,4 +1,6 @@
+import 'package:deckly/api/shared_prefs.dart';
 import 'package:deckly/constants.dart';
+import 'package:deckly/widgets/fancy_widget.dart';
 import 'package:flutter/material.dart';
 import 'playing_card.dart';
 
@@ -26,6 +28,7 @@ class CardDeck extends StatefulWidget {
   final String deckId;
   final CardDeckController? controller;
   final double scale;
+  final bool isDutchBlitz;
 
   const CardDeck({
     Key? key,
@@ -36,6 +39,7 @@ class CardDeck extends StatefulWidget {
     required this.deckId,
     this.controller,
     this.scale = 1.0,
+    this.isDutchBlitz = false,
   }) : super(key: key);
 
   @override
@@ -72,6 +76,7 @@ class _CardDeckState extends State<CardDeck> {
   }
 
   void _dealCards() {
+    SharedPrefs.hapticInputSelect();
     if (deckCards.isEmpty) {
       // If deck is empty, reset from pile (excluding currently visible cards)
       // if (pileCards.length > 3) {
@@ -153,24 +158,20 @@ class _CardDeckState extends State<CardDeck> {
                         isFaceUp: false,
                       ),
                       scale: widget.scale,
+                      isDutchBlitz: widget.isDutchBlitz,
                     ),
                   )
                 else
-                  Container(
-                    width: 100 * widget.scale,
-                    height: 150 * widget.scale,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(8 * widget.scale),
-                      border: Border.all(
-                        color: Colors.grey[400]!,
-                        width: 2 * widget.scale,
+                  FancyWidget(
+                    child: Container(
+                      width: 100 * widget.scale,
+                      height: 150 * widget.scale,
+
+                      child: Icon(
+                        Icons.refresh,
+                        color: Colors.white,
+                        size: 40 * widget.scale,
                       ),
-                    ),
-                    child: Icon(
-                      Icons.refresh,
-                      color: Colors.grey[600],
-                      size: 40 * widget.scale,
                     ),
                   ),
 
@@ -232,10 +233,12 @@ class _CardDeckState extends State<CardDeck> {
                                       },
                                       stackMode: StackMode.overlay,
                                       scale: widget.scale,
+                                      isDutchBlitz: widget.isDutchBlitz,
                                     )
                                     : CardContent(
                                       card: card,
                                       scale: widget.scale,
+                                      isDutchBlitz: widget.isDutchBlitz,
                                     ),
                           );
                         }).toList(),

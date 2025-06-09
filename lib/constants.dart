@@ -43,8 +43,8 @@ enum HapticLevel {
 
 class GamePlayer {
   final String id;
-  final String name;
-  final bool isHost;
+  String name;
+  bool isHost;
 
   GamePlayer({required this.id, required this.name, this.isHost = false});
 
@@ -52,6 +52,10 @@ class GamePlayer {
       GamePlayer(id: m['id'], name: m['name'], isHost: m['isHost'] ?? false);
 
   Map<String, dynamic> toMap() => {'id': id, 'name': name, 'isHost': isHost};
+
+  bool getIsHost() {
+    return id.contains("-host");
+  }
 }
 
 enum StackMode { overlay, spaced }
@@ -65,6 +69,7 @@ class DropZoneData {
   bool canDragCardOut;
   double scale;
   bool isPublic;
+  bool playable;
 
   DropZoneData({
     required this.id,
@@ -75,6 +80,7 @@ class DropZoneData {
     this.scale = 1.0,
     this.isPublic = false,
     List<CardData> cards = const [],
+    this.playable = true,
   }) : cards = List.from(cards);
 
   factory DropZoneData.fromMap(Map<String, dynamic> m) {
@@ -92,6 +98,7 @@ class DropZoneData {
               .map((card) => CardData.fromMap(card as Map<String, dynamic>))
               .toList(),
       isPublic: m['isPublic'] ?? false,
+      playable: m['playable'] ?? true,
     );
   }
 
@@ -105,6 +112,7 @@ class DropZoneData {
       'canDragCardOut': canDragCardOut,
       'scale': scale,
       'isPublic': isPublic,
+      'playable': playable,
     };
   }
 }
@@ -161,15 +169,28 @@ enum CardSuit {
         return CardSuit.clubs;
     }
   }
+
+  CardSuit get oppositeSuit {
+    switch (this) {
+      case CardSuit.hearts:
+        return CardSuit.spades;
+      case CardSuit.diamonds:
+        return CardSuit.clubs;
+      case CardSuit.clubs:
+        return CardSuit.diamonds;
+      case CardSuit.spades:
+        return CardSuit.hearts;
+    }
+  }
 }
 
 class CardData {
   final String id;
   final int value;
-  final CardSuit suit;
+  CardSuit suit;
 
   final bool isFaceUp;
-  final String? playedBy; // Optional field to track who played the card
+  String? playedBy; // Optional field to track who played the card
 
   CardData({
     required this.id,
@@ -249,11 +270,13 @@ class DropZoneRules {
   AllowedCards allowedCards;
   List<MiniCard> bannedCards;
   List<MiniCard> startingCards;
+  List<CardSuit> allowedSuits;
   DropZoneRules({
     required this.cardOrder,
     required this.allowedCards,
     required this.bannedCards,
     required this.startingCards,
+    this.allowedSuits = const [],
   });
 
   factory DropZoneRules.fromMap(Map<String, dynamic> m) {
@@ -272,6 +295,10 @@ class DropZoneRules {
           (m['startingCards'] as List<dynamic>)
               .map((c) => MiniCard.fromMap(c as Map<String, dynamic>))
               .toList(),
+      allowedSuits:
+          (m['allowedSuits'] as List<dynamic>)
+              .map((s) => CardSuit.fromString(s as String))
+              .toList(),
     );
   }
 
@@ -281,22 +308,21 @@ class DropZoneRules {
       'allowedCards': allowedCards.toString(),
       'bannedCards': bannedCards.map((c) => c.toMap()).toList(),
       'startingCards': startingCards.map((c) => c.toMap()).toList(),
+      'allowedSuits': allowedSuits.map((s) => s.toString()).toList(),
     };
   }
 }
 
-class BlitzPlayer {
-  final String id;
-  final String name;
-  final int score;
-  final int blitzDeckSize;
-  final bool isHost;
+class BlitzPlayer extends GamePlayer {
+  int score;
+  int blitzDeckSize;
+
   BlitzPlayer({
-    required this.id,
-    required this.name,
+    required super.id,
+    required super.name,
     required this.score,
     required this.blitzDeckSize,
-    this.isHost = false,
+    super.isHost = false,
   });
 
   factory BlitzPlayer.fromMap(Map<String, dynamic> m) {
@@ -305,7 +331,7 @@ class BlitzPlayer {
       name: m['name'],
       score: m['score'] ?? 0,
       blitzDeckSize: m['blitzDeckSize'] ?? 0,
-      isHost: m['isHost'] ?? false,
+      isHost: m['isHost'] == "true" || m['isHost'] == true,
     );
   }
 
@@ -320,6 +346,83 @@ class BlitzPlayer {
   }
 }
 
+class EuchrePlayer extends GamePlayer {
+  bool isDealer;
+  bool onTeamA;
+  List<CardData> hand;
+  bool myTurn;
+
+  EuchrePlayer({
+    required super.id,
+    required super.name,
+    this.isDealer = false,
+    required this.onTeamA,
+    required this.hand,
+    super.isHost = false,
+    this.myTurn = false,
+  });
+
+  factory EuchrePlayer.fromMap(Map<String, dynamic> m) {
+    return EuchrePlayer(
+      id: m['id'],
+      name: m['name'],
+      isDealer: m['isDealer'] ?? false,
+      onTeamA: m['onTeamA'] ?? true,
+      hand:
+          (m['hand'] as List<dynamic>)
+              .map((card) => CardData.fromMap(card as Map<String, dynamic>))
+              .toList(),
+      isHost: m['isHost'] == "true" || m['isHost'] == true,
+      myTurn: m['myTurn'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'isDealer': isDealer,
+      'onTeamA': onTeamA,
+      'hand': hand.map((c) => c.toMap()).toList(),
+      'isHost': isHost,
+      'myTurn': myTurn,
+    };
+  }
+}
+
+class EuchreTeam {
+  List<EuchrePlayer> players;
+  int score;
+  bool madeIt;
+  int tricksTaken;
+
+  EuchreTeam({
+    required this.players,
+    this.score = 0,
+    this.madeIt = false,
+    this.tricksTaken = 0,
+  });
+
+  factory EuchreTeam.fromMap(Map<String, dynamic> m) {
+    return EuchreTeam(
+      players:
+          (m['players'] as List<dynamic>)
+              .map((p) => EuchrePlayer.fromMap(p as Map<String, dynamic>))
+              .toList(),
+      score: m['score'] ?? 0,
+      madeIt: m['madeIt'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'players': players.map((p) => p.toMap()).toList(),
+      'score': score,
+      'madeIt': madeIt,
+    };
+  }
+}
+
 List<CardData> fullDeck = [
   for (var suit in CardSuit.values)
     for (var value = 1; value <= 13; value++)
@@ -330,3 +433,59 @@ List<CardData> fullDeck = [
         isFaceUp: true,
       ),
 ];
+
+List<CardData> fullBlitzDeck = [
+  for (var suit in CardSuit.values)
+    for (var value = 1; value <= 10; value++)
+      CardData(
+        id: '${suit.toString()}_$value',
+        value: value,
+        suit: suit,
+        isFaceUp: true,
+      ),
+];
+
+List<CardData> fullEuchreDeck = [
+  for (var suit in CardSuit.values)
+    for (var value = 9; value <= 14; value++)
+      CardData(
+        id: '${suit.toString()}_${value == 14 ? 1 : value}',
+        value:
+            value == 14
+                ? 1
+                : value, // Ace is 1, Jack is 11, Queen is 12, King is 13
+        suit: suit,
+        isFaceUp: true,
+      ),
+];
+
+enum NertzGameState { waitingForPlayers, playing, leaderboard, gameOver }
+
+enum EuchreGameState { teamSelection, waitingForPlayers, playing, gameOver }
+
+enum EuchreGamePhase { decidingTrump, discardingCard, playing }
+
+enum Game {
+  nertz,
+  euchre,
+  blitz;
+
+  @override
+  String toString() {
+    switch (this) {
+      case Game.nertz:
+        return 'Nertz';
+      case Game.blitz:
+        return 'Dutch Blitz';
+      case Game.euchre:
+        return 'Euchre';
+    }
+  }
+
+  static Game fromString(String game) {
+    return Game.values.firstWhere(
+      (g) => g.toString() == game,
+      orElse: () => Game.nertz, // Default to Nertz if not found
+    );
+  }
+}
