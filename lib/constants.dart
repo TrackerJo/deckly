@@ -3,6 +3,10 @@ import 'package:deckly/styling.dart';
 import 'package:deckly/widgets/playing_card.dart';
 import 'package:flutter/material.dart';
 
+void nextScreen(context, page) {
+  Navigator.push(context, MaterialPageRoute(builder: (context) => page));
+}
+
 enum HapticLevel {
   none,
   light,
@@ -316,6 +320,7 @@ class DropZoneRules {
 class BlitzPlayer extends GamePlayer {
   int score;
   int blitzDeckSize;
+  bool isStuck;
 
   BlitzPlayer({
     required super.id,
@@ -323,6 +328,7 @@ class BlitzPlayer extends GamePlayer {
     required this.score,
     required this.blitzDeckSize,
     super.isHost = false,
+    this.isStuck = false,
   });
 
   factory BlitzPlayer.fromMap(Map<String, dynamic> m) {
@@ -332,6 +338,7 @@ class BlitzPlayer extends GamePlayer {
       score: m['score'] ?? 0,
       blitzDeckSize: m['blitzDeckSize'] ?? 0,
       isHost: m['isHost'] == "true" || m['isHost'] == true,
+      isStuck: m['isStuck'] ?? false,
     );
   }
 
@@ -342,6 +349,7 @@ class BlitzPlayer extends GamePlayer {
       'score': score,
       'blitzDeckSize': blitzDeckSize,
       'isHost': isHost,
+      'isStuck': isStuck,
     };
   }
 }

@@ -1,5 +1,6 @@
 import 'package:deckly/api/shared_prefs.dart';
 import 'package:deckly/main.dart';
+import 'package:deckly/widgets/fancy_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -7,6 +8,7 @@ class CustomAppBar extends StatelessWidget {
   final String title;
   final bool showBackButton;
   final List<Widget>? actions;
+  final Widget? customBackButton;
 
   final void Function(BuildContext context)? onBackButtonPressed;
 
@@ -16,6 +18,7 @@ class CustomAppBar extends StatelessWidget {
     this.showBackButton = false,
     this.onBackButtonPressed,
     this.actions,
+    this.customBackButton,
   });
 
   @override
@@ -41,15 +44,17 @@ class CustomAppBar extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 30,
-                      fontFamily: 'Inknut Antiqua',
-                      fontWeight: FontWeight.w400,
-                      height: 0,
+                  FancyWidget(
+                    child: Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 30,
+                        fontFamily: 'Inknut Antiqua',
+                        fontWeight: FontWeight.w400,
+                        height: 0,
+                      ),
                     ),
                   ),
                 ],
@@ -57,16 +62,23 @@ class CustomAppBar extends StatelessWidget {
             ),
             leading:
                 showBackButton
-                    ? IconButton(
-                      splashColor: Colors.transparent,
-                      splashRadius: 25,
-                      icon: const Icon(Icons.arrow_back_ios_new),
-                      onPressed: () async {
-                        SharedPrefs.hapticButtonPress();
-                        onBackButtonPressed!(context);
-                      },
-                      color: Colors.white,
-                    )
+                    ? customBackButton != null
+                        ? customBackButton
+                        : FancyWidget(
+                          child: IconButton(
+                            splashColor: Colors.transparent,
+                            splashRadius: 25,
+                            icon: const Icon(
+                              Icons.arrow_back_ios_new,
+                              color: Colors.white,
+                            ),
+                            onPressed: () async {
+                              SharedPrefs.hapticButtonPress();
+                              onBackButtonPressed!(context);
+                            },
+                            color: Colors.white,
+                          ),
+                        )
                     : Container(),
             actions: [
               Row(

@@ -386,6 +386,14 @@ packages:
       relative: true
     source: path
     version: "1.1.2"
+  flutter_sficon:
+    dependency: "direct main"
+    description:
+      name: flutter_sficon
+      sha256: f7d9da4d2438db10d74e2b196a6366bfa7ec81a85f82e1dd3386d2a93ccc64d5
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.2.0"
   flutter_styled_toast:
     dependency: "direct main"
     description:

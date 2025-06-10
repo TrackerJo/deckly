@@ -3,17 +3,21 @@ import 'package:deckly/main.dart';
 import 'package:flutter/material.dart';
 
 class ActionButton extends StatelessWidget {
-  final Text text;
+  final Widget text;
   final VoidCallback? onTap;
   final double width;
   final double height;
   final bool useFancyText;
+  final bool filled;
+  final double borderRadius;
   const ActionButton({
     required this.text,
     required this.onTap,
     this.width = double.infinity,
     this.height = 50,
     this.useFancyText = true,
+    this.filled = false,
+    this.borderRadius = 8,
     super.key,
   });
   @override
@@ -27,50 +31,99 @@ class ActionButton extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [styling.primaryColor, styling.secondaryColor],
         ),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(borderRadius),
       ),
-      child: Container(
-        margin: EdgeInsets.all(2),
-        // Creates the border thickness
-        decoration: BoxDecoration(
-          color: styling.backgroundColor,
-          borderRadius: BorderRadius.circular(6), // Slightly smaller radius
-        ),
-        child: Material(
-          color: Colors.transparent, // Makes the Material transparent
-          borderRadius: BorderRadius.circular(6),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(6),
-            splashColor: styling.primaryColor.withOpacity(0.3),
-            highlightColor: styling.primaryColor.withOpacity(0.3),
-            onTap: () {
-              if (onTap != null) {
-                SharedPrefs.hapticButtonPress();
-                onTap!();
-              }
-            },
-            child: Center(
-              child:
-                  useFancyText
-                      ? ShaderMask(
-                        shaderCallback:
-                            (bounds) => LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                styling.primaryColor,
-                                styling.secondaryColor,
-                              ],
-                            ).createShader(
-                              Rect.fromLTWH(0, 0, bounds.width, bounds.height),
-                            ),
-                        child: text,
-                      )
-                      : text,
-            ),
-          ),
-        ),
-      ),
+      child:
+          filled
+              ? Material(
+                color: Colors.transparent, // Makes the Material transparent
+                borderRadius: BorderRadius.circular(borderRadius - 2),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(borderRadius - 2),
+                  splashColor: styling.primaryColor.withOpacity(0.3),
+                  highlightColor: styling.primaryColor.withOpacity(0.3),
+                  onTap: () {
+                    if (onTap != null) {
+                      SharedPrefs.hapticButtonPress();
+                      onTap!();
+                    }
+                  },
+                  child: Center(
+                    child:
+                        useFancyText
+                            ? ShaderMask(
+                              shaderCallback:
+                                  (bounds) => LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      styling.primaryColor,
+                                      styling.secondaryColor,
+                                    ],
+                                  ).createShader(
+                                    Rect.fromLTWH(
+                                      0,
+                                      0,
+                                      bounds.width,
+                                      bounds.height,
+                                    ),
+                                  ),
+                              child: text,
+                            )
+                            : text,
+                  ),
+                ),
+              )
+              : Container(
+                margin: EdgeInsets.all(2),
+                // Creates the border thickness
+                decoration: BoxDecoration(
+                  color: styling.backgroundColor,
+                  borderRadius: BorderRadius.circular(
+                    borderRadius -
+                        2, // Adjusts the border radius to fit inside the container
+                  ), // Slightly smaller radius
+                ),
+                child: Material(
+                  color: Colors.transparent, // Makes the Material transparent
+                  borderRadius: BorderRadius.circular(borderRadius - 2),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(borderRadius - 2),
+                    splashColor: styling.primaryColor.withOpacity(0.3),
+                    highlightColor: styling.primaryColor.withOpacity(0.3),
+                    onTap: () {
+                      if (onTap != null) {
+                        SharedPrefs.hapticButtonPress();
+                        onTap!();
+                      }
+                    },
+                    child: Center(
+                      child:
+                          useFancyText
+                              ? ShaderMask(
+                                shaderCallback:
+                                    (bounds) => LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [
+                                        styling.primaryColor,
+                                        styling.secondaryColor,
+                                      ],
+                                    ).createShader(
+                                      Rect.fromLTWH(
+                                        0,
+                                        0,
+                                        bounds.width,
+                                        bounds.height,
+                                      ),
+                                    ),
+                                child: text,
+                              )
+                              : text,
+                    ),
+                  ),
+                ),
+              ),
     );
   }
 }

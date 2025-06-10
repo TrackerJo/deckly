@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'package:deckly/api/shared_prefs.dart';
 import 'package:deckly/constants.dart';
 import 'package:deckly/main.dart';
 import 'package:deckly/widgets/action_button.dart';
@@ -8,9 +9,10 @@ import 'package:deckly/widgets/blitz_deck.dart';
 import 'package:deckly/widgets/custom_app_bar.dart';
 import 'package:deckly/widgets/deck.dart';
 import 'package:deckly/widgets/drop_zone.dart';
-import 'package:deckly/widgets/fancy_text.dart';
 import 'package:deckly/widgets/fancy_widget.dart';
+import 'package:deckly/widgets/fancy_border.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_sficon/flutter_sficon.dart';
 
 class Nertz extends StatefulWidget {
   final GamePlayer player;
@@ -30,6 +32,8 @@ class _NertzState extends State<Nertz> {
   late StreamSubscription<dynamic> _stateSub;
   late StreamSubscription<dynamic> _dataSub;
   late StreamSubscription<dynamic> _playersSub;
+  bool couldBeStuck = false;
+  bool hasMovedCards = false;
 
   final CardDeckController deckController = CardDeckController();
   final BlitzDeckController blitzDeckController = BlitzDeckController();
@@ -39,6 +43,7 @@ class _NertzState extends State<Nertz> {
     sourceZoneId: '',
     sourceIndex: -1,
   );
+  Map<String, int> playerAdditionalScores = {};
 
   @override
   void initState() {
@@ -66,6 +71,8 @@ class _NertzState extends State<Nertz> {
       } else if (dataMap['type'] == 'blitz') {
         final playerData = dataMap['player'] as Map<String, dynamic>;
         final playersData = dataMap['players'] as List;
+        final playerAdditionalScoresData =
+            dataMap['playerAdditionalScores'] as Map<String, dynamic>;
 
         final players =
             playersData
@@ -73,6 +80,9 @@ class _NertzState extends State<Nertz> {
                 .toList();
         setState(() {
           this.players = players;
+          playerAdditionalScores = playerAdditionalScoresData.map(
+            (key, value) => MapEntry(key, value as int),
+          );
         });
         final player = BlitzPlayer.fromMap(playerData);
         if (player.id == currentPlayer!.id) {
@@ -81,7 +91,7 @@ class _NertzState extends State<Nertz> {
             context: context,
             barrierDismissible: false,
             builder: (BuildContext context) {
-              Timer(Duration(seconds: 5), () {
+              Timer(Duration(seconds: 2), () {
                 Navigator.of(context).pop();
                 setState(() {
                   gameState = NertzGameState.leaderboard;
@@ -119,6 +129,7 @@ class _NertzState extends State<Nertz> {
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                           ),
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
@@ -142,16 +153,46 @@ class _NertzState extends State<Nertz> {
           players.firstWhere((p) => p.id == player.id).blitzDeckSize =
               player.blitzDeckSize;
         });
+      } else if (dataMap['type'] == 'player_stuck') {
+        final playerId = dataMap['playerId'] as String;
+        players.firstWhere((p) => p.id == playerId).isStuck = true;
+        if (currentPlayer!.id == playerId) {
+          currentPlayer!.isStuck = true;
+        }
+        if (!players.any((p) => !p.isStuck)) {
+          unstuckPlayers();
+        }
+        setState(() {});
+      } else if (dataMap['type'] == 'player_unstuck') {
+        final playerId = dataMap['playerId'] as String;
+        players.firstWhere((p) => p.id == playerId).isStuck = false;
+        if (currentPlayer!.id == playerId) {
+          currentPlayer!.isStuck = false;
+        }
+        setState(() {});
       }
     });
   }
 
-  List<BlitzPlayer> scoreGame() {
+  List<dynamic> scoreGame() {
     List<BlitzPlayer> newPlayers = [...players];
+    Map<String, int> playerAdditionalScores = {
+      for (var player in newPlayers) player.id: 0,
+    };
     newPlayers.where((p) => p.id != currentPlayer!.id).forEach((player) {
       player.score -= player.blitzDeckSize;
+
+      playerAdditionalScores[player.id] = -player.blitzDeckSize;
     });
     newPlayers.firstWhere((p) => p.id == currentPlayer!.id).score += 5;
+    playerAdditionalScores[newPlayers
+            .firstWhere((p) => p.id == currentPlayer!.id)
+            .id] =
+        (playerAdditionalScores[newPlayers
+                .firstWhere((p) => p.id == currentPlayer!.id)
+                .id] ??
+            0) +
+        5;
     //get all the public drop zones
     List<DropZoneData> publicZones =
         dropZones
@@ -162,25 +203,33 @@ class _NertzState extends State<Nertz> {
         publicZones.expand((zone) => zone.cards).toList();
     for (var card in publicCards) {
       newPlayers.firstWhere((p) => p.id == card.playedBy!).score += 1;
+      playerAdditionalScores[card.playedBy!] =
+          (playerAdditionalScores[card.playedBy!] ?? 0) + 1;
     }
     // Sort players by score
     newPlayers.sort((a, b) => b.score.compareTo(a.score));
     // Update the current player with the new score
-    return newPlayers;
+    return [newPlayers, playerAdditionalScores];
   }
 
   void onBlitz() async {
-    List<BlitzPlayer> scoredPlayers = scoreGame();
+    List<dynamic> scoredPlayersDuo = scoreGame();
+    List<BlitzPlayer> scoredPlayers = scoredPlayersDuo[0];
+    Map<String, int> playerAdditionalScores = scoredPlayersDuo[1];
+    setState(() {
+      this.playerAdditionalScores = playerAdditionalScores;
+    });
     await connectionService.broadcastMessage({
       'type': 'blitz',
       'player': currentPlayer!.toMap(),
       'players': scoredPlayers.map((p) => p.toMap()).toList(),
+      'playerAdditionalScores': playerAdditionalScores,
     }, currentPlayer!.id);
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        Timer(Duration(seconds: 5), () {
+        Timer(Duration(seconds: 2), () {
           Navigator.of(context).pop();
           setState(() {
             gameState = NertzGameState.leaderboard;
@@ -218,6 +267,7 @@ class _NertzState extends State<Nertz> {
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ),
@@ -242,6 +292,7 @@ class _NertzState extends State<Nertz> {
             name: p.name,
             score: 0,
             blitzDeckSize: 13,
+            // Only current player can be unstuck initially
           );
         }).toList();
     // players = [
@@ -343,6 +394,8 @@ class _NertzState extends State<Nertz> {
   void _moveCards(DragData dragData, String targetZoneId) async {
     final targetZone = dropZones.firstWhere((zone) => zone.id == targetZoneId);
     setState(() {
+      hasMovedCards = true;
+      couldBeStuck = false;
       if (dragData.sourceZoneId != 'deck' &&
           dragData.sourceZoneId != 'pile' &&
           dragData.sourceZoneId != 'blitz_deck') {
@@ -404,6 +457,72 @@ class _NertzState extends State<Nertz> {
     }, currentPlayer!.id);
   }
 
+  void unstuckPlayers() {
+    deckController.unstuck();
+    showDialog(
+      context: context,
+
+      builder: (BuildContext context) {
+        Timer(Duration(seconds: 1), () {
+          try {
+            //test if dialog is still open
+
+            Navigator.of(context).pop();
+          } catch (e) {
+            print("Error popping dialog: $e");
+          }
+        });
+        return Dialog(
+          backgroundColor: Colors.transparent,
+
+          child: Container(
+            width: 400,
+            height: 200,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [styling.primaryColor, styling.secondaryColor],
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Container(
+              margin: EdgeInsets.all(2), // Creates the border thickness
+              decoration: BoxDecoration(
+                color: styling.backgroundColor,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    "Players unstuck!",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    setState(() {
+      couldBeStuck = false;
+      hasMovedCards = false;
+      players.forEach((player) {
+        player.isStuck = false;
+      });
+      currentPlayer!.isStuck = false;
+    });
+  }
+
   double _calculateScale(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
@@ -457,15 +576,13 @@ class _NertzState extends State<Nertz> {
     for (var zone in dropZones) {
       zone.cards.clear();
     }
-    if (currentPlayer!.isHost) {
+    for (var player in players) {
+      player.blitzDeckSize = 13;
+    }
+    currentPlayer!.blitzDeckSize = 13;
+    if (currentPlayer!.getIsHost()) {
       // Reset blitz deck for all players
-      for (var player in players) {
-        player.blitzDeckSize = 13;
-      }
-      connectionService.broadcastMessage({
-        'type': 'update_player',
-        'player': currentPlayer!.toMap(),
-      }, currentPlayer!.id);
+
       connectionService.broadcastMessage({
         'type': 'next_round',
       }, currentPlayer!.id);
@@ -476,6 +593,7 @@ class _NertzState extends State<Nertz> {
     shuffledDeck.shuffle();
     // Remove the first 13 cards for blitz deck
     blitzDeck = shuffledDeck.sublist(0, 13);
+    shuffledDeck = shuffledDeck.sublist(13);
     //Take 4 cards for the bottom piles
     dropZones[0].cards = [shuffledDeck[0]];
     dropZones[1].cards = [shuffledDeck[1]];
@@ -486,6 +604,8 @@ class _NertzState extends State<Nertz> {
 
     // Reset blitz deck for all players
     setState(() {
+      hasMovedCards = false;
+      couldBeStuck = false;
       gameState = NertzGameState.playing;
     });
   }
@@ -510,11 +630,8 @@ class _NertzState extends State<Nertz> {
     }
 
     return PopScope(
-      onPopInvokedWithResult: (bool didPop, Object? result) {
-        if (didPop) {
-          connectionService.dispose();
-        }
-      },
+      //Disable swipe to go back
+      canPop: false,
       child: Scaffold(
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(kToolbarHeight),
@@ -525,6 +642,113 @@ class _NertzState extends State<Nertz> {
               connectionService.dispose();
               Navigator.pop(context);
             },
+            customBackButton: FancyWidget(
+              child: IconButton(
+                splashColor: Colors.transparent,
+                splashRadius: 25,
+                icon: Transform.flip(
+                  flipX: true,
+                  child: const SFIcon(
+                    SFIcons.sf_rectangle_portrait_and_arrow_right, // 'heart.fill'
+                    // fontSize instead of size
+                    fontWeight: FontWeight.bold, // fontWeight instead of weight
+                    color: Colors.white,
+                  ),
+                ),
+                onPressed: () async {
+                  SharedPrefs.hapticButtonPress();
+                  //Confirm with user before leaving
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (BuildContext context) {
+                      return Dialog(
+                        backgroundColor: Colors.transparent,
+              
+                        child: Container(
+                          width: 400,
+                          height: 200,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                styling.primaryColor,
+                                styling.secondaryColor,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Container(
+                            margin: EdgeInsets.all(
+                              2,
+                            ), // Creates the border thickness
+                            decoration: BoxDecoration(
+                              color: styling.backgroundColor,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Text(
+                                  "Are you sure you want to leave the game?",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                SizedBox(height: 16),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    ActionButton(
+                                      height: 40,
+                                      width: 100,
+                                      onTap: () {
+                                        Navigator.of(context).pop();
+                                      },
+                                      text: Text(
+                                        "Cancel",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                    ActionButton(
+                                      height: 40,
+                                      width: 100,
+                                      onTap: () {
+                                        connectionService.dispose();
+                                        Navigator.of(context).pop();
+                                        Navigator.of(context).pop();
+                                      },
+                                      text: Text(
+                                        "Leave",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+                color: Colors.white,
+              ),
+            ),
           ),
         ),
         backgroundColor: styling.backgroundColor,
@@ -544,12 +768,26 @@ class _NertzState extends State<Nertz> {
     );
   }
 
+  void onReachEndOfDeck() {
+    if (!hasMovedCards) {
+      setState(() {
+        couldBeStuck = true;
+        hasMovedCards = false;
+      });
+    } else {
+      setState(() {
+        couldBeStuck = false;
+        hasMovedCards = false;
+      });
+    }
+  }
+
   Widget buildPlayingScreen(double calculatedScale) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         // Top Container (100px)
-        FancyWidget(
+        FancyBorder(
           child: Container(
             height: 100.0,
             width: double.infinity,
@@ -728,8 +966,50 @@ class _NertzState extends State<Nertz> {
                       currentDragData: currentDragData,
                       deckId: 'deck',
                       controller: deckController,
+                      onReachEndOfDeck: onReachEndOfDeck,
                       scale: calculatedScale,
                     ),
+                    SizedBox(height: 16.0),
+                    if (couldBeStuck)
+                      ActionButton(
+                        width: 200.0 * calculatedScale,
+                        height: 75.0 * calculatedScale,
+                        filled: currentPlayer!.isStuck,
+                        useFancyText: !currentPlayer!.isStuck,
+                        text: Text(
+                          currentPlayer!.isStuck ? "I'm Stuck" : "Stuck?",
+                          style: TextStyle(
+                            fontSize: 28.0 * calculatedScale,
+                            color: Colors.white,
+                          ),
+                        ),
+                        onTap: () {
+                          setState(() {
+                            if (currentPlayer!.isStuck) {
+                              connectionService.broadcastMessage({
+                                'type': 'player_unstuck',
+                                'playerId': currentPlayer!.id,
+                              }, currentPlayer!.id);
+                              currentPlayer!.isStuck = false;
+                              players
+                                  .firstWhere((p) => p.id == currentPlayer!.id)
+                                  .isStuck = false;
+                            } else {
+                              connectionService.broadcastMessage({
+                                'type': 'player_stuck',
+                                'playerId': currentPlayer!.id,
+                              }, currentPlayer!.id);
+                              currentPlayer!.isStuck = true;
+                              players
+                                  .firstWhere((p) => p.id == currentPlayer!.id)
+                                  .isStuck = true;
+                              if (players.where((p) => !p.isStuck).isEmpty) {
+                                unstuckPlayers();
+                              }
+                            }
+                          });
+                        },
+                      ),
                   ],
                 ),
               ],
@@ -749,7 +1029,7 @@ class _NertzState extends State<Nertz> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        FancyWidget(
+        FancyBorder(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -773,7 +1053,7 @@ class _NertzState extends State<Nertz> {
                   final player = players[index];
                   return ListTile(
                     title: Text(
-                      '${index + 1}. ${player.name}: ${player.score}',
+                      '${index + 1}. ${player.name}: ${player.score - (playerAdditionalScores[player.id] ?? 0)} + ${(playerAdditionalScores[player.id] ?? 0)} = ${player.score}',
                       style: TextStyle(color: Colors.white, fontSize: 18.0),
                     ),
                   );
@@ -820,8 +1100,8 @@ class _NertzState extends State<Nertz> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        FancyText(
-          text: Text(
+        FancyWidget(
+          child: Text(
             'Game Over',
             style: TextStyle(
               fontSize: 24.0,
@@ -836,7 +1116,7 @@ class _NertzState extends State<Nertz> {
           style: TextStyle(fontSize: 20.0, color: Colors.white),
         ),
         const SizedBox(height: 16.0),
-        FancyWidget(
+        FancyBorder(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

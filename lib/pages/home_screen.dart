@@ -1,5 +1,7 @@
 import 'package:deckly/api/shared_prefs.dart';
-import 'package:deckly/widgets/fancy_text.dart';
+import 'package:deckly/pages/settings_page.dart';
+import 'package:deckly/widgets/fancy_widget.dart';
+import 'package:deckly/widgets/fancy_border.dart';
 import 'package:deckly/widgets/gradient_input_field.dart';
 import 'package:deckly/widgets/solid_action_button.dart';
 import 'package:deckly/widgets/action_button.dart';
@@ -29,12 +31,79 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void showHowSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: styling.backgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(23),
+          topRight: Radius.circular(23),
+        ),
+      ),
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.8,
+              width: double.infinity,
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: FancyWidget(
+                        child: Text(
+                          "How Deckly Works",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        "Deckly is a platform for playing card games with friends without the need for physical cards or even a wifi connection!",
+                        style: TextStyle(color: Colors.white, fontSize: 18),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        "To get started, you can either create a local game or join an existing one. Once you're in a game, you can invite your friends to join by sharing the room code.",
+                        style: TextStyle(color: Colors.white, fontSize: 18),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        "Deckly uses Bluetooth to connect devices, so you can play with friends nearby without needing an internet connection. Just make sure Bluetooth is enabled on your device.",
+                        style: TextStyle(color: Colors.white, fontSize: 18),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: styling.backgroundColor,
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(12),
         child: SizedBox(
           width: double.infinity,
           child: Stack(
@@ -71,176 +140,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 right: 0,
                 child: Column(
                   children: [
-                    // ActionButton(
-                    //   text: Text(
-                    //     'Create Room',
-                    //     style: TextStyle(
-                    //       color:
-                    //           Colors
-                    //               .white, // This will be masked by the gradient
-                    //       fontSize: 14,
-                    //       fontWeight: FontWeight.bold,
-                    //     ),
-                    //     textAlign: TextAlign.center,
-                    //   ),
-                    //   onTap:
-                    //       () => showDialog(
-                    //         context: context,
-                    //         builder: (BuildContext context) {
-                    //           final myController = TextEditingController();
-                    //           return Dialog(
-                    //             backgroundColor: Colors.transparent,
-
-                    //             child: Container(
-                    //               width: 400,
-                    //               height: 200,
-                    //               decoration: BoxDecoration(
-                    //                 gradient: LinearGradient(
-                    //                   begin: Alignment.topLeft,
-                    //                   end: Alignment.bottomRight,
-                    //                   colors: [
-                    //                     styling.primaryColor,
-                    //                     styling.secondaryColor,
-                    //                   ],
-                    //                 ),
-                    //                 borderRadius: BorderRadius.circular(12),
-                    //               ),
-                    //               child: Container(
-                    //                 margin: EdgeInsets.all(
-                    //                   2,
-                    //                 ), // Creates the border thickness
-                    //                 decoration: BoxDecoration(
-                    //                   color: styling.backgroundColor,
-                    //                   borderRadius: BorderRadius.circular(10),
-                    //                 ),
-                    //                 child: Column(
-                    //                   mainAxisSize: MainAxisSize.min,
-                    //                   mainAxisAlignment:
-                    //                       MainAxisAlignment.center,
-                    //                   crossAxisAlignment:
-                    //                       CrossAxisAlignment.center,
-                    //                   children: [
-                    //                     Text(
-                    //                       "Enter Your Name",
-                    //                       style: TextStyle(
-                    //                         color: Colors.white,
-                    //                         fontSize: 24,
-                    //                         fontWeight: FontWeight.bold,
-                    //                       ),
-                    //                     ),
-                    //                     Padding(
-                    //                       padding: const EdgeInsets.all(8.0),
-                    //                       child: GradientInputField(
-                    //                         textField: TextField(
-                    //                           controller: myController,
-                    //                           style: TextStyle(
-                    //                             color: Colors.white,
-                    //                           ),
-                    //                           decoration: styling
-                    //                               .gradientInputDecoration()
-                    //                               .copyWith(
-                    //                                 hintText: "Your Name",
-                    //                               ),
-                    //                           onTap: () {
-                    //                             SharedPrefs.hapticInputSelect();
-                    //                           },
-                    //                         ),
-                    //                       ),
-                    //                     ),
-                    //                     Row(
-                    //                       mainAxisAlignment:
-                    //                           MainAxisAlignment.end,
-                    //                       children: [
-                    //                         TextButton(
-                    //                           child: Text(
-                    //                             "Cancel",
-                    //                             style: TextStyle(
-                    //                               color: styling.secondaryColor,
-                    //                             ),
-                    //                           ),
-                    //                           onPressed: () {
-                    //                             SharedPrefs.hapticButtonPress();
-                    //                             Navigator.of(context).pop();
-                    //                           },
-                    //                         ),
-                    //                         SizedBox(
-                    //                           width: 128,
-
-                    //                           child: Padding(
-                    //                             padding: const EdgeInsets.all(
-                    //                               8.0,
-                    //                             ),
-                    //                             child: SolidActionButton(
-                    //                               text: Text(
-                    //                                 "Create Room",
-                    //                                 style: TextStyle(
-                    //                                   color:
-                    //                                       Colors
-                    //                                           .white, // This will be masked by the gradient
-                    //                                   fontSize: 14,
-                    //                                   fontWeight:
-                    //                                       FontWeight.bold,
-                    //                                 ),
-                    //                                 textAlign: TextAlign.center,
-                    //                               ),
-                    //                               onTap: () {
-                    //                                 SharedPrefs.hapticButtonPress();
-                    //                                 Navigator.of(context).pop();
-                    //                                 // Navigate to the browser screen with the room code
-                    //                                 Navigator.push(
-                    //                                   context,
-                    //                                   MaterialPageRoute(
-                    //                                     builder:
-                    //                                         (
-                    //                                           _,
-                    //                                         ) => CreateRoomScreen(
-                    //                                           userName:
-                    //                                               myController
-                    //                                                   .text,
-                    //                                         ),
-                    //                                   ),
-                    //                                 );
-                    //                               },
-                    //                             ),
-                    //                           ),
-                    //                         ),
-                    //                         // TextButton(
-                    //                         //   child: Text(
-                    //                         //     "Create Room",
-                    //                         //     style: TextStyle(
-                    //                         //       color: styling.secondaryColor,
-                    //                         //     ),
-                    //                         //   ),
-                    //                         //   onPressed: () {
-                    //                         //     // Close the dialog
-                    //                         //     Navigator.of(context).pop();
-                    //                         //     // Navigate to the browser screen with the room code
-                    //                         //     Navigator.push(
-                    //                         //       context,
-                    //                         //       MaterialPageRoute(
-                    //                         //         builder:
-                    //                         //             (_) => CreateRoomScreen(
-                    //                         //               userName:
-                    //                         //                   myController.text,
-                    //                         //             ),
-                    //                         //       ),
-                    //                         //     );
-                    //                         //   },
-                    //                         // ),
-                    //                       ],
-                    //                     ),
-                    //                   ],
-                    //                 ),
-                    //               ),
-                    //             ),
-                    //           );
-                    //         },
-                    //       ),
-                    // ),
-                    // const SizedBox(height: 16),
                     ActionButton(
                       text: Text(
-                        'Join Game',
+                        'Join Local Game',
                         style: TextStyle(
                           color:
                               Colors
@@ -414,7 +316,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                           ),
                                                       child: SolidActionButton(
                                                         text: Text(
-                                                          "Create Game",
+                                                          "Create Local Game",
                                                           style: TextStyle(
                                                             color:
                                                                 Colors
@@ -490,6 +392,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   builder: (BuildContext context) {
                                     final myController =
                                         TextEditingController();
+                                    if (lastUsedName.isNotEmpty) {
+                                      myController.text = lastUsedName;
+                                    }
                                     return Dialog(
                                       backgroundColor: Colors.transparent,
 
@@ -585,7 +490,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                           ),
                                                       child: SolidActionButton(
                                                         text: Text(
-                                                          "Create Game",
+                                                          "Create Local Game",
                                                           style: TextStyle(
                                                             color:
                                                                 Colors
@@ -662,6 +567,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   builder: (BuildContext context) {
                                     final myController =
                                         TextEditingController();
+                                    if (lastUsedName.isNotEmpty) {
+                                      myController.text = lastUsedName;
+                                    }
                                     return Dialog(
                                       backgroundColor: Colors.transparent,
 
@@ -757,7 +665,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                           ),
                                                       child: SolidActionButton(
                                                         text: Text(
-                                                          "Create Game",
+                                                          "Create Local Game",
                                                           style: TextStyle(
                                                             color:
                                                                 Colors
@@ -795,6 +703,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                                                             .text,
                                                                     game:
                                                                         Game.euchre,
+                                                                    requiredPlayers:
+                                                                        4,
                                                                   ),
                                                             ),
                                                           );
@@ -816,6 +726,48 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ],
                       ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ActionButton(
+                          width: 48,
+                          height: 48,
+
+                          borderRadius: 24,
+                          useFancyText: true,
+                          onTap: () {
+                            showHowSheet();
+                          },
+                          text: Padding(
+                            padding: const EdgeInsets.all(4.0),
+                            child: Icon(
+                              Icons.question_mark_outlined,
+                              color: Colors.white,
+                              size: 32,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ActionButton(
+                          width: 48,
+                          height: 48,
+                          borderRadius: 24,
+                          useFancyText: true,
+                          onTap: () {
+                            nextScreen(context, const SettingsPage());
+                          },
+                          text: Padding(
+                            padding: const EdgeInsets.all(4.0),
+                            child: Icon(
+                              Icons.settings_outlined,
+                              color: Colors.white,
+                              size: 32,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

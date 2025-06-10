@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'dart:io';
 
+import 'package:deckly/api/connection_service.dart' as blue;
 import 'package:deckly/api/shared_prefs.dart';
 import 'package:deckly/constants.dart';
 import 'package:deckly/main.dart';
@@ -11,10 +12,11 @@ import 'package:deckly/pages/nertz.dart';
 
 import 'package:deckly/widgets/action_button.dart';
 import 'package:deckly/widgets/custom_app_bar.dart';
-import 'package:deckly/widgets/fancy_widget.dart';
+import 'package:deckly/widgets/fancy_border.dart';
 import 'package:deckly/widgets/gradient_input_field.dart';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_sficon/flutter_sficon.dart';
 
 import 'package:location/location.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -234,7 +236,7 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
                     ),
                     const SizedBox(height: 12),
                     Expanded(
-                      child: FancyWidget(
+                      child: FancyBorder(
                         child: ListView(
                           children:
                               _players

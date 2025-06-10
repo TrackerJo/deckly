@@ -37,6 +37,7 @@
 		<key>NSBonjourServices</key>
 		<array>
 			<string>_deckly._tcp</string>
+			<string>_deckly._udp</string>
 		</array>
 		<key>NSLocalNetworkUsageDescription</key>
 		<string>Discover nearby peers</string>

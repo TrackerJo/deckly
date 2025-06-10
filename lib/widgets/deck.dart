@@ -1,6 +1,8 @@
+import 'dart:math';
+
 import 'package:deckly/api/shared_prefs.dart';
 import 'package:deckly/constants.dart';
-import 'package:deckly/widgets/fancy_widget.dart';
+import 'package:deckly/widgets/fancy_border.dart';
 import 'package:flutter/material.dart';
 import 'playing_card.dart';
 
@@ -18,6 +20,10 @@ class CardDeckController {
   void removeCardFromPile(String cardId) {
     _state?.removeCardFromPile(cardId);
   }
+
+  void unstuck() {
+    _state?.unstuck();
+  }
 }
 
 class CardDeck extends StatefulWidget {
@@ -29,6 +35,7 @@ class CardDeck extends StatefulWidget {
   final CardDeckController? controller;
   final double scale;
   final bool isDutchBlitz;
+  final Function() onReachEndOfDeck;
 
   const CardDeck({
     Key? key,
@@ -37,6 +44,7 @@ class CardDeck extends StatefulWidget {
     required this.onDragEnd,
     required this.currentDragData,
     required this.deckId,
+    required this.onReachEndOfDeck,
     this.controller,
     this.scale = 1.0,
     this.isDutchBlitz = false,
@@ -114,7 +122,39 @@ class _CardDeckState extends State<CardDeck> {
           ),
         ),
       );
+      if (deckCards.isEmpty) {
+        widget.onReachEndOfDeck();
+      }
     });
+  }
+
+  void unstuck() {
+    // Reset the drag state
+    List<CardData> dealtCards = deckCards.toList();
+    deckCards.clear();
+    pileCards.addAll(
+      dealtCards.map(
+        (card) => CardData(
+          id: card.id,
+          value: card.value,
+          suit: card.suit,
+          isFaceUp: true,
+        ),
+      ),
+    );
+    deckCards = List.from(pileCards);
+    pileCards.clear();
+    CardData topCard = deckCards.first;
+    deckCards.removeAt(0);
+    pileCards.add(
+      CardData(
+        id: topCard.id,
+        value: topCard.value,
+        suit: topCard.suit,
+        isFaceUp: true,
+      ),
+    );
+    setState(() {});
   }
 
   // Public method that can be called from parent when a card is successfully moved
@@ -162,7 +202,7 @@ class _CardDeckState extends State<CardDeck> {
                     ),
                   )
                 else
-                  FancyWidget(
+                  FancyBorder(
                     child: Container(
                       width: 100 * widget.scale,
                       height: 150 * widget.scale,

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:deckly/api/connection_service.dart' as blue;
 import 'package:deckly/pages/dutch_blitz.dart';
 import 'package:deckly/pages/euchre.dart';
 import 'package:deckly/pages/nertz.dart';
@@ -11,19 +12,27 @@ import 'package:deckly/constants.dart';
 import 'package:deckly/main.dart';
 
 import 'package:deckly/widgets/custom_app_bar.dart';
-import 'package:deckly/widgets/fancy_text.dart';
 import 'package:deckly/widgets/fancy_widget.dart';
+import 'package:deckly/widgets/fancy_border.dart';
 
 import 'package:flutter/material.dart';
 
 import 'package:deckly/api/connection_service.dart' as blue;
+import 'package:location/location.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class CreateRoomScreen extends StatefulWidget {
   final Game game;
+  final int? maxPlayers;
+  final int? minPlayers;
+  final int? requiredPlayers;
   const CreateRoomScreen({
     super.key,
     required this.userName,
     required this.game,
+    this.maxPlayers,
+    this.minPlayers,
+    this.requiredPlayers,
   });
   final String userName;
   @override
@@ -43,6 +52,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
   @override
   void initState() {
     super.initState();
+
     _initSubscriptions();
 
     _initService();
@@ -138,7 +148,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            FancyWidget(
+            FancyBorder(
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Text(
@@ -154,12 +164,12 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
 
             const SizedBox(height: 24),
             Text(
-              'Players:',
+              'Players${widget.requiredPlayers != null ? " (${_players.length}/${widget.requiredPlayers})" : ""}:',
               style: const TextStyle(fontSize: 24, color: Colors.white),
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: FancyWidget(
+              child: FancyBorder(
                 child: ListView(
                   children:
                       _players
@@ -183,9 +193,12 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            if (_players.length < 2)
-              FancyText(
-                text: const Text(
+            if (_players.length < 2 &&
+                (widget.requiredPlayers != null
+                    ? _players.length < widget.requiredPlayers!
+                    : true))
+              FancyWidget(
+                child: const Text(
                   'Waiting for more players to join...',
                   style: TextStyle(fontSize: 18, color: Colors.white70),
                 ),

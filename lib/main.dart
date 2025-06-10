@@ -7,6 +7,7 @@ import 'package:deckly/constants.dart';
 import 'package:deckly/pages/euchre.dart';
 
 import 'package:deckly/pages/home_screen.dart';
+import 'package:deckly/pages/nertz.dart';
 
 import 'package:deckly/styling.dart';
 
@@ -48,7 +49,7 @@ class _MyAppState extends State<MyApp> {
       theme: ThemeData(primarySwatch: Colors.purple),
       debugShowCheckedModeBanner: false,
       home: HomeScreen(),
-      // home: Euchre(
+      // home: Nertz(
       //   player: GamePlayer(
       //     id: "Deckly-test-1704-host",
       //     name: "test",

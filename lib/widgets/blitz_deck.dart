@@ -41,6 +41,7 @@ class BlitzDeck extends StatefulWidget {
     required this.onDragEnd,
     required this.scale,
     required this.onTapBlitz,
+
     this.controller,
     this.isDutchBlitz = false,
   }) : super(key: key);

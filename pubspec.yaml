@@ -1,7 +1,7 @@
 name: deckly
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.1.0+5
+version: 0.1.0+7
 
 environment:
   sdk: ^3.7.2
@@ -24,9 +24,14 @@ dependencies:
   nearby_connections: ^4.3.0
   flutter_nearby_connections:
     path: ./plugins/flutter_nearby_connections
+  # flutter_nearby_connections:
+  #   git:
+  #     url: https://github.com/champeauxr/flutter_nearby_connections
+  #     ref: master
   location: ^8.0.0
   device_info_plus: ^11.4.0
   flutter_styled_toast: ^2.0.0
+  flutter_sficon: ^1.2.0
 
 dev_dependencies:
   flutter_test:

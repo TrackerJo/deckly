@@ -20,6 +20,7 @@ class ConnectionService {
   String? _userName;
   String? _connectedEndpointId;
   bool _isInitialized = false;
+  Timer? _connectionTimeout;
 
   // Stream controllers
   final StreamController<List<GamePlayer>> playersController =
@@ -113,9 +114,9 @@ class ConnectionService {
       strategy: Strategy.P2P_CLUSTER,
       callback: (isRunning) async {
         if (isRunning) {
-          await nearbyService.stopAdvertisingPeer();
-          await nearbyService.stopBrowsingForPeers();
-          await Future.delayed(Duration(milliseconds: 200));
+          // await nearbyService.stopAdvertisingPeer();
+          // await nearbyService.stopBrowsingForPeers();
+          // await Future.delayed(Duration(milliseconds: 200));
           await nearbyService.startAdvertisingPeer();
           await nearbyService.startBrowsingForPeers();
         }
@@ -145,9 +146,16 @@ class ConnectionService {
       strategy: Strategy.P2P_CLUSTER,
       callback: (isRunning) async {
         if (isRunning) {
-          await nearbyService.stopBrowsingForPeers();
-          await Future.delayed(Duration(milliseconds: 200));
+          // await nearbyService.stopBrowsingForPeers();
+          // await Future.delayed(Duration(milliseconds: 200));
           await nearbyService.startBrowsingForPeers();
+          _connectionTimeout?.cancel();
+          _connectionTimeout = Timer(Duration(seconds: 30), () {
+            if (_connectionState == ConnectionState.connecting) {
+              print("Connection timeout, retrying...");
+              _retryConnection();
+            }
+          });
         }
       },
     );
@@ -163,6 +171,19 @@ class ConnectionService {
         _handleIOSDataReceived(data);
       },
     );
+  }
+
+  Future<void> _retryConnection() async {
+    print("Retrying connection...");
+    _updateConnectionState(ConnectionState.searching);
+
+    try {
+      await nearbyService.stopBrowsingForPeers();
+      await Future.delayed(Duration(seconds: 1));
+      await nearbyService.startBrowsingForPeers();
+    } catch (e) {
+      print("Error during retry: $e");
+    }
   }
 
   // Android Host Implementation
@@ -266,11 +287,13 @@ class ConnectionService {
         final host = hostDevices.first;
         if (host.state == SessionState.notConnected) {
           _updateConnectionState(ConnectionState.connecting);
+          print("Inviting host: ${host.deviceName}");
           nearbyService.invitePeer(
             deviceID: host.deviceId,
             deviceName: host.deviceName,
           );
         } else if (host.state == SessionState.connected) {
+          print("Connected to host: ${host.deviceName}");
           _updateConnectionState(ConnectionState.connected);
         }
       }
@@ -430,6 +453,7 @@ class ConnectionService {
     try {
       await _stateSub?.cancel();
       await _dataSub?.cancel();
+      _connectionTimeout?.cancel();
 
       if (Platform.isAndroid) {
         if (_connectedEndpointId != null) {

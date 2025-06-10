@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'package:deckly/api/shared_prefs.dart';
 import 'package:deckly/constants.dart';
 import 'package:deckly/main.dart';
 import 'package:deckly/widgets/action_button.dart';
@@ -9,10 +10,11 @@ import 'package:deckly/widgets/custom_app_bar.dart';
 import 'package:deckly/widgets/deck.dart';
 import 'package:deckly/widgets/drop_zone.dart';
 import 'package:deckly/widgets/euchre_deck.dart';
-import 'package:deckly/widgets/fancy_text.dart';
 import 'package:deckly/widgets/fancy_widget.dart';
+import 'package:deckly/widgets/fancy_border.dart';
 import 'package:deckly/widgets/hand.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_sficon/flutter_sficon.dart';
 
 class Euchre extends StatefulWidget {
   final GamePlayer player;
@@ -1761,11 +1763,7 @@ class _EuchreState extends State<Euchre> {
     }
 
     return PopScope(
-      onPopInvokedWithResult: (bool didPop, Object? result) {
-        if (didPop) {
-          connectionService.dispose();
-        }
-      },
+      canPop: false,
       child: Scaffold(
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(kToolbarHeight),
@@ -1776,6 +1774,114 @@ class _EuchreState extends State<Euchre> {
               connectionService.dispose();
               Navigator.pop(context);
             },
+            customBackButton: FancyWidget(
+              child: IconButton(
+                splashColor: Colors.transparent,
+                splashRadius: 25,
+                icon: Transform.flip(
+                  flipX: true,
+                  child: const SFIcon(
+                    SFIcons
+                        .sf_rectangle_portrait_and_arrow_right, // 'heart.fill'
+                    // fontSize instead of size
+                    fontWeight: FontWeight.bold, // fontWeight instead of weight
+                    color: Colors.white,
+                  ),
+                ),
+                onPressed: () async {
+                  SharedPrefs.hapticButtonPress();
+                  //Confirm with user before leaving
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (BuildContext context) {
+                      return Dialog(
+                        backgroundColor: Colors.transparent,
+
+                        child: Container(
+                          width: 400,
+                          height: 200,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                styling.primaryColor,
+                                styling.secondaryColor,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Container(
+                            margin: EdgeInsets.all(
+                              2,
+                            ), // Creates the border thickness
+                            decoration: BoxDecoration(
+                              color: styling.backgroundColor,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Text(
+                                  "Are you sure you want to leave the game?",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                SizedBox(height: 16),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    ActionButton(
+                                      height: 40,
+                                      width: 100,
+                                      onTap: () {
+                                        Navigator.of(context).pop();
+                                      },
+                                      text: Text(
+                                        "Cancel",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                    ActionButton(
+                                      height: 40,
+                                      width: 100,
+                                      onTap: () {
+                                        connectionService.dispose();
+                                        Navigator.of(context).pop();
+                                        Navigator.of(context).pop();
+                                      },
+                                      text: Text(
+                                        "Leave",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+                color: Colors.white,
+              ),
+            ),
           ),
         ),
         backgroundColor: styling.backgroundColor,
@@ -1875,7 +1981,7 @@ class _EuchreState extends State<Euchre> {
             left: 0 * calculatedScale,
             child: SizedBox(
               width: 130 * calculatedScale,
-              child: FancyWidget(
+              child: FancyBorder(
                 borderWidth: players[1].myTurn ? 2 : 0,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1918,7 +2024,7 @@ class _EuchreState extends State<Euchre> {
                 (120 * calculatedScale) / 2,
             child: SizedBox(
               width: 120 * calculatedScale,
-              child: FancyWidget(
+              child: FancyBorder(
                 borderWidth: players[2].myTurn ? 2 : 0,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1959,7 +2065,7 @@ class _EuchreState extends State<Euchre> {
             right: 0 * calculatedScale,
             child: SizedBox(
               width: 120 * calculatedScale,
-              child: FancyWidget(
+              child: FancyBorder(
                 borderWidth: players[3].myTurn ? 2 : 0,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -2142,7 +2248,7 @@ class _EuchreState extends State<Euchre> {
                   ? (50 * handScale) + (32 * handScale)
                   : (24 * handScale)),
           left: 32,
-          child: FancyWidget(
+          child: FancyBorder(
             child: Padding(
               padding: const EdgeInsets.all(8.0),
               child: Column(
@@ -2199,7 +2305,7 @@ class _EuchreState extends State<Euchre> {
         Positioned(
           bottom: 150 * handScale + (24 * handScale),
           left: 32,
-          child: FancyWidget(
+          child: FancyBorder(
             child: Padding(
               padding: const EdgeInsets.all(8.0),
               child: Column(
@@ -2256,7 +2362,7 @@ class _EuchreState extends State<Euchre> {
         Positioned(
           bottom: 150 * handScale + (24 * handScale),
           right: 40,
-          child: FancyWidget(
+          child: FancyBorder(
             isFilled: true,
             child: Padding(
               padding: const EdgeInsets.all(8.0),
@@ -2476,8 +2582,8 @@ class _EuchreState extends State<Euchre> {
           bottom: 150 * handScale + (24 * handScale),
           left: 32,
 
-          child: FancyText(
-            text: Text(
+          child: FancyWidget(
+            child: Text(
               "Waiting for dealer to discard a card...",
               style: TextStyle(color: Colors.white, fontSize: 16 * handScale),
             ),
@@ -2489,8 +2595,8 @@ class _EuchreState extends State<Euchre> {
           bottom: 150 * handScale + (24 * handScale),
           left: 32,
 
-          child: FancyText(
-            text: Text(
+          child: FancyWidget(
+            child: Text(
               "Tap on a card to discard it",
               style: TextStyle(color: Colors.white, fontSize: 16 * handScale),
             ),
@@ -2510,7 +2616,7 @@ class _EuchreState extends State<Euchre> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SizedBox(height: 32),
-          FancyWidget(
+          FancyBorder(
             child: Padding(
               padding: const EdgeInsets.all(8.0),
               child: Text(
@@ -2523,7 +2629,7 @@ class _EuchreState extends State<Euchre> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              FancyWidget(
+              FancyBorder(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -2595,7 +2701,7 @@ class _EuchreState extends State<Euchre> {
                 ),
               ),
               SizedBox(width: 32),
-              FancyWidget(
+              FancyBorder(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -2744,15 +2850,15 @@ class _EuchreState extends State<Euchre> {
               },
             )
           else if (currentPlayer!.getIsHost())
-            FancyText(
-              text: Text(
+            FancyWidget(
+              child: Text(
                 "Waiting for teams to be selected...",
                 style: TextStyle(color: Colors.white, fontSize: 16),
               ),
             )
           else
-            FancyText(
-              text: Text(
+            FancyWidget(
+              child: Text(
                 "Waiting for host to start the game...",
                 style: TextStyle(color: Colors.white, fontSize: 16),
               ),
