@@ -42,6 +42,7 @@ class ConnectionService {
 
   // Current state
   List<GamePlayer> _players = [];
+  List<BotPlayer> _bots = [];
   ConnectionState _connectionState = ConnectionState.disconnected;
 
   // Getters
@@ -264,7 +265,11 @@ class ConnectionService {
 
       _players.addAll(
         devicesList
-            .where((d) => d.state == SessionState.connected)
+            .where(
+              (d) =>
+                  d.state == SessionState.connected &&
+                  d.deviceName.contains("-$_roomCode"),
+            )
             .map(
               (d) => GamePlayer(
                 id: d.deviceId,
@@ -273,6 +278,8 @@ class ConnectionService {
               ),
             ),
       );
+
+      _players.addAll(_bots);
 
       playersController.add(_players);
       _broadcastPlayerList();
@@ -410,7 +417,7 @@ class ConnectionService {
     final message = jsonEncode({'type': 'playerList', 'players': playerData});
 
     for (final player in _players) {
-      if (!player.isHost) {
+      if (!player.isHost && !player.isBot) {
         sendMessage(player.id, message);
         sendMessage(
           player.id,
@@ -475,6 +482,7 @@ class ConnectionService {
       _userName = null;
       _connectedEndpointId = null;
       _players.clear();
+      _bots.clear();
       _updateConnectionState(ConnectionState.disconnected);
     } catch (e) {
       print("Error during dispose: $e");
@@ -491,7 +499,7 @@ class ConnectionService {
       // Host sends to all clients
       final futures =
           _players
-              .where((p) => !p.isHost)
+              .where((p) => !p.isHost && !p.isBot)
               .map((player) => sendMessage(player.id, message))
               .toList();
 
@@ -511,6 +519,54 @@ class ConnectionService {
       );
       await sendMessage(hostPlayer.id, jsonEncode(messageData));
     }
+  }
+
+  Future<void> addBot(BotPlayer botPlayer) async {
+    if (!isHost) return;
+
+    // Add bot player to the list
+    _players.add(botPlayer);
+    _bots.add(botPlayer);
+    playersController.add(_players);
+
+    // Broadcast updated player list
+    _broadcastPlayerList();
+  }
+
+  Future<void> updateBotDifficulty(
+    String botId,
+    BotDifficulty difficulty,
+  ) async {
+    if (!isHost) return;
+
+    // Find the bot player and update its difficulty
+    final botPlayer = _players.firstWhere(
+      (p) => p.id == botId && p.isBot,
+      orElse: () => throw Exception("Bot not found"),
+    );
+
+    (botPlayer as BotPlayer).difficulty = difficulty;
+
+    final botsBotPlayer = _bots.firstWhere(
+      (b) => b.id == botId,
+      orElse: () => throw Exception("Bot not found in bots list"),
+    );
+    botsBotPlayer.difficulty = difficulty;
+
+    // Broadcast updated player list
+    _broadcastPlayerList();
+  }
+
+  Future<void> removeBot(String botId) async {
+    if (!isHost) return;
+
+    // Remove bot player from the list
+    _players.removeWhere((p) => p.id == botId && p.isBot);
+    _bots.removeWhere((b) => b.id == botId);
+    playersController.add(_players);
+
+    // Broadcast updated player list
+    _broadcastPlayerList();
   }
 }
 

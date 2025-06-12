@@ -1,7 +1,6 @@
 import 'package:deckly/api/shared_prefs.dart';
 import 'package:deckly/pages/settings_page.dart';
-import 'package:deckly/widgets/fancy_widget.dart';
-import 'package:deckly/widgets/fancy_border.dart';
+
 import 'package:deckly/widgets/gradient_input_field.dart';
 import 'package:deckly/widgets/solid_action_button.dart';
 import 'package:deckly/widgets/action_button.dart';
@@ -34,7 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void showHowSheet() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: styling.backgroundColor,
+      backgroundColor: styling.background,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(23),
@@ -53,14 +52,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Padding(
                       padding: const EdgeInsets.all(16.0),
-                      child: FancyWidget(
-                        child: Text(
-                          "How Deckly Works",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      child: Text(
+                        "How Deckly Works",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
@@ -101,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: styling.backgroundColor,
+      backgroundColor: styling.background,
       body: Padding(
         padding: const EdgeInsets.all(12),
         child: SizedBox(
@@ -117,7 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       (bounds) => LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [styling.primaryColor, styling.secondaryColor],
+                        colors: [styling.primary, styling.secondary],
                       ).createShader(
                         Rect.fromLTWH(0, 0, bounds.width, bounds.height),
                       ),
@@ -165,10 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         Container(
                           width: 100,
-                          child: Divider(
-                            color: styling.primaryColor,
-                            thickness: 2,
-                          ),
+                          child: Divider(color: styling.primary, thickness: 2),
                         ),
                         Padding(
                           padding: const EdgeInsets.all(8.0),
@@ -179,10 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         Container(
                           width: 100,
-                          child: Divider(
-                            color: styling.primaryColor,
-                            thickness: 2,
-                          ),
+                          child: Divider(color: styling.primary, thickness: 2),
                         ),
                       ],
                     ),
@@ -232,8 +223,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                             begin: Alignment.topLeft,
                                             end: Alignment.bottomRight,
                                             colors: [
-                                              styling.primaryColor,
-                                              styling.secondaryColor,
+                                              styling.primary,
+                                              styling.secondary,
                                             ],
                                           ),
                                           borderRadius: BorderRadius.circular(
@@ -245,7 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                             2,
                                           ), // Creates the border thickness
                                           decoration: BoxDecoration(
-                                            color: styling.backgroundColor,
+                                            color: styling.background,
                                             borderRadius: BorderRadius.circular(
                                               10,
                                             ),
@@ -295,8 +286,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                       "Cancel",
                                                       style: TextStyle(
                                                         color:
-                                                            styling
-                                                                .secondaryColor,
+                                                            styling.secondary,
                                                       ),
                                                     ),
                                                     onPressed: () {
@@ -315,18 +305,27 @@ class _HomeScreenState extends State<HomeScreen> {
                                                             8.0,
                                                           ),
                                                       child: SolidActionButton(
-                                                        text: Text(
-                                                          "Create Local Game",
-                                                          style: TextStyle(
-                                                            color:
-                                                                Colors
-                                                                    .white, // This will be masked by the gradient
-                                                            fontSize: 14,
-                                                            fontWeight:
-                                                                FontWeight.bold,
+                                                        text: Padding(
+                                                          padding:
+                                                              const EdgeInsets.all(
+                                                                8.0,
+                                                              ),
+                                                          child: Text(
+                                                            "Create Local Game",
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors
+                                                                      .white, // This will be masked by the gradient
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+
+                                                            textAlign:
+                                                                TextAlign
+                                                                    .center,
                                                           ),
-                                                          textAlign:
-                                                              TextAlign.center,
                                                         ),
                                                         onTap: () {
                                                           SharedPrefs.setLastUsedName(
@@ -353,6 +352,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                                                             .text,
                                                                     game:
                                                                         Game.nertz,
+                                                                    maxPlayers:
+                                                                        6,
                                                                   ),
                                                             ),
                                                           );
@@ -406,8 +407,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                             begin: Alignment.topLeft,
                                             end: Alignment.bottomRight,
                                             colors: [
-                                              styling.primaryColor,
-                                              styling.secondaryColor,
+                                              styling.primary,
+                                              styling.secondary,
                                             ],
                                           ),
                                           borderRadius: BorderRadius.circular(
@@ -419,7 +420,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                             2,
                                           ), // Creates the border thickness
                                           decoration: BoxDecoration(
-                                            color: styling.backgroundColor,
+                                            color: styling.background,
                                             borderRadius: BorderRadius.circular(
                                               10,
                                             ),
@@ -469,8 +470,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                       "Cancel",
                                                       style: TextStyle(
                                                         color:
-                                                            styling
-                                                                .secondaryColor,
+                                                            styling.secondary,
                                                       ),
                                                     ),
                                                     onPressed: () {
@@ -489,18 +489,26 @@ class _HomeScreenState extends State<HomeScreen> {
                                                             8.0,
                                                           ),
                                                       child: SolidActionButton(
-                                                        text: Text(
-                                                          "Create Local Game",
-                                                          style: TextStyle(
-                                                            color:
-                                                                Colors
-                                                                    .white, // This will be masked by the gradient
-                                                            fontSize: 14,
-                                                            fontWeight:
-                                                                FontWeight.bold,
+                                                        text: Padding(
+                                                          padding:
+                                                              const EdgeInsets.all(
+                                                                8.0,
+                                                              ),
+                                                          child: Text(
+                                                            "Create Local Game",
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors
+                                                                      .white, // This will be masked by the gradient
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+                                                            textAlign:
+                                                                TextAlign
+                                                                    .center,
                                                           ),
-                                                          textAlign:
-                                                              TextAlign.center,
                                                         ),
                                                         onTap: () {
                                                           SharedPrefs.setLastUsedName(
@@ -528,6 +536,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                                                             .text,
                                                                     game:
                                                                         Game.blitz,
+                                                                    maxPlayers:
+                                                                        6,
                                                                   ),
                                                             ),
                                                           );
@@ -581,8 +591,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                             begin: Alignment.topLeft,
                                             end: Alignment.bottomRight,
                                             colors: [
-                                              styling.primaryColor,
-                                              styling.secondaryColor,
+                                              styling.primary,
+                                              styling.secondary,
                                             ],
                                           ),
                                           borderRadius: BorderRadius.circular(
@@ -594,7 +604,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                             2,
                                           ), // Creates the border thickness
                                           decoration: BoxDecoration(
-                                            color: styling.backgroundColor,
+                                            color: styling.background,
                                             borderRadius: BorderRadius.circular(
                                               10,
                                             ),
@@ -644,8 +654,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                       "Cancel",
                                                       style: TextStyle(
                                                         color:
-                                                            styling
-                                                                .secondaryColor,
+                                                            styling.secondary,
                                                       ),
                                                     ),
                                                     onPressed: () {
@@ -664,18 +673,26 @@ class _HomeScreenState extends State<HomeScreen> {
                                                             8.0,
                                                           ),
                                                       child: SolidActionButton(
-                                                        text: Text(
-                                                          "Create Local Game",
-                                                          style: TextStyle(
-                                                            color:
-                                                                Colors
-                                                                    .white, // This will be masked by the gradient
-                                                            fontSize: 14,
-                                                            fontWeight:
-                                                                FontWeight.bold,
+                                                        text: Padding(
+                                                          padding:
+                                                              const EdgeInsets.all(
+                                                                8.0,
+                                                              ),
+                                                          child: Text(
+                                                            "Create Local Game",
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors
+                                                                      .white, // This will be masked by the gradient
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+                                                            textAlign:
+                                                                TextAlign
+                                                                    .center,
                                                           ),
-                                                          textAlign:
-                                                              TextAlign.center,
                                                         ),
                                                         onTap: () {
                                                           SharedPrefs.setLastUsedName(
@@ -731,38 +748,55 @@ class _HomeScreenState extends State<HomeScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        ActionButton(
+                        SizedBox(
                           width: 48,
                           height: 48,
 
-                          borderRadius: 24,
-                          useFancyText: true,
-                          onTap: () {
-                            showHowSheet();
-                          },
-                          text: Padding(
+                          child: IconButton(
+                            style: IconButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                                side: BorderSide(
+                                  color: styling.primary,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
                             padding: const EdgeInsets.all(4.0),
-                            child: Icon(
+                            onPressed: () {
+                              showHowSheet();
+                            },
+
+                            icon: Icon(
                               Icons.question_mark_outlined,
-                              color: Colors.white,
+                              color: styling.primary,
                               size: 32,
                             ),
                           ),
                         ),
                         const SizedBox(width: 8),
-                        ActionButton(
+                        SizedBox(
                           width: 48,
                           height: 48,
-                          borderRadius: 24,
-                          useFancyText: true,
-                          onTap: () {
-                            nextScreen(context, const SettingsPage());
-                          },
-                          text: Padding(
+
+                          child: IconButton(
+                            style: IconButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                                side: BorderSide(
+                                  color: styling.primary,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
                             padding: const EdgeInsets.all(4.0),
-                            child: Icon(
+                            onPressed: () {
+                              nextScreen(context, SettingsPage());
+                            },
+
+                            icon: Icon(
                               Icons.settings_outlined,
-                              color: Colors.white,
+                              color: styling.primary,
                               size: 32,
                             ),
                           ),

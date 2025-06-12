@@ -44,17 +44,15 @@ class CustomAppBar extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  FancyWidget(
-                    child: Text(
-                      title,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 30,
-                        fontFamily: 'Inknut Antiqua',
-                        fontWeight: FontWeight.w400,
-                        height: 0,
-                      ),
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 30,
+                      fontFamily: 'Inknut Antiqua',
+                      fontWeight: FontWeight.w400,
+                      height: 0,
                     ),
                   ),
                 ],
@@ -64,20 +62,17 @@ class CustomAppBar extends StatelessWidget {
                 showBackButton
                     ? customBackButton != null
                         ? customBackButton
-                        : FancyWidget(
-                          child: IconButton(
-                            splashColor: Colors.transparent,
-                            splashRadius: 25,
-                            icon: const Icon(
-                              Icons.arrow_back_ios_new,
-                              color: Colors.white,
-                            ),
-                            onPressed: () async {
-                              SharedPrefs.hapticButtonPress();
-                              onBackButtonPressed!(context);
-                            },
-                            color: Colors.white,
+                        : IconButton(
+                          splashColor: Colors.transparent,
+                          splashRadius: 25,
+                          icon: Icon(
+                            Icons.arrow_back_ios_new,
+                            color: styling.primary,
                           ),
+                          onPressed: () async {
+                            SharedPrefs.hapticButtonPress();
+                            onBackButtonPressed!(context);
+                          },
                         )
                     : Container(),
             actions: [
@@ -99,7 +94,7 @@ class CustomAppBar extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [styling.primaryColor, styling.secondaryColor],
+                  colors: [styling.primary, styling.secondary],
                 ),
               ),
             ),

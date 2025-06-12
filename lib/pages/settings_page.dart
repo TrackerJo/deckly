@@ -39,7 +39,7 @@ class _SettingsPageState extends State<SettingsPage> {
           },
         ),
       ),
-      backgroundColor: styling.backgroundColor,
+      backgroundColor: styling.background,
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -65,10 +65,10 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: DropdownButtonFormField(
                       value: hapticFeedback.toString() ?? "medium",
                       decoration: styling.textInputDecoration().copyWith(
-                        fillColor: styling.primaryColor,
+                        fillColor: styling.primary,
                       ),
-                      dropdownColor: styling.backgroundColor,
-                      iconEnabledColor: styling.primaryColor,
+                      dropdownColor: styling.background,
+                      iconEnabledColor: styling.primary,
                       borderRadius: BorderRadius.circular(10),
                       items:
                           ["heavy", "medium", "light", "none"].map((

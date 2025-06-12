@@ -167,10 +167,13 @@ class _EuchreState extends State<Euchre> {
         showDialog(
           context: context,
 
-          builder: (BuildContext context) {
+          builder: (BuildContext dialogContext) {
             Timer(Duration(seconds: 1), () {
               try {
-                Navigator.of(context).pop();
+                if (dialogContext.mounted)
+                  Navigator.of(dialogContext).pop();
+                else
+                  print("Dialog context is not mounted, cannot pop dialog.");
               } catch (e) {
                 print("Error popping dialog: $e");
               }
@@ -185,14 +188,14 @@ class _EuchreState extends State<Euchre> {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [styling.primaryColor, styling.secondaryColor],
+                    colors: [styling.primary, styling.secondary],
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Container(
                   margin: EdgeInsets.all(2), // Creates the border thickness
                   decoration: BoxDecoration(
-                    color: styling.backgroundColor,
+                    color: styling.background,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Column(
@@ -258,10 +261,13 @@ class _EuchreState extends State<Euchre> {
         showDialog(
           context: context,
 
-          builder: (BuildContext context) {
+          builder: (BuildContext dialogContext) {
             Timer(Duration(seconds: 1), () {
               try {
-                Navigator.of(context).pop();
+                if (dialogContext.mounted)
+                  Navigator.of(dialogContext).pop();
+                else
+                  print("Dialog context is not mounted, cannot pop dialog.");
               } catch (e) {
                 print("Error popping dialog: $e");
               }
@@ -276,14 +282,14 @@ class _EuchreState extends State<Euchre> {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [styling.primaryColor, styling.secondaryColor],
+                    colors: [styling.primary, styling.secondary],
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Container(
                   margin: EdgeInsets.all(2), // Creates the border thickness
                   decoration: BoxDecoration(
-                    color: styling.backgroundColor,
+                    color: styling.background,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Column(
@@ -329,10 +335,13 @@ class _EuchreState extends State<Euchre> {
           showDialog(
             context: context,
 
-            builder: (BuildContext context) {
+            builder: (BuildContext dialogContext) {
               Timer(Duration(seconds: 1), () {
                 try {
-                  Navigator.of(context).pop();
+                  if (dialogContext.mounted)
+                    Navigator.of(dialogContext).pop();
+                  else
+                    print("Dialog context is not mounted, cannot pop dialog.");
                 } catch (e) {
                   print("Error popping dialog: $e");
                 }
@@ -347,14 +356,14 @@ class _EuchreState extends State<Euchre> {
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: [styling.primaryColor, styling.secondaryColor],
+                      colors: [styling.primary, styling.secondary],
                     ),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Container(
                     margin: EdgeInsets.all(2), // Creates the border thickness
                     decoration: BoxDecoration(
-                      color: styling.backgroundColor,
+                      color: styling.background,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Column(
@@ -418,10 +427,13 @@ class _EuchreState extends State<Euchre> {
         showDialog(
           context: context,
 
-          builder: (BuildContext context) {
+          builder: (BuildContext dialogContext) {
             Timer(Duration(seconds: 1), () {
               try {
-                Navigator.of(context).pop();
+                if (dialogContext.mounted)
+                  Navigator.of(dialogContext).pop();
+                else
+                  print("Dialog context is not mounted, cannot pop dialog.");
               } catch (e) {
                 print("Error popping dialog: $e");
               }
@@ -436,14 +448,14 @@ class _EuchreState extends State<Euchre> {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [styling.primaryColor, styling.secondaryColor],
+                    colors: [styling.primary, styling.secondary],
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Container(
                   margin: EdgeInsets.all(2), // Creates the border thickness
                   decoration: BoxDecoration(
-                    color: styling.backgroundColor,
+                    color: styling.background,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Column(
@@ -493,10 +505,13 @@ class _EuchreState extends State<Euchre> {
           showDialog(
             context: context,
 
-            builder: (BuildContext context) {
+            builder: (BuildContext dialogContext) {
               Timer(Duration(seconds: 1), () {
                 try {
-                  Navigator.of(context).pop();
+                  if (dialogContext.mounted)
+                    Navigator.of(dialogContext).pop();
+                  else
+                    print("Dialog context is not mounted, cannot pop dialog.");
                 } catch (e) {
                   print("Error popping dialog: $e");
                 }
@@ -511,14 +526,14 @@ class _EuchreState extends State<Euchre> {
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: [styling.primaryColor, styling.secondaryColor],
+                      colors: [styling.primary, styling.secondary],
                     ),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Container(
                     margin: EdgeInsets.all(2), // Creates the border thickness
                     decoration: BoxDecoration(
-                      color: styling.backgroundColor,
+                      color: styling.background,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Column(
@@ -568,10 +583,13 @@ class _EuchreState extends State<Euchre> {
         showDialog(
           context: context,
 
-          builder: (BuildContext context) {
+          builder: (BuildContext dialogContext) {
             Timer(Duration(seconds: 1), () {
               try {
-                Navigator.of(context).pop();
+                if (dialogContext.mounted)
+                  Navigator.of(dialogContext).pop();
+                else
+                  print("Dialog context is not mounted, cannot pop dialog.");
               } catch (e) {
                 print("Error popping dialog: $e");
               }
@@ -586,14 +604,14 @@ class _EuchreState extends State<Euchre> {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [styling.primaryColor, styling.secondaryColor],
+                    colors: [styling.primary, styling.secondary],
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Container(
                   margin: EdgeInsets.all(2), // Creates the border thickness
                   decoration: BoxDecoration(
-                    color: styling.backgroundColor,
+                    color: styling.background,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Column(
@@ -664,6 +682,10 @@ class _EuchreState extends State<Euchre> {
         setState(() {});
       }
     });
+
+    _stateSub = connectionService.connectionStateStream.listen((state) {});
+
+     _playersSub = connectionService.playersStream.listen((playersData) {});
   }
 
   List<CardData> sortHand(List<CardData> hand, CardSuit? trumpSuit) {
@@ -1116,10 +1138,13 @@ class _EuchreState extends State<Euchre> {
     showDialog(
       context: context,
 
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         Timer(Duration(seconds: 1), () {
           try {
-            Navigator.of(context).pop();
+            if (dialogContext.mounted)
+              Navigator.of(dialogContext).pop();
+            else
+              print("Dialog context is not mounted, cannot pop dialog.");
           } catch (e) {
             print("Error popping dialog: $e");
           }
@@ -1134,14 +1159,14 @@ class _EuchreState extends State<Euchre> {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [styling.primaryColor, styling.secondaryColor],
+                colors: [styling.primary, styling.secondary],
               ),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Container(
               margin: EdgeInsets.all(2), // Creates the border thickness
               decoration: BoxDecoration(
-                color: styling.backgroundColor,
+                color: styling.background,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Column(
@@ -1219,10 +1244,13 @@ class _EuchreState extends State<Euchre> {
       showDialog(
         context: context,
 
-        builder: (BuildContext context) {
+        builder: (BuildContext dialogContext) {
           Timer(Duration(seconds: 3), () {
             try {
-              Navigator.of(context).pop();
+              if (dialogContext.mounted)
+                Navigator.of(dialogContext).pop();
+              else
+                print("Dialog context is not mounted, cannot pop dialog.");
             } catch (e) {
               print("Error popping dialog: $e");
             }
@@ -1237,14 +1265,14 @@ class _EuchreState extends State<Euchre> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [styling.primaryColor, styling.secondaryColor],
+                  colors: [styling.primary, styling.secondary],
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Container(
                 margin: EdgeInsets.all(2), // Creates the border thickness
                 decoration: BoxDecoration(
-                  color: styling.backgroundColor,
+                  color: styling.background,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Column(
@@ -1278,10 +1306,13 @@ class _EuchreState extends State<Euchre> {
       showDialog(
         context: context,
 
-        builder: (BuildContext context) {
+        builder: (BuildContext dialogContext) {
           Timer(Duration(seconds: 3), () {
             try {
-              Navigator.of(context).pop();
+              if (dialogContext.mounted)
+                Navigator.of(dialogContext).pop();
+              else
+                print("Dialog context is not mounted, cannot pop dialog.");
             } catch (e) {
               print("Error popping dialog: $e");
             }
@@ -1296,14 +1327,14 @@ class _EuchreState extends State<Euchre> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [styling.primaryColor, styling.secondaryColor],
+                  colors: [styling.primary, styling.secondary],
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Container(
                 margin: EdgeInsets.all(2), // Creates the border thickness
                 decoration: BoxDecoration(
-                  color: styling.backgroundColor,
+                  color: styling.background,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Column(
@@ -1337,10 +1368,13 @@ class _EuchreState extends State<Euchre> {
       showDialog(
         context: context,
 
-        builder: (BuildContext context) {
+        builder: (BuildContext dialogContext) {
           Timer(Duration(seconds: 3), () {
             try {
-              Navigator.of(context).pop();
+              if (dialogContext.mounted)
+                Navigator.of(dialogContext).pop();
+              else
+                print("Dialog context is not mounted, cannot pop dialog.");
             } catch (e) {
               print("Error popping dialog: $e");
             }
@@ -1355,14 +1389,14 @@ class _EuchreState extends State<Euchre> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [styling.primaryColor, styling.secondaryColor],
+                  colors: [styling.primary, styling.secondary],
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Container(
                 margin: EdgeInsets.all(2), // Creates the border thickness
                 decoration: BoxDecoration(
-                  color: styling.backgroundColor,
+                  color: styling.background,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Column(
@@ -1396,10 +1430,13 @@ class _EuchreState extends State<Euchre> {
       showDialog(
         context: context,
 
-        builder: (BuildContext context) {
+        builder: (BuildContext dialogContext) {
           Timer(Duration(seconds: 3), () {
             try {
-              Navigator.of(context).pop();
+              if (dialogContext.mounted)
+                Navigator.of(dialogContext).pop();
+              else
+                print("Dialog context is not mounted, cannot pop dialog.");
             } catch (e) {
               print("Error popping dialog: $e");
             }
@@ -1414,14 +1451,14 @@ class _EuchreState extends State<Euchre> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [styling.primaryColor, styling.secondaryColor],
+                  colors: [styling.primary, styling.secondary],
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Container(
                 margin: EdgeInsets.all(2), // Creates the border thickness
                 decoration: BoxDecoration(
-                  color: styling.backgroundColor,
+                  color: styling.background,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Column(
@@ -1455,10 +1492,13 @@ class _EuchreState extends State<Euchre> {
       showDialog(
         context: context,
 
-        builder: (BuildContext context) {
+        builder: (BuildContext dialogContext) {
           Timer(Duration(seconds: 3), () {
             try {
-              Navigator.of(context).pop();
+              if (dialogContext.mounted)
+                Navigator.of(dialogContext).pop();
+              else
+                print("Dialog context is not mounted, cannot pop dialog.");
             } catch (e) {
               print("Error popping dialog: $e");
             }
@@ -1473,14 +1513,14 @@ class _EuchreState extends State<Euchre> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [styling.primaryColor, styling.secondaryColor],
+                  colors: [styling.primary, styling.secondary],
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Container(
                 margin: EdgeInsets.all(2), // Creates the border thickness
                 decoration: BoxDecoration(
-                  color: styling.backgroundColor,
+                  color: styling.background,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Column(
@@ -1514,10 +1554,13 @@ class _EuchreState extends State<Euchre> {
       showDialog(
         context: context,
 
-        builder: (BuildContext context) {
+        builder: (BuildContext dialogContext) {
           Timer(Duration(seconds: 3), () {
             try {
-              Navigator.of(context).pop();
+              if (dialogContext.mounted)
+                Navigator.of(dialogContext).pop();
+              else
+                print("Dialog context is not mounted, cannot pop dialog.");
             } catch (e) {
               print("Error popping dialog: $e");
             }
@@ -1532,14 +1575,14 @@ class _EuchreState extends State<Euchre> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [styling.primaryColor, styling.secondaryColor],
+                  colors: [styling.primary, styling.secondary],
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Container(
                 margin: EdgeInsets.all(2), // Creates the border thickness
                 decoration: BoxDecoration(
-                  color: styling.backgroundColor,
+                  color: styling.background,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Column(
@@ -1624,10 +1667,13 @@ class _EuchreState extends State<Euchre> {
     showDialog(
       context: context,
 
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         Timer(Duration(seconds: 1), () {
           try {
-            Navigator.of(context).pop();
+            if (dialogContext.mounted)
+              Navigator.of(dialogContext).pop();
+            else
+              print("Dialog context is not mounted, cannot pop dialog.");
           } catch (e) {
             print("Error popping dialog: $e");
           }
@@ -1642,14 +1688,14 @@ class _EuchreState extends State<Euchre> {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [styling.primaryColor, styling.secondaryColor],
+                colors: [styling.primary, styling.secondary],
               ),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Container(
               margin: EdgeInsets.all(2), // Creates the border thickness
               decoration: BoxDecoration(
-                color: styling.backgroundColor,
+                color: styling.background,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Column(
@@ -1805,10 +1851,7 @@ class _EuchreState extends State<Euchre> {
                             gradient: LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
-                              colors: [
-                                styling.primaryColor,
-                                styling.secondaryColor,
-                              ],
+                              colors: [styling.primary, styling.secondary],
                             ),
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -1817,7 +1860,7 @@ class _EuchreState extends State<Euchre> {
                               2,
                             ), // Creates the border thickness
                             decoration: BoxDecoration(
-                              color: styling.backgroundColor,
+                              color: styling.background,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Column(
@@ -1884,7 +1927,7 @@ class _EuchreState extends State<Euchre> {
             ),
           ),
         ),
-        backgroundColor: styling.backgroundColor,
+        backgroundColor: styling.background,
         body: Container(
           height: MediaQuery.of(context).size.height,
           width: MediaQuery.of(context).size.width,
@@ -2266,7 +2309,7 @@ class _EuchreState extends State<Euchre> {
                     width: 100 * calculatedScale,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [styling.primaryColor, styling.secondaryColor],
+                        colors: [styling.primary, styling.secondary],
                         begin: Alignment.centerLeft,
                         end: Alignment.centerRight,
                       ),
@@ -2323,7 +2366,7 @@ class _EuchreState extends State<Euchre> {
                     width: 100 * calculatedScale,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [styling.primaryColor, styling.secondaryColor],
+                        colors: [styling.primary, styling.secondary],
                         begin: Alignment.centerLeft,
                         end: Alignment.centerRight,
                       ),
@@ -2647,10 +2690,7 @@ class _EuchreState extends State<Euchre> {
 
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [
-                            styling.primaryColor,
-                            styling.secondaryColor,
-                          ],
+                          colors: [styling.primary, styling.secondary],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
@@ -2719,10 +2759,7 @@ class _EuchreState extends State<Euchre> {
 
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [
-                            styling.primaryColor,
-                            styling.secondaryColor,
-                          ],
+                          colors: [styling.primary, styling.secondary],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),

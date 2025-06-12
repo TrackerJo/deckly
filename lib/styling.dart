@@ -2,9 +2,10 @@ import 'package:deckly/main.dart';
 import 'package:flutter/material.dart';
 
 class Styling {
-  Color backgroundColor = Color.fromARGB(255, 11, 19, 68);
-  Color primaryColor = Color.fromARGB(255, 0, 188, 253);
-  Color secondaryColor = Color.fromARGB(255, 170, 81, 255);
+  Color background = Color.fromARGB(255, 11, 19, 68);
+  Color backgroundLight = Color.fromARGB(255, 28, 39, 108);
+  Color primary = Color.fromARGB(255, 0, 188, 253);
+  Color secondary = Color.fromARGB(255, 170, 81, 255);
   Color textColor = Color.fromARGB(255, 3, 185, 253);
 
   InputDecoration textInputDecoration() {
@@ -12,16 +13,16 @@ class Styling {
       labelStyle: TextStyle(color: Colors.black, fontWeight: FontWeight.w300),
       fillColor: Colors.white,
       focusedBorder: OutlineInputBorder(
-        borderSide: BorderSide(color: styling.primaryColor, width: 2.0),
+        borderSide: BorderSide(color: styling.primary, width: 2.0),
       ),
       enabledBorder: OutlineInputBorder(
-        borderSide: BorderSide(color: styling.primaryColor, width: 2.0),
+        borderSide: BorderSide(color: styling.primary, width: 2.0),
       ),
       errorBorder: OutlineInputBorder(
-        borderSide: BorderSide(color: styling.primaryColor, width: 2.0),
+        borderSide: BorderSide(color: styling.primary, width: 2.0),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderSide: BorderSide(color: styling.primaryColor, width: 2.0),
+        borderSide: BorderSide(color: styling.primary, width: 2.0),
       ),
     );
   }
@@ -60,14 +61,14 @@ class Styling {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [primaryColor, secondaryColor],
+          colors: [primary, secondary],
         ),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Container(
         margin: EdgeInsets.all(2), // Creates the border thickness
         decoration: BoxDecoration(
-          color: backgroundColor,
+          color: background,
           borderRadius: BorderRadius.circular(6),
         ),
         child: TextField(

@@ -1,5 +1,6 @@
 import 'package:deckly/main.dart';
 import 'package:deckly/styling.dart';
+import 'package:deckly/widgets/drop_zone.dart';
 import 'package:deckly/widgets/playing_card.dart';
 import 'package:flutter/material.dart';
 
@@ -49,13 +50,46 @@ class GamePlayer {
   final String id;
   String name;
   bool isHost;
+  bool isBot;
+  final PlayerType type;
 
-  GamePlayer({required this.id, required this.name, this.isHost = false});
+  GamePlayer({
+    required this.id,
+    required this.name,
+    this.isHost = false,
+    this.isBot = false,
+    this.type = PlayerType.game,
+  });
 
-  factory GamePlayer.fromMap(Map<String, dynamic> m) =>
-      GamePlayer(id: m['id'], name: m['name'], isHost: m['isHost'] ?? false);
+  factory GamePlayer.fromMap(Map<String, dynamic> m) {
+    print("GamePlayer.fromMap: $m");
+    final playerType = PlayerType.fromString(m['type'] as String? ?? 'game');
+    switch (playerType) {
+      case PlayerType.blitz:
+        return BlitzPlayer.fromMap(m);
+      case PlayerType.euchre:
+        return EuchrePlayer.fromMap(m);
+      case PlayerType.bot:
+        return BotPlayer.fromMap(m);
+      case PlayerType.game:
+        return GamePlayer(
+          id: m['id'],
+          name: m['name'],
+          isHost: m['isHost'] == "true" || m['isHost'] == true,
+          isBot: m['isBot'] == "true" || m['isBot'] == true,
+          type: playerType,
+        );
+      // Default to GamePlayer if no specific type is found
+    }
+  }
 
-  Map<String, dynamic> toMap() => {'id': id, 'name': name, 'isHost': isHost};
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'name': name,
+    'isHost': isHost,
+    'isBot': isBot,
+    'type': type.toString(),
+  };
 
   bool getIsHost() {
     return id.contains("-host");
@@ -74,6 +108,7 @@ class DropZoneData {
   double scale;
   bool isPublic;
   bool playable;
+  DropZoneController? controller;
 
   DropZoneData({
     required this.id,
@@ -85,6 +120,7 @@ class DropZoneData {
     this.isPublic = false,
     List<CardData> cards = const [],
     this.playable = true,
+    this.controller,
   }) : cards = List.from(cards);
 
   factory DropZoneData.fromMap(Map<String, dynamic> m) {
@@ -317,6 +353,34 @@ class DropZoneRules {
   }
 }
 
+enum PlayerType {
+  blitz,
+  euchre,
+  bot,
+  game;
+
+  @override
+  String toString() {
+    switch (this) {
+      case PlayerType.blitz:
+        return 'Blitz';
+      case PlayerType.euchre:
+        return 'Euchre';
+      case PlayerType.bot:
+        return 'Bot';
+      case PlayerType.game:
+        return 'Game';
+    }
+  }
+
+  static PlayerType fromString(String type) {
+    return PlayerType.values.firstWhere(
+      (p) => p.toString() == type,
+      orElse: () => PlayerType.game, // Default to game if not found
+    );
+  }
+}
+
 class BlitzPlayer extends GamePlayer {
   int score;
   int blitzDeckSize;
@@ -329,6 +393,8 @@ class BlitzPlayer extends GamePlayer {
     required this.blitzDeckSize,
     super.isHost = false,
     this.isStuck = false,
+    super.isBot = false,
+    super.type = PlayerType.blitz,
   });
 
   factory BlitzPlayer.fromMap(Map<String, dynamic> m) {
@@ -339,6 +405,7 @@ class BlitzPlayer extends GamePlayer {
       blitzDeckSize: m['blitzDeckSize'] ?? 0,
       isHost: m['isHost'] == "true" || m['isHost'] == true,
       isStuck: m['isStuck'] ?? false,
+      isBot: m['isBot'] == "true" || m['isBot'] == true,
     );
   }
 
@@ -350,6 +417,8 @@ class BlitzPlayer extends GamePlayer {
       'blitzDeckSize': blitzDeckSize,
       'isHost': isHost,
       'isStuck': isStuck,
+      'type': type.toString(),
+      'isBot': isBot,
     };
   }
 }
@@ -368,6 +437,8 @@ class EuchrePlayer extends GamePlayer {
     required this.hand,
     super.isHost = false,
     this.myTurn = false,
+    super.type = PlayerType.euchre,
+    super.isBot = false,
   });
 
   factory EuchrePlayer.fromMap(Map<String, dynamic> m) {
@@ -382,6 +453,7 @@ class EuchrePlayer extends GamePlayer {
               .toList(),
       isHost: m['isHost'] == "true" || m['isHost'] == true,
       myTurn: m['myTurn'] ?? false,
+      isBot: m['isBot'] == "true" || m['isBot'] == true,
     );
   }
 
@@ -394,6 +466,8 @@ class EuchrePlayer extends GamePlayer {
       'hand': hand.map((c) => c.toMap()).toList(),
       'isHost': isHost,
       'myTurn': myTurn,
+      'type': type.toString(),
+      'isBot': isBot,
     };
   }
 }
@@ -495,5 +569,62 @@ enum Game {
       (g) => g.toString() == game,
       orElse: () => Game.nertz, // Default to Nertz if not found
     );
+  }
+}
+
+enum BotDifficulty {
+  easy,
+  medium,
+  hard;
+
+  @override
+  String toString() {
+    switch (this) {
+      case BotDifficulty.easy:
+        return 'Easy';
+      case BotDifficulty.medium:
+        return 'Medium';
+      case BotDifficulty.hard:
+        return 'Hard';
+    }
+  }
+
+  static BotDifficulty fromString(String difficulty) {
+    return BotDifficulty.values.firstWhere(
+      (d) => d.toString() == difficulty,
+      orElse: () => BotDifficulty.easy, // Default to easy if not found
+    );
+  }
+}
+
+class BotPlayer extends GamePlayer {
+  BotDifficulty difficulty;
+  BotPlayer({
+    required super.id,
+    required super.name,
+    super.isHost = false,
+    required this.difficulty,
+    super.isBot = true,
+    super.type = PlayerType.bot,
+  });
+
+  factory BotPlayer.fromMap(Map<String, dynamic> m) {
+    return BotPlayer(
+      id: m['id'],
+      name: m['name'],
+      isHost: m['isHost'] == "true" || m['isHost'] == true,
+      difficulty: BotDifficulty.fromString(m['difficulty'] as String),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'isHost': isHost,
+      'difficulty': difficulty.toString(),
+      'isBot': isBot,
+      'type': type.toString(),
+    };
   }
 }

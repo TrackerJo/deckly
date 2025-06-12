@@ -1,6 +1,7 @@
 import 'dart:async';
-import 'dart:convert';
+
 import 'dart:math' as math;
+import 'package:deckly/api/bots.dart';
 import 'package:deckly/api/shared_prefs.dart';
 import 'package:deckly/constants.dart';
 import 'package:deckly/main.dart';
@@ -28,6 +29,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
   List<CardData> deckCards = [];
   List<CardData> blitzDeck = [];
   List<BlitzPlayer> players = [];
+  List<NertzBot> bots = [];
   BlitzPlayer? currentPlayer;
   late StreamSubscription<dynamic> _stateSub;
   late StreamSubscription<dynamic> _dataSub;
@@ -37,6 +39,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
 
   final CardDeckController deckController = CardDeckController();
   final BlitzDeckController blitzDeckController = BlitzDeckController();
+  Map<String, DropZoneController> dropZoneControllers = {};
   NertzGameState gameState = NertzGameState.playing;
   DragData currentDragData = DragData(
     cards: [],
@@ -65,6 +68,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
 
         setState(() {
           final targetZone = dropZones.firstWhere((zone) => zone.id == zoneId);
+          targetZone.controller!.startFlash();
           targetZone.cards.clear();
           targetZone.cards.addAll(cards);
         });
@@ -107,14 +111,14 @@ class _DutchBlitzState extends State<DutchBlitz> {
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: [styling.primaryColor, styling.secondaryColor],
+                      colors: [styling.primary, styling.secondary],
                     ),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Container(
                     margin: EdgeInsets.all(2), // Creates the border thickness
                     decoration: BoxDecoration(
-                      color: styling.backgroundColor,
+                      color: styling.background,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Column(
@@ -172,6 +176,46 @@ class _DutchBlitzState extends State<DutchBlitz> {
         setState(() {});
       }
     });
+
+    _stateSub = connectionService.connectionStateStream.listen((state) {});
+
+    _playersSub = connectionService.playersStream.listen((playersData) {});
+  }
+
+  List<dynamic> scoreGameBot(String botId) {
+    List<BlitzPlayer> newPlayers = [...players];
+    Map<String, int> playerAdditionalScores = {
+      for (var player in newPlayers) player.id: 0,
+    };
+    newPlayers.where((p) => p.id != botId).forEach((player) {
+      player.score -= player.blitzDeckSize;
+
+      playerAdditionalScores[player.id] = -player.blitzDeckSize;
+    });
+    newPlayers.firstWhere((p) => p.id == botId).score += 5;
+    playerAdditionalScores[newPlayers.firstWhere((p) => p.id == botId).id] =
+        (playerAdditionalScores[newPlayers
+                .firstWhere((p) => p.id == botId)
+                .id] ??
+            0) +
+        5;
+    //get all the public drop zones
+    List<DropZoneData> publicZones =
+        dropZones
+            .where((zone) => zone.isPublic && zone.cards.isNotEmpty)
+            .toList();
+    //get the cards in the public drop zones
+    List<CardData> publicCards =
+        publicZones.expand((zone) => zone.cards).toList();
+    for (var card in publicCards) {
+      newPlayers.firstWhere((p) => p.id == card.playedBy!).score += 1;
+      playerAdditionalScores[card.playedBy!] =
+          (playerAdditionalScores[card.playedBy!] ?? 0) + 1;
+    }
+    // Sort players by score
+    newPlayers.sort((a, b) => b.score.compareTo(a.score));
+    // Update the current player with the new score
+    return [newPlayers, playerAdditionalScores];
   }
 
   List<dynamic> scoreGame() {
@@ -212,6 +256,76 @@ class _DutchBlitzState extends State<DutchBlitz> {
     return [newPlayers, playerAdditionalScores];
   }
 
+  void onBlitzBot(String botId) async {
+    List<dynamic> scoredPlayersDuo = scoreGameBot(botId);
+    List<BlitzPlayer> scoredPlayers = scoredPlayersDuo[0];
+    Map<String, int> playerAdditionalScores = scoredPlayersDuo[1];
+    for (var bot in bots) {
+      bot.playingRound = false;
+    }
+    setState(() {
+      this.playerAdditionalScores = playerAdditionalScores;
+    });
+    await connectionService.broadcastMessage({
+      'type': 'blitz',
+      'player': scoredPlayers.firstWhere((p) => p.id == botId).toMap(),
+      'players': scoredPlayers.map((p) => p.toMap()).toList(),
+      'playerAdditionalScores': playerAdditionalScores,
+    }, currentPlayer!.id);
+    final botPlayer = players.firstWhere((p) => p.id == botId);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        Timer(Duration(seconds: 2), () {
+          Navigator.of(context).pop();
+          setState(() {
+            gameState = NertzGameState.leaderboard;
+          });
+        });
+        return Dialog(
+          backgroundColor: Colors.transparent,
+
+          child: Container(
+            width: 400,
+            height: 200,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [styling.primary, styling.secondary],
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Container(
+              margin: EdgeInsets.all(2), // Creates the border thickness
+              decoration: BoxDecoration(
+                color: styling.background,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    botPlayer.name + " has Blitzed!",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void onBlitz() async {
     // Send all messages at the same time, but await the last one to finish
     List<dynamic> scoredPlayersDuo = scoreGame();
@@ -247,14 +361,14 @@ class _DutchBlitzState extends State<DutchBlitz> {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [styling.primaryColor, styling.secondaryColor],
+                colors: [styling.primary, styling.secondary],
               ),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Container(
               margin: EdgeInsets.all(2), // Creates the border thickness
               decoration: BoxDecoration(
-                color: styling.backgroundColor,
+                color: styling.background,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Column(
@@ -280,22 +394,72 @@ class _DutchBlitzState extends State<DutchBlitz> {
     );
   }
 
-  void _initializeData() {
+  void updatePublicDropZoneBot(String zoneId, List<CardData> cards) {
+    final targetZone = dropZones.firstWhere((zone) => zone.id == zoneId);
+    targetZone.controller!.startFlash();
+
+    setState(() {});
+    connectionService.broadcastMessage({
+      'type': 'update_zone',
+      'zoneId': zoneId,
+      'cards': cards.map((c) => c.toMap()).toList(),
+    }, currentPlayer!.id);
+  }
+
+  void updateBitzDeckBot(List<CardData> cards, String botId) {
+    players.firstWhere((p) => p.id == botId).blitzDeckSize = cards.length;
+
+    setState(() {});
+    connectionService.broadcastMessage({
+      'type': 'update_player',
+      'player': players.firstWhere((p) => p.id == botId).toMap(),
+    }, currentPlayer!.id);
+  }
+
+  void _initializeData() async {
     currentPlayer = BlitzPlayer(
       id: widget.player.id,
       name: widget.player.name,
       score: 0,
       blitzDeckSize: 10,
     );
-    players =
-        widget.players.map((p) {
-          return BlitzPlayer(
-            id: p.id,
-            name: p.name,
+    for (var player in widget.players) {
+      print(
+        "Adding player: ${player is BotPlayer ? 'Bot' : 'Human'} - ${player.name}",
+      );
+      if (player is BotPlayer) {
+        print("Adding bot: ${player.name}");
+        bots.add(
+          NertzBot(
+            name: player.name,
+            id: player.id,
+            onBlitz: onBlitzBot,
+            updatePublicDropZone: updatePublicDropZoneBot,
+            updateBitzDeck: updateBitzDeckBot,
+            difficulty: player.difficulty,
+            isDutchBlitz: true,
+          ),
+        );
+        players.add(
+          BlitzPlayer(
+            id: player.id,
+            name: player.name,
             score: 0,
             blitzDeckSize: 10,
-          );
-        }).toList();
+            isBot: true, // Mark as bot player
+          ),
+        );
+      } else {
+        players.add(
+          BlitzPlayer(
+            id: player.id,
+            name: player.name,
+            score: 0,
+            blitzDeckSize: 10,
+          ),
+        );
+      }
+    }
     // players = [
     //   BlitzPlayer(id: '1', name: 'Player 1', score: 0, blitzDeckSize: 10),
     //   BlitzPlayer(id: '2', name: 'Player 2', score: 0, blitzDeckSize: 10),
@@ -370,6 +534,13 @@ class _DutchBlitzState extends State<DutchBlitz> {
         ),
       );
     }
+
+    for (var dropZone in dropZones) {
+      print("Adding drop zone: ${dropZone.id}");
+      final controller = DropZoneController();
+      dropZoneControllers[dropZone.id] = controller;
+      dropZone.controller = controller;
+    }
     blitzDeck = shuffledDeck.sublist(0, 10);
 
     // Initialize deck cards
@@ -378,6 +549,17 @@ class _DutchBlitzState extends State<DutchBlitz> {
     // Initialize blitz deck with some cards
 
     setState(() {});
+    await Future.delayed(Duration(milliseconds: 1000));
+    // Initialize blitz deck with some cards
+    if (currentPlayer!.getIsHost()) {
+      for (var bot in bots) {
+        bot.initialize(dropZones);
+        await Future.delayed(
+          Duration(milliseconds: math.Random().nextInt(1000) + 1000),
+          () => bot.gameLoop(),
+        );
+      }
+    }
   }
 
   void _moveCards(DragData dragData, String targetZoneId) async {
@@ -494,7 +676,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
     return scale.clamp(0.3, 1.0);
   }
 
-  void nextRound() {
+  void nextRound() async {
     //Clear all drop zones
     for (var zone in dropZones) {
       zone.cards.clear();
@@ -531,6 +713,17 @@ class _DutchBlitzState extends State<DutchBlitz> {
       couldBeStuck = false;
       gameState = NertzGameState.playing;
     });
+    await Future.delayed(Duration(milliseconds: 1000));
+    if (currentPlayer!.getIsHost()) {
+      for (var bot in bots) {
+        bot.reset();
+        bot.initialize(dropZones);
+        await Future.delayed(
+          Duration(milliseconds: math.Random().nextInt(1000) + 1000),
+          () => bot.gameLoop(),
+        );
+      }
+    }
   }
 
   @override
@@ -548,12 +741,15 @@ class _DutchBlitzState extends State<DutchBlitz> {
     showDialog(
       context: context,
 
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         Timer(Duration(seconds: 1), () {
           try {
             //test if dialog is still open
 
-            Navigator.of(context).pop();
+            if (dialogContext.mounted)
+              Navigator.of(dialogContext).pop();
+            else
+              print("Dialog context is not mounted, cannot pop dialog.");
           } catch (e) {
             print("Error popping dialog: $e");
           }
@@ -568,14 +764,14 @@ class _DutchBlitzState extends State<DutchBlitz> {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [styling.primaryColor, styling.secondaryColor],
+                colors: [styling.primary, styling.secondary],
               ),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Container(
               margin: EdgeInsets.all(2), // Creates the border thickness
               decoration: BoxDecoration(
-                color: styling.backgroundColor,
+                color: styling.background,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Column(
@@ -651,7 +847,8 @@ class _DutchBlitzState extends State<DutchBlitz> {
                 icon: Transform.flip(
                   flipX: true,
                   child: const SFIcon(
-                    SFIcons.sf_rectangle_portrait_and_arrow_right, // 'heart.fill'
+                    SFIcons
+                        .sf_rectangle_portrait_and_arrow_right, // 'heart.fill'
                     // fontSize instead of size
                     fontWeight: FontWeight.bold, // fontWeight instead of weight
                     color: Colors.white,
@@ -666,7 +863,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
                     builder: (BuildContext context) {
                       return Dialog(
                         backgroundColor: Colors.transparent,
-              
+
                         child: Container(
                           width: 400,
                           height: 200,
@@ -674,10 +871,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
                             gradient: LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
-                              colors: [
-                                styling.primaryColor,
-                                styling.secondaryColor,
-                              ],
+                              colors: [styling.primary, styling.secondary],
                             ),
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -686,7 +880,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
                               2,
                             ), // Creates the border thickness
                             decoration: BoxDecoration(
-                              color: styling.backgroundColor,
+                              color: styling.background,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Column(
@@ -727,6 +921,11 @@ class _DutchBlitzState extends State<DutchBlitz> {
                                       width: 100,
                                       onTap: () {
                                         connectionService.dispose();
+                                        if (currentPlayer!.getIsHost()) {
+                                          for (var bot in bots) {
+                                            bot.dispose();
+                                          }
+                                        }
                                         Navigator.of(context).pop();
                                         Navigator.of(context).pop();
                                       },
@@ -753,7 +952,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
             ),
           ),
         ),
-        backgroundColor: styling.backgroundColor,
+        backgroundColor: styling.background,
         body: Container(
           height: double.infinity,
           padding: EdgeInsets.all(16.0),
@@ -780,41 +979,43 @@ class _DutchBlitzState extends State<DutchBlitz> {
             height: 100.0,
             width: double.infinity,
 
-            child: Row(
-              children: [
-                for (var player in players.where(
-                  (p) => p.id != currentPlayer!.id,
-                ))
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            player.name,
-                            style: TextStyle(
-                              fontSize: 16.0,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              overflow: TextOverflow.ellipsis,
+            child: SingleChildScrollView(
+              child: Row(
+                children: [
+                  for (var player in players.where(
+                    (p) => p.id != currentPlayer!.id,
+                  ))
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              player.name,
+                              style: TextStyle(
+                                fontSize: 16.0,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
-                            textAlign: TextAlign.center,
-                          ),
-                          SizedBox(height: 4.0),
-                          Text(
-                            '${player.blitzDeckSize} blitz cards left',
-                            style: TextStyle(
-                              fontSize: 14.0,
-                              color: Colors.white,
+                            SizedBox(height: 4.0),
+                            Text(
+                              '${player.blitzDeckSize} blitz cards left',
+                              style: TextStyle(
+                                fontSize: 14.0,
+                                color: Colors.white,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -824,7 +1025,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
         // Middle Section - Grid of drop zones (excluding bottom 4)
         LayoutBuilder(
           builder: (context, constraints) {
-            final middleZones = dropZones.skip(4).toList();
+            final middleZones = dropZones.skip(3).toList();
             final availableWidth = constraints.maxWidth;
 
             // Calculate optimal grid layout with constraints
@@ -861,6 +1062,14 @@ class _DutchBlitzState extends State<DutchBlitz> {
                 (actualRows * 186.0 * calculatedScale) +
                 ((actualRows - 1) * 8.0) +
                 4;
+
+            print(
+              "Calculated height: $calculatedHeight, Width: $availableWidth, Cols: $bestCols, Rows: $actualRows",
+            );
+            //Print the height and width of each grid cell
+            print(
+              "Grid cell height: ${186.0 * calculatedScale}, Width: ${116.0 * calculatedScale}",
+            );
 
             return SizedBox(
               height: calculatedHeight,
@@ -926,11 +1135,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
                   width: 2.0,
                   height: 330.0 * calculatedScale,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [styling.primaryColor, styling.secondaryColor],
-                    ),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(4.0),
                   ),
                 ),

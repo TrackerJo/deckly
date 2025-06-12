@@ -13,14 +13,14 @@ class GradientInputField extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [styling.primaryColor, styling.secondaryColor],
+          colors: [styling.primary, styling.secondary],
         ),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Container(
         margin: EdgeInsets.all(2), // Creates the border thickness
         decoration: BoxDecoration(
-          color: styling.backgroundColor,
+          color: styling.background,
           borderRadius: BorderRadius.circular(6),
         ),
         child: textField,

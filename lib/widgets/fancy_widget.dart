@@ -12,7 +12,7 @@ class FancyWidget extends StatelessWidget {
           (bounds) => LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [styling.primaryColor, styling.secondaryColor],
+            colors: [styling.primary, styling.secondary],
           ).createShader(Rect.fromLTWH(0, 0, bounds.width, bounds.height)),
       child: child,
     );

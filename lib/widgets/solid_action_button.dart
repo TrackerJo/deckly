@@ -3,7 +3,7 @@ import 'package:deckly/main.dart';
 import 'package:flutter/material.dart';
 
 class SolidActionButton extends StatelessWidget {
-  final Text text;
+  final Widget text;
   final VoidCallback onTap;
   const SolidActionButton({required this.text, required this.onTap});
   @override
@@ -11,21 +11,22 @@ class SolidActionButton extends StatelessWidget {
     return Container(
       // Creates the border thickness
       decoration: BoxDecoration(
-        color: styling.secondaryColor,
+        color: styling.secondary,
         borderRadius: BorderRadius.circular(6), // Slightly smaller radius
       ),
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          // padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Material(
+        color: Colors.transparent, // Makes the Material transparent
+        borderRadius: BorderRadius.circular(6),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(6),
+          splashColor: styling.secondary.withOpacity(0.3),
+          highlightColor: styling.secondary.withOpacity(0.3),
+          onTap: () {
+            SharedPrefs.hapticButtonPress();
+            onTap();
+          },
+          child: Center(child: text),
         ),
-        onPressed: () {
-          SharedPrefs.hapticButtonPress();
-          onTap();
-        },
-        child: text,
       ),
     );
   }

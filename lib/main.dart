@@ -8,6 +8,7 @@ import 'package:deckly/pages/euchre.dart';
 
 import 'package:deckly/pages/home_screen.dart';
 import 'package:deckly/pages/nertz.dart';
+import 'package:deckly/pages/nertz.dart';
 
 import 'package:deckly/styling.dart';
 
@@ -49,7 +50,7 @@ class _MyAppState extends State<MyApp> {
       theme: ThemeData(primarySwatch: Colors.purple),
       debugShowCheckedModeBanner: false,
       home: HomeScreen(),
-      // home: Nertz(
+      // home: NertzWithBot(
       //   player: GamePlayer(
       //     id: "Deckly-test-1704-host",
       //     name: "test",
@@ -57,9 +58,16 @@ class _MyAppState extends State<MyApp> {
       //   ),
       //   players: [
       //     GamePlayer(id: "Deckly-test-1704-host", name: "test", isHost: true),
-      //     GamePlayer(id: "Deckly-test3-1704", name: "test"),
-      //     GamePlayer(id: "Deckly-test2-1704", name: "test"),
-      //     GamePlayer(id: "Deckly-test1-1704", name: "test"),
+      //     BotPlayer(
+      //       id: "Deckly-test3-1704",
+      //       name: "Test Bot",
+      //       difficulty: BotDifficulty.hard,
+      //     ),
+      //     BotPlayer(
+      //       id: "Deckly-test4-1704",
+      //       name: "Test Bot 2",
+      //       difficulty: BotDifficulty.hard,
+      //     ),
       //   ],
       // ),
     );

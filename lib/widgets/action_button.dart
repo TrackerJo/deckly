@@ -29,7 +29,7 @@ class ActionButton extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [styling.primaryColor, styling.secondaryColor],
+          colors: [styling.primary, styling.secondary],
         ),
         borderRadius: BorderRadius.circular(borderRadius),
       ),
@@ -40,8 +40,8 @@ class ActionButton extends StatelessWidget {
                 borderRadius: BorderRadius.circular(borderRadius - 2),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(borderRadius - 2),
-                  splashColor: styling.primaryColor.withOpacity(0.3),
-                  highlightColor: styling.primaryColor.withOpacity(0.3),
+                  splashColor: styling.primary.withOpacity(0.3),
+                  highlightColor: styling.primary.withOpacity(0.3),
                   onTap: () {
                     if (onTap != null) {
                       SharedPrefs.hapticButtonPress();
@@ -57,8 +57,8 @@ class ActionButton extends StatelessWidget {
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                     colors: [
-                                      styling.primaryColor,
-                                      styling.secondaryColor,
+                                      styling.primary,
+                                      styling.secondary,
                                     ],
                                   ).createShader(
                                     Rect.fromLTWH(
@@ -78,7 +78,7 @@ class ActionButton extends StatelessWidget {
                 margin: EdgeInsets.all(2),
                 // Creates the border thickness
                 decoration: BoxDecoration(
-                  color: styling.backgroundColor,
+                  color: styling.background,
                   borderRadius: BorderRadius.circular(
                     borderRadius -
                         2, // Adjusts the border radius to fit inside the container
@@ -89,8 +89,8 @@ class ActionButton extends StatelessWidget {
                   borderRadius: BorderRadius.circular(borderRadius - 2),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(borderRadius - 2),
-                    splashColor: styling.primaryColor.withOpacity(0.3),
-                    highlightColor: styling.primaryColor.withOpacity(0.3),
+                    splashColor: styling.primary.withOpacity(0.3),
+                    highlightColor: styling.primary.withOpacity(0.3),
                     onTap: () {
                       if (onTap != null) {
                         SharedPrefs.hapticButtonPress();
@@ -106,8 +106,8 @@ class ActionButton extends StatelessWidget {
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                       colors: [
-                                        styling.primaryColor,
-                                        styling.secondaryColor,
+                                        styling.primary,
+                                        styling.secondary,
                                       ],
                                     ).createShader(
                                       Rect.fromLTWH(

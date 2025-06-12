@@ -218,7 +218,7 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
           },
         ),
       ),
-      backgroundColor: styling.backgroundColor,
+      backgroundColor: styling.background,
       body: Padding(
         padding: const EdgeInsets.all(24),
         child:
@@ -243,7 +243,11 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
                                   .map(
                                     (p) => ListTile(
                                       leading: Icon(
-                                        p.isHost ? Icons.star : Icons.person,
+                                        p.isHost
+                                            ? Icons.star
+                                            : p.isBot
+                                            ? Icons.computer
+                                            : Icons.person,
                                         color:
                                             p.isHost
                                                 ? Colors.yellow
@@ -256,6 +260,16 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
                                           fontSize: 18,
                                         ),
                                       ),
+                                      subtitle:
+                                          p.isBot && p is BotPlayer
+                                              ? Text(
+                                                'Bot Difficulty: ${p.difficulty.toString()}',
+                                                style: const TextStyle(
+                                                  color: Colors.white70,
+                                                  fontSize: 14,
+                                                ),
+                                              )
+                                              : null,
                                     ),
                                   )
                                   .toList(),

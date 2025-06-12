@@ -23,7 +23,7 @@ class FancyBorder extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [styling.primaryColor, styling.secondaryColor],
+          colors: [styling.primary, styling.secondary],
         ),
         borderRadius: BorderRadius.circular(borderRadius),
       ),
@@ -35,7 +35,7 @@ class FancyBorder extends StatelessWidget {
                   borderWidth,
                 ), // Creates the border thickness
                 decoration: BoxDecoration(
-                  color: styling.backgroundColor,
+                  color: styling.background,
                   borderRadius: BorderRadius.circular(
                     borderRadius - 2,
                   ), // Slightly smaller radius
