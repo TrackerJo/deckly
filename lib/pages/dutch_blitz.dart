@@ -9,6 +9,7 @@ import 'package:deckly/widgets/action_button.dart';
 import 'package:deckly/widgets/blitz_deck.dart';
 import 'package:deckly/widgets/custom_app_bar.dart';
 import 'package:deckly/widgets/deck.dart';
+import 'package:deckly/widgets/deck_anim.dart';
 import 'package:deckly/widgets/drop_zone.dart';
 import 'package:deckly/widgets/fancy_widget.dart';
 import 'package:deckly/widgets/fancy_border.dart';
@@ -37,7 +38,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
   bool couldBeStuck = false;
   bool hasMovedCards = false;
 
-  final CardDeckController deckController = CardDeckController();
+  final CardDeckAnimController deckController = CardDeckAnimController();
   final BlitzDeckController blitzDeckController = BlitzDeckController();
   Map<String, DropZoneController> dropZoneControllers = {};
   NertzGameState gameState = NertzGameState.playing;
@@ -87,7 +88,19 @@ class _DutchBlitzState extends State<DutchBlitz> {
           playerAdditionalScores = playerAdditionalScoresData.map(
             (key, value) => MapEntry(key, value as int),
           );
+          couldBeStuck = false;
+          hasMovedCards = false;
         });
+        currentPlayer = players.firstWhere(
+          (p) => p.id == currentPlayer!.id,
+          orElse: () => currentPlayer!,
+        );
+        if (currentPlayer!.getIsHost()) {
+          for (var bot in bots) {
+            bot.playingRound = false;
+          }
+          setState(() {});
+        }
         final player = BlitzPlayer.fromMap(playerData);
         if (player.id == currentPlayer!.id) {
         } else {
@@ -163,7 +176,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
         if (currentPlayer!.id == playerId) {
           currentPlayer!.isStuck = true;
         }
-        if (!players.any((p) => !p.isStuck)) {
+        if (!players.any((p) => !p.isStuck && !p.isBot)) {
           unstuckPlayers();
         }
         setState(() {});
@@ -174,6 +187,20 @@ class _DutchBlitzState extends State<DutchBlitz> {
           currentPlayer!.isStuck = false;
         }
         setState(() {});
+      } else if (dataMap['type'] == 'pause_game') {
+        for (var bot in bots) {
+          bot.playingRound = false;
+        }
+        setState(() {
+          gameState = NertzGameState.paused;
+        });
+      } else if (dataMap['type'] == 'resume_game') {
+        for (var bot in bots) {
+          bot.playingRound = true;
+        }
+        setState(() {
+          gameState = NertzGameState.playing;
+        });
       }
     });
 
@@ -188,17 +215,11 @@ class _DutchBlitzState extends State<DutchBlitz> {
       for (var player in newPlayers) player.id: 0,
     };
     newPlayers.where((p) => p.id != botId).forEach((player) {
-      player.score -= player.blitzDeckSize;
+      player.score -= player.blitzDeckSize * 2;
 
-      playerAdditionalScores[player.id] = -player.blitzDeckSize;
+      playerAdditionalScores[player.id] = -(player.blitzDeckSize * 2);
     });
-    newPlayers.firstWhere((p) => p.id == botId).score += 5;
-    playerAdditionalScores[newPlayers.firstWhere((p) => p.id == botId).id] =
-        (playerAdditionalScores[newPlayers
-                .firstWhere((p) => p.id == botId)
-                .id] ??
-            0) +
-        5;
+
     //get all the public drop zones
     List<DropZoneData> publicZones =
         dropZones
@@ -224,19 +245,11 @@ class _DutchBlitzState extends State<DutchBlitz> {
       for (var player in newPlayers) player.id: 0,
     };
     newPlayers.where((p) => p.id != currentPlayer!.id).forEach((player) {
-      player.score -= player.blitzDeckSize;
+      player.score -= player.blitzDeckSize * 2;
 
-      playerAdditionalScores[player.id] = -player.blitzDeckSize;
+      playerAdditionalScores[player.id] = -(player.blitzDeckSize * 2);
     });
-    newPlayers.firstWhere((p) => p.id == currentPlayer!.id).score += 5;
-    playerAdditionalScores[newPlayers
-            .firstWhere((p) => p.id == currentPlayer!.id)
-            .id] =
-        (playerAdditionalScores[newPlayers
-                .firstWhere((p) => p.id == currentPlayer!.id)
-                .id] ??
-            0) +
-        5;
+
     //get all the public drop zones
     List<DropZoneData> publicZones =
         dropZones
@@ -265,6 +278,9 @@ class _DutchBlitzState extends State<DutchBlitz> {
     }
     setState(() {
       this.playerAdditionalScores = playerAdditionalScores;
+      players = scoredPlayers;
+      couldBeStuck = false;
+      hasMovedCards = false;
     });
     await connectionService.broadcastMessage({
       'type': 'blitz',
@@ -276,9 +292,14 @@ class _DutchBlitzState extends State<DutchBlitz> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
+      builder: (BuildContext buildContext) {
         Timer(Duration(seconds: 2), () {
-          Navigator.of(context).pop();
+          // Check if the dialog is still open before popping
+          if (buildContext.mounted)
+            Navigator.of(buildContext).pop();
+          else
+            print("Dialog context is not mounted, cannot pop dialog.");
+
           setState(() {
             gameState = NertzGameState.leaderboard;
           });
@@ -333,6 +354,9 @@ class _DutchBlitzState extends State<DutchBlitz> {
     Map<String, int> playerAdditionalScores = scoredPlayersDuo[1];
     setState(() {
       this.playerAdditionalScores = playerAdditionalScores;
+      players = scoredPlayers;
+      couldBeStuck = false;
+      hasMovedCards = false;
     });
     await connectionService.broadcastMessage({
       'type': 'blitz',
@@ -438,6 +462,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
             updateBitzDeck: updateBitzDeckBot,
             difficulty: player.difficulty,
             isDutchBlitz: true,
+            getGameState: getGameState, // Pass the game state function
           ),
         );
         players.add(
@@ -556,10 +581,16 @@ class _DutchBlitzState extends State<DutchBlitz> {
         bot.initialize(dropZones);
         await Future.delayed(
           Duration(milliseconds: math.Random().nextInt(1000) + 1000),
-          () => bot.gameLoop(),
+          () {
+            if (mounted) bot.gameLoop();
+          },
         );
       }
     }
+  }
+
+  NertzGameState getGameState() {
+    return gameState;
   }
 
   void _moveCards(DragData dragData, String targetZoneId) async {
@@ -567,6 +598,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
     setState(() {
       couldBeStuck = false;
       hasMovedCards = true;
+      currentDragData = DragData(cards: [], sourceZoneId: '', sourceIndex: -1);
       if (dragData.sourceZoneId != 'deck' &&
           dragData.sourceZoneId != 'pile' &&
           dragData.sourceZoneId != 'blitz_deck') {
@@ -840,6 +872,25 @@ class _DutchBlitzState extends State<DutchBlitz> {
               connectionService.dispose();
               Navigator.pop(context);
             },
+            actions: [
+              if (currentPlayer!.getIsHost() &&
+                  gameState == NertzGameState.playing)
+                IconButton(
+                  icon: Icon(Icons.pause, color: styling.primary),
+                  onPressed: () {
+                    SharedPrefs.hapticButtonPress();
+                    for (var bot in bots) {
+                      bot.pauseGame();
+                    }
+                    connectionService.broadcastMessage({
+                      'type': 'pause_game',
+                    }, currentPlayer!.id);
+                    setState(() {
+                      gameState = NertzGameState.paused;
+                    });
+                  },
+                ),
+            ],
             customBackButton: FancyWidget(
               child: IconButton(
                 splashColor: Colors.transparent,
@@ -1031,7 +1082,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
             // Calculate optimal grid layout with constraints
             // Minimum 3 columns, maximum 3 rows
             int bestCols = 3; // Start with minimum 3 columns
-            final maxRows = 3;
+            final maxRows = 4;
             final minCols = 3;
             final maxCols =
                 (middleZones.length / 1).ceil(); // Maximum possible columns
@@ -1056,12 +1107,18 @@ class _DutchBlitzState extends State<DutchBlitz> {
               bestCols = (middleZones.length / maxRows).ceil();
             }
 
+            // // Calculate the actual height needed based on the number of rows
+            // final actualRows = (middleZones.length / bestCols).ceil();
+            // final calculatedHeight =
+            //     (actualRows * 186.0 * calculatedScale) +
+            //     ((actualRows - 1) * 8.0) +
+            //     4;
+            double newScale = (availableWidth / bestCols) / 135;
+            print("New Scale: $newScale");
+
             // Calculate the actual height needed based on the number of rows
             final actualRows = (middleZones.length / bestCols).ceil();
-            final calculatedHeight =
-                (actualRows * 186.0 * calculatedScale) +
-                ((actualRows - 1) * 8.0) +
-                4;
+            final calculatedHeight = (actualRows * 186.0 * newScale) + 32;
 
             print(
               "Calculated height: $calculatedHeight, Width: $availableWidth, Cols: $bestCols, Rows: $actualRows",
@@ -1155,7 +1212,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
                       onTapBlitz: onBlitz,
                       isDutchBlitz: true,
                     ),
-                    CardDeck(
+                    CardDeckAnim(
                       cards: deckCards,
                       onDragStarted: _onDragStarted,
                       onDragEnd: _onDragEnd,
@@ -1187,18 +1244,27 @@ class _DutchBlitzState extends State<DutchBlitz> {
                                 'type': 'player_unstuck',
                                 'playerId': currentPlayer!.id,
                               }, currentPlayer!.id);
+                              currentPlayer!.isStuck = false;
+                              players
+                                  .firstWhere((p) => p.id == currentPlayer!.id)
+                                  .isStuck = false;
                             } else {
                               connectionService.broadcastMessage({
                                 'type': 'player_stuck',
                                 'playerId': currentPlayer!.id,
                               }, currentPlayer!.id);
-                            }
-                            currentPlayer!.isStuck = !currentPlayer!.isStuck;
-                            players
-                                .firstWhere((p) => p.id == currentPlayer!.id)
-                                .isStuck = !currentPlayer!.isStuck;
-                            if (!players.any((p) => !p.isStuck)) {
-                              unstuckPlayers();
+                              currentPlayer!.isStuck = true;
+                              players
+                                  .firstWhere((p) => p.id == currentPlayer!.id)
+                                  .isStuck = true;
+                              print(
+                                "Players who are not stuck: ${players.where((p) => !p.isStuck && !p.isBot).length}",
+                              );
+                              if (players
+                                  .where((p) => !p.isStuck && !p.isBot)
+                                  .isEmpty) {
+                                unstuckPlayers();
+                              }
                             }
                           });
                         },
@@ -1343,6 +1409,56 @@ class _DutchBlitzState extends State<DutchBlitz> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget buildPausedScreen(BuildContext context) {
+    // Sort players by score
+
+    return SizedBox(
+      height: MediaQuery.of(context).size.height,
+
+      child: Center(
+        child: Column(
+          children: [
+            FancyWidget(
+              child: Text(
+                'Game Paused',
+                style: TextStyle(
+                  fontSize: 24.0,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16.0),
+            if (currentPlayer!.getIsHost())
+              ActionButton(
+                onTap: () async {
+                  connectionService.broadcastMessage({
+                    'type': 'resume_game',
+                  }, currentPlayer!.id);
+                  setState(() {
+                    gameState = NertzGameState.playing;
+                  });
+                  for (var bot in bots) {
+                    bot.playingRound = true;
+                    await Future.delayed(
+                      Duration(
+                        milliseconds: math.Random().nextInt(1000) + 1000,
+                      ),
+                      () => bot.gameLoop(),
+                    );
+                  }
+                },
+                text: Text(
+                  'Resume Game',
+                  style: TextStyle(fontSize: 18.0, color: Colors.white),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

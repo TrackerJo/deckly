@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:deckly/constants.dart';
 import 'package:deckly/main.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_nearby_connections/flutter_nearby_connections.dart';
 import 'package:nearby_connections/nearby_connections.dart' as nearby;
 
@@ -44,6 +45,8 @@ class ConnectionService {
   List<GamePlayer> _players = [];
   List<BotPlayer> _bots = [];
   ConnectionState _connectionState = ConnectionState.disconnected;
+
+  Function? onCantFindRoom;
 
   // Getters
   List<GamePlayer> get players => List.from(_players);
@@ -151,10 +154,21 @@ class ConnectionService {
           // await Future.delayed(Duration(milliseconds: 200));
           await nearbyService.startBrowsingForPeers();
           _connectionTimeout?.cancel();
-          _connectionTimeout = Timer(Duration(seconds: 30), () {
+          _connectionTimeout = Timer(Duration(seconds: 15), () async {
             if (_connectionState == ConnectionState.connecting) {
               print("Connection timeout, retrying...");
               _retryConnection();
+            } else if (_connectionState == ConnectionState.searching) {
+              print("Still searching, no host found.");
+              //Show snackbar or alert to user
+              if (onCantFindRoom != null) {
+                onCantFindRoom!();
+              } else {
+                print("No host found for room $_roomCode");
+              }
+
+              _updateConnectionState(ConnectionState.disconnected);
+              await nearbyService.stopBrowsingForPeers();
             }
           });
         }

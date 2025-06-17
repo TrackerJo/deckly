@@ -541,7 +541,13 @@ List<CardData> fullEuchreDeck = [
       ),
 ];
 
-enum NertzGameState { waitingForPlayers, playing, leaderboard, gameOver }
+enum NertzGameState {
+  waitingForPlayers,
+  playing,
+  leaderboard,
+  gameOver,
+  paused,
+}
 
 enum EuchreGameState { teamSelection, waitingForPlayers, playing, gameOver }
 
@@ -627,4 +633,14 @@ class BotPlayer extends GamePlayer {
       'type': type.toString(),
     };
   }
+}
+
+void showSnackBar(BuildContext context, Color color, String message) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(message, style: const TextStyle(fontSize: 14)),
+      backgroundColor: color,
+      duration: const Duration(seconds: 2),
+    ),
+  );
 }

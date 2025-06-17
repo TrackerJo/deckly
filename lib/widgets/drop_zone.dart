@@ -79,14 +79,17 @@ class _DropZoneWidgetState extends State<DropZoneWidget> {
 
   void startFlash() {
     SharedPrefs.hapticButtonPress();
-    setState(() {
-      flashColor = true;
-    });
-    Future.delayed(Duration(milliseconds: 500), () {
+    if (mounted) {
       setState(() {
-        flashColor = false;
+        flashColor = true;
       });
-    });
+      Future.delayed(Duration(milliseconds: 1000), () {
+        if (!mounted) return; // Check if the widget is still mounted
+        setState(() {
+          flashColor = false;
+        });
+      });
+    }
   }
 
   bool willAcceptCard(DragTargetDetails<DragData> data) {
@@ -247,18 +250,18 @@ class _DropZoneWidgetState extends State<DropZoneWidget> {
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Your function call here
-      print("Built");
+
       // Print the width and height of the zone using testKey
       if (testKey.currentContext != null) {
         final renderBox =
             testKey.currentContext!.findRenderObject() as RenderBox;
         final size = renderBox.size;
-        print("Zone size: ${size.width} x ${size.height}");
+
         //Calculate the scale based on the size, the defualt is 100 x 150
         final scale = size.width / 120;
         widget.zone.scale = scale;
-        print("Zone scale: $scale");
-        if (zoneScale != scale) {
+
+        if (zoneScale != scale && mounted) {
           setState(() {
             zoneScale = scale;
           });
@@ -279,7 +282,11 @@ class _DropZoneWidgetState extends State<DropZoneWidget> {
             Container(
               width: 120 * widget.zone.scale,
               height:
-                  widget.zone.stackMode == StackMode.spaced &&
+                  widget.zone.id == widget.currentDragData.sourceZoneId &&
+                          widget.zone.cards.length ==
+                              widget.currentDragData.cards.length
+                      ? 175 * widget.zone.scale
+                      : widget.zone.stackMode == StackMode.spaced &&
                           widget.zone.cards.isNotEmpty
                       ? ((widget.zone.cards.length - 1) * 35 + 175) *
                           widget.zone.scale
@@ -287,7 +294,13 @@ class _DropZoneWidgetState extends State<DropZoneWidget> {
                           widget.zone.scale, // Fixed height to prevent movement
 
               decoration:
-                  widget.zone.cards.isEmpty && widget.zone.playable
+                  (widget.zone.cards.isEmpty ||
+                              (widget.zone.cards.length -
+                                          widget.currentDragData.cards.length ==
+                                      0 &&
+                                  widget.currentDragData.sourceZoneId ==
+                                      widget.zone.id)) &&
+                          widget.zone.playable
                       ? BoxDecoration(
                         borderRadius: BorderRadius.circular(
                           12 * widget.zone.scale,
@@ -361,7 +374,7 @@ class _DropZoneWidgetState extends State<DropZoneWidget> {
                             onDragStarted: widget.onDragStarted,
                             onDragEnd: widget.onDragEnd,
                             stackMode: widget.zone.stackMode,
-                            scale: widget.zone.scale,
+                            scale: zoneScale,
                             isDutchBlitz: widget.isDutchBlitz,
                           )
                           : CardContent(
@@ -378,8 +391,8 @@ class _DropZoneWidgetState extends State<DropZoneWidget> {
           }).toList(),
           if (widget.zone.stackMode == StackMode.overlay)
             AnimatedOpacity(
-              opacity: flashColor ? 0.5 : 0.0,
-              duration: Duration(milliseconds: 100),
+              opacity: flashColor ? 0.6 : 0.0,
+              duration: Duration(milliseconds: 400),
               child: Container(
                 width: 100 * zoneScale,
                 height: 150 * zoneScale,

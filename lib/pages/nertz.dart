@@ -9,6 +9,7 @@ import 'package:deckly/widgets/action_button.dart';
 import 'package:deckly/widgets/blitz_deck.dart';
 import 'package:deckly/widgets/custom_app_bar.dart';
 import 'package:deckly/widgets/deck.dart';
+import 'package:deckly/widgets/deck_anim.dart';
 import 'package:deckly/widgets/drop_zone.dart';
 import 'package:deckly/widgets/fancy_widget.dart';
 import 'package:deckly/widgets/fancy_border.dart';
@@ -37,7 +38,7 @@ class _NertzState extends State<Nertz> {
   bool couldBeStuck = false;
   bool hasMovedCards = false;
 
-  final CardDeckController deckController = CardDeckController();
+  final CardDeckAnimController deckController = CardDeckAnimController();
   final BlitzDeckController blitzDeckController = BlitzDeckController();
   Map<String, DropZoneController> dropZoneControllers = {};
   NertzGameState gameState = NertzGameState.playing;
@@ -53,6 +54,10 @@ class _NertzState extends State<Nertz> {
     super.initState();
     _initializeData();
     initListeners();
+  }
+
+  NertzGameState getGameState() {
+    return gameState;
   }
 
   void initListeners() {
@@ -88,7 +93,19 @@ class _NertzState extends State<Nertz> {
           playerAdditionalScores = playerAdditionalScoresData.map(
             (key, value) => MapEntry(key, value as int),
           );
+          couldBeStuck = false;
+          hasMovedCards = false;
         });
+        currentPlayer = players.firstWhere(
+          (p) => p.id == currentPlayer!.id,
+          orElse: () => currentPlayer!,
+        );
+        if (currentPlayer!.getIsHost()) {
+          for (var bot in bots) {
+            bot.playingRound = false;
+          }
+          setState(() {});
+        }
         final player = BlitzPlayer.fromMap(playerData);
         if (player.id == currentPlayer!.id) {
         } else {
@@ -164,7 +181,7 @@ class _NertzState extends State<Nertz> {
         if (currentPlayer!.id == playerId) {
           currentPlayer!.isStuck = true;
         }
-        if (!players.any((p) => !p.isStuck)) {
+        if (!players.any((p) => !p.isStuck && !p.isBot)) {
           unstuckPlayers();
         }
         setState(() {});
@@ -175,6 +192,20 @@ class _NertzState extends State<Nertz> {
           currentPlayer!.isStuck = false;
         }
         setState(() {});
+      } else if (dataMap['type'] == 'pause_game') {
+        for (var bot in bots) {
+          bot.playingRound = false;
+        }
+        setState(() {
+          gameState = NertzGameState.paused;
+        });
+      } else if (dataMap['type'] == 'resume_game') {
+        for (var bot in bots) {
+          bot.playingRound = true;
+        }
+        setState(() {
+          gameState = NertzGameState.playing;
+        });
       }
     });
 
@@ -185,6 +216,10 @@ class _NertzState extends State<Nertz> {
 
   List<dynamic> scoreGame() {
     List<BlitzPlayer> newPlayers = [...players];
+    Map<String, int> cardsPlayedByPlayer = {
+      for (var player in newPlayers) player.id: 0,
+    };
+
     Map<String, int> playerAdditionalScores = {
       for (var player in newPlayers) player.id: 0,
     };
@@ -214,9 +249,14 @@ class _NertzState extends State<Nertz> {
       newPlayers.firstWhere((p) => p.id == card.playedBy!).score += 1;
       playerAdditionalScores[card.playedBy!] =
           (playerAdditionalScores[card.playedBy!] ?? 0) + 1;
+      cardsPlayedByPlayer[card.playedBy!] =
+          (cardsPlayedByPlayer[card.playedBy!] ?? 0) + 1;
     }
     // Sort players by score
     newPlayers.sort((a, b) => b.score.compareTo(a.score));
+    print("Cards played by player: $cardsPlayedByPlayer");
+    print("Cards left in blitz deck: ${currentPlayer!.blitzDeckSize}");
+
     // Update the current player with the new score
     return [newPlayers, playerAdditionalScores];
   }
@@ -224,6 +264,9 @@ class _NertzState extends State<Nertz> {
   List<dynamic> scoreGameBot(String botId) {
     List<BlitzPlayer> newPlayers = [...players];
     Map<String, int> playerAdditionalScores = {
+      for (var player in newPlayers) player.id: 0,
+    };
+    Map<String, int> cardsPlayedByPlayer = {
       for (var player in newPlayers) player.id: 0,
     };
     newPlayers.where((p) => p.id != botId).forEach((player) {
@@ -250,9 +293,13 @@ class _NertzState extends State<Nertz> {
       newPlayers.firstWhere((p) => p.id == card.playedBy!).score += 1;
       playerAdditionalScores[card.playedBy!] =
           (playerAdditionalScores[card.playedBy!] ?? 0) + 1;
+      cardsPlayedByPlayer[card.playedBy!] =
+          (cardsPlayedByPlayer[card.playedBy!] ?? 0) + 1;
     }
     // Sort players by score
     newPlayers.sort((a, b) => b.score.compareTo(a.score));
+    print("Cards played by player: $cardsPlayedByPlayer");
+    print("Cards left in blitz deck: ${currentPlayer!.blitzDeckSize}");
     // Update the current player with the new score
     return [newPlayers, playerAdditionalScores];
   }
@@ -266,6 +313,9 @@ class _NertzState extends State<Nertz> {
     }
     setState(() {
       this.playerAdditionalScores = playerAdditionalScores;
+      players = scoredPlayers;
+      couldBeStuck = false;
+      hasMovedCards = false;
     });
     await connectionService.broadcastMessage({
       'type': 'blitz',
@@ -336,6 +386,10 @@ class _NertzState extends State<Nertz> {
     }
     setState(() {
       this.playerAdditionalScores = playerAdditionalScores;
+      players = scoredPlayers;
+      couldBeStuck = false;
+
+      hasMovedCards = false;
     });
     await connectionService.broadcastMessage({
       'type': 'blitz',
@@ -439,6 +493,7 @@ class _NertzState extends State<Nertz> {
             updatePublicDropZone: updatePublicDropZoneBot,
             updateBitzDeck: updateBitzDeckBot,
             difficulty: player.difficulty,
+            getGameState: getGameState, // Pass the game state function
           ),
         );
         players.add(
@@ -576,6 +631,7 @@ class _NertzState extends State<Nertz> {
     setState(() {
       hasMovedCards = true;
       couldBeStuck = false;
+      currentDragData = DragData(cards: [], sourceZoneId: '', sourceIndex: -1);
       if (dragData.sourceZoneId != 'deck' &&
           dragData.sourceZoneId != 'pile' &&
           dragData.sourceZoneId != 'blitz_deck') {
@@ -621,6 +677,7 @@ class _NertzState extends State<Nertz> {
   }
 
   void _onDragEnd() {
+    print("Drag ended");
     setState(() {
       currentDragData = DragData(cards: [], sourceZoneId: '', sourceIndex: -1);
     });
@@ -836,6 +893,25 @@ class _NertzState extends State<Nertz> {
               connectionService.dispose();
               Navigator.pop(context);
             },
+            actions: [
+              if (currentPlayer!.getIsHost() &&
+                  gameState == NertzGameState.playing)
+                IconButton(
+                  icon: Icon(Icons.pause, color: styling.primary),
+                  onPressed: () {
+                    SharedPrefs.hapticButtonPress();
+                    for (var bot in bots) {
+                      bot.pauseGame();
+                    }
+                    connectionService.broadcastMessage({
+                      'type': 'pause_game',
+                    }, currentPlayer!.id);
+                    setState(() {
+                      gameState = NertzGameState.paused;
+                    });
+                  },
+                ),
+            ],
             customBackButton: IconButton(
               splashColor: Colors.transparent,
               splashRadius: 25,
@@ -955,7 +1031,11 @@ class _NertzState extends State<Nertz> {
                     ? buildPlayingScreen(calculatedScale)
                     : gameState == NertzGameState.leaderboard
                     ? buildLeaderboardScreen()
-                    : buildGameOverScreen(),
+                    : gameState == NertzGameState.paused
+                    ? buildPausedScreen(context)
+                    : gameState == NertzGameState.gameOver
+                    ? buildGameOverScreen()
+                    : Container(),
           ),
         ),
       ),
@@ -1038,7 +1118,7 @@ class _NertzState extends State<Nertz> {
             // Calculate optimal grid layout with constraints
             // Minimum 3 columns, maximum 3 rows
             int bestCols = 3; // Start with minimum 3 columns
-            final maxRows = 3;
+            final maxRows = 4;
             final minCols = 3;
             final maxCols =
                 (middleZones.length / 1).ceil(); // Maximum possible columns
@@ -1063,12 +1143,13 @@ class _NertzState extends State<Nertz> {
               bestCols = (middleZones.length / maxRows).ceil();
             }
 
+            double newScale = (availableWidth / bestCols) / 135;
+
             // Calculate the actual height needed based on the number of rows
             final actualRows = (middleZones.length / bestCols).ceil();
-            final calculatedHeight =
-                (actualRows * 186.0 * calculatedScale) +
-                ((actualRows - 1) * 8.0) +
-                4;
+            final calculatedHeight = (actualRows * 186.0 * newScale) + 32;
+            // + ((actualRows - 1) * 8.0) +
+            // 4;
 
             return SizedBox(
               height: calculatedHeight,
@@ -1097,7 +1178,6 @@ class _NertzState extends State<Nertz> {
           },
         ),
 
-        const SizedBox(height: 16.0),
         Stack(
           children: [
             // Background grid lines
@@ -1151,7 +1231,7 @@ class _NertzState extends State<Nertz> {
                       onDragCompleted: onPlayedFromBlitzDeck,
                       onTapBlitz: onBlitz,
                     ),
-                    CardDeck(
+                    CardDeckAnim(
                       cards: deckCards,
                       onDragStarted: _onDragStarted,
                       onDragEnd: _onDragEnd,
@@ -1347,6 +1427,56 @@ class _NertzState extends State<Nertz> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget buildPausedScreen(BuildContext context) {
+    // Sort players by score
+
+    return SizedBox(
+      height: MediaQuery.of(context).size.height,
+
+      child: Center(
+        child: Column(
+          children: [
+            FancyWidget(
+              child: Text(
+                'Game Paused',
+                style: TextStyle(
+                  fontSize: 24.0,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16.0),
+            if (currentPlayer!.getIsHost())
+              ActionButton(
+                onTap: () async {
+                  connectionService.broadcastMessage({
+                    'type': 'resume_game',
+                  }, currentPlayer!.id);
+                  setState(() {
+                    gameState = NertzGameState.playing;
+                  });
+                  for (var bot in bots) {
+                    bot.playingRound = true;
+                    await Future.delayed(
+                      Duration(
+                        milliseconds: math.Random().nextInt(1000) + 1000,
+                      ),
+                      () => bot.gameLoop(),
+                    );
+                  }
+                },
+                text: Text(
+                  'Resume Game',
+                  style: TextStyle(fontSize: 18.0, color: Colors.white),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

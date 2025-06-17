@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:deckly/api/shared_prefs.dart';
 import 'package:deckly/constants.dart';
 import 'package:flutter/material.dart';
@@ -36,6 +38,7 @@ class DraggableCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print("SCALE: $scale");
     final cardsBeingDragged = getCardsFromIndex(zoneId, index);
 
     // Check if this card should be hidden because a card above it is being dragged
@@ -188,6 +191,94 @@ class DragFeedback extends StatelessWidget {
   }
 }
 
+class CardFlip extends StatefulWidget {
+  final CardData card;
+  final double scale; // Default scale, can be adjusted
+  final bool isDutchBlitz;
+  const CardFlip({
+    super.key,
+    required this.card,
+    required this.scale,
+    this.isDutchBlitz = false,
+  });
+
+  @override
+  State<CardFlip> createState() => _CardFlipState();
+}
+
+class _CardFlipState extends State<CardFlip> with TickerProviderStateMixin {
+  late AnimationController _controller;
+  bool isFront = true;
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _controller.forward();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final angle = _controller.value * pi;
+        final translateX =
+            -(12 * widget.scale + 100 * widget.scale) +
+            (100 * widget.scale * 2 + 12 * widget.scale) * _controller.value;
+
+        final transform =
+            Matrix4.identity()
+              ..setEntry(3, 2, 0.001) // Perspective
+              ..translate(translateX, 0.0, 0.0) // Move right as it flips
+              ..rotateY(angle); // Flip on Y axis
+
+        return Transform(
+          transform: transform,
+          child:
+              !isFrontImage(angle.abs())
+                  ? Transform(
+                    alignment: Alignment.center,
+                    transform:
+                        widget.isDutchBlitz
+                              ? Matrix4.identity()
+                              : Matrix4.identity()
+                          ..rotateX(pi),
+
+                    child: CardContent(
+                      card: widget.card,
+                      scale: widget.scale,
+                      flipCenter: true,
+                      isDutchBlitz: widget.isDutchBlitz,
+                    ),
+                  )
+                  : CardContent(
+                    card: CardData(
+                      id: 'deck_back',
+                      value: 1,
+                      suit: CardSuit.hearts, // Placeholder suit
+                      isFaceUp: false,
+                    ),
+                    scale: widget.scale,
+                    isDutchBlitz: widget.isDutchBlitz,
+                  ),
+        );
+      },
+    );
+  }
+
+  bool isFrontImage(double angle) {
+    final degree90 = pi / 2;
+    final degree270 = 3 * pi / 2;
+
+    return angle <= degree90 || angle >= degree270;
+  }
+}
+
 class CardContent extends StatelessWidget {
   final CardData card;
   final bool isDragging;
@@ -195,6 +286,7 @@ class CardContent extends StatelessWidget {
   final bool isDutchBlitz;
   final Function(CardData)? onTap;
   final bool isCardPlayable;
+  final bool flipCenter;
 
   const CardContent({
     Key? key,
@@ -203,7 +295,8 @@ class CardContent extends StatelessWidget {
     this.scale = 1.0,
     this.isDutchBlitz = false,
     this.onTap,
-    this.isCardPlayable = true, // Default to true for player's hand
+    this.isCardPlayable = true,
+    this.flipCenter = false, // Default to true for player's hand
   }) : super(key: key);
 
   String cardNumberToString(int value) {
@@ -223,7 +316,14 @@ class CardContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return isDutchBlitz ? dutchBlitzCard(context) : playingCard();
+    print("SCALE: $scale");
+    return isDutchBlitz
+        ? scale < 0.5
+            ? dutchBlitzCardMini(context)
+            : dutchBlitzCard(context)
+        : scale < 0.4
+        ? playingCardMini()
+        : playingCard();
   }
 
   Widget playingCard() {
@@ -343,20 +443,137 @@ class CardContent extends StatelessWidget {
                       ),
                     ),
                     // Center suit symbol (large, faded)
-                    Center(
-                      child: Opacity(
-                        opacity: 0.15,
-                        child: Text(
-                          card.suit.toIcon(),
-                          style: TextStyle(
-                            color:
-                                card.suit == CardSuit.clubs ||
-                                        card.suit == CardSuit.spades
-                                    ? Colors.black
-                                    : Colors.red[700],
-                            fontSize: 40 * scale,
+                    if (flipCenter)
+                      Transform.flip(
+                        flipY: true,
+                        child: Center(
+                          child: Opacity(
+                            opacity: 0.15,
+                            child: Text(
+                              card.suit.toIcon(),
+                              style: TextStyle(
+                                color:
+                                    card.suit == CardSuit.clubs ||
+                                            card.suit == CardSuit.spades
+                                        ? Colors.black
+                                        : Colors.red[700],
+                                fontSize: 40 * scale,
+                              ),
+                            ),
                           ),
                         ),
+                      )
+                    else
+                      Center(
+                        child: Opacity(
+                          opacity: 0.15,
+                          child: Text(
+                            card.suit.toIcon(),
+                            style: TextStyle(
+                              color:
+                                  card.suit == CardSuit.clubs ||
+                                          card.suit == CardSuit.spades
+                                      ? Colors.black
+                                      : Colors.red[700],
+                              fontSize: 40 * scale,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                )
+                : ClipRRect(
+                  borderRadius: BorderRadius.circular(8 * scale),
+
+                  child: Padding(
+                    padding: EdgeInsets.all(isDutchBlitz ? 0 : 8.0 * scale),
+                    child: Center(
+                      child: Image.asset(
+                        'assets/card_back.png', // Replace with your card back image
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                ),
+      ),
+    );
+  }
+
+  Widget playingCardMini() {
+    return GestureDetector(
+      onTap:
+          onTap != null
+              ? () {
+                SharedPrefs.hapticInputSelect();
+                onTap!(card);
+              }
+              : null,
+      child: Container(
+        height: 150 * scale,
+        width: 100 * scale,
+        decoration: BoxDecoration(
+          color:
+              card.isFaceUp
+                  ? isCardPlayable
+                      ? Colors.white
+                      : Colors.grey[300]
+                  : const Color.fromARGB(255, 77, 118, 163),
+          borderRadius: BorderRadius.circular(8 * scale),
+          boxShadow:
+              isDragging
+                  ? [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 8 * scale,
+                      offset: Offset(0, 4 * scale),
+                    ),
+                  ]
+                  : [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 2 * scale,
+                      offset: Offset(0, 1 * scale),
+                    ),
+                  ],
+        ),
+        child:
+            card.isFaceUp
+                ? Stack(
+                  children: [
+                    // Top-left value and suit
+
+                    // Center suit symbol (large, faded)
+                    Center(
+                      child: Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        direction: Axis.vertical,
+                        spacing: -6, // Reduced spacing
+                        children: [
+                          Text(
+                            cardNumberToString(card.value),
+                            style: TextStyle(
+                              color:
+                                  card.suit == CardSuit.clubs ||
+                                          card.suit == CardSuit.spades
+                                      ? Colors.black
+                                      : Colors.red[700],
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                          // Reduced spacing
+                          Text(
+                            card.suit.toIcon(),
+                            style: TextStyle(
+                              color:
+                                  card.suit == CardSuit.clubs ||
+                                          card.suit == CardSuit.spades
+                                      ? Colors.black
+                                      : Colors.red[700],
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -379,6 +596,211 @@ class CardContent extends StatelessWidget {
   }
 
   Widget dutchBlitzCard(BuildContext context) {
+    print("SHOULD BE FLIP CENTER: $flipCenter");
+    return Container(
+      height: 150 * scale,
+      width: 100 * scale,
+      decoration: BoxDecoration(
+        color:
+            card.isFaceUp
+                ? card.suit == CardSuit.clubs
+                    ? Color.fromARGB(255, 255, 213, 4)
+                    : card.suit == CardSuit.spades
+                    ? Color.fromARGB(255, 1, 152, 71)
+                    : card.suit == CardSuit.hearts
+                    ? Color.fromARGB(255, 216, 60, 15)
+                    : Color.fromARGB(255, 0, 136, 192)
+                : Colors.transparent,
+
+        borderRadius: BorderRadius.circular(8 * scale),
+        boxShadow:
+            isDragging
+                ? [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 8 * scale,
+                    offset: Offset(0, 4 * scale),
+                  ),
+                ]
+                : [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 2 * scale,
+                    offset: Offset(0, 1 * scale),
+                  ),
+                ],
+      ),
+      child:
+          card.isFaceUp
+              ? Stack(
+                children: [
+                  Positioned(
+                    top: 4 * scale,
+                    left: 4 * scale,
+                    child: Transform.flip(
+                      child: Image.asset(
+                        card.suit == CardSuit.clubs
+                            ? "assets/yellow_girl.png"
+                            : card.suit == CardSuit.spades
+                            ? "assets/green_girl.png"
+                            : card.suit == CardSuit.hearts
+                            ? "assets/red_boy.png"
+                            : "assets/blue_boy.png",
+                        width: 30 * scale,
+                        height: 45 * scale,
+                        fit: BoxFit.cover,
+
+                        // Replace with your Dutch Blitz card background image
+                      ),
+                    ),
+                  ),
+                  // Top-left value and suit
+                  Positioned(
+                    top: 4 * scale,
+                    left: 4 * scale + (30 * scale),
+                    child: Transform.flip(
+                      child: Container(
+                        width: (30 * scale),
+
+                        child: Transform.flip(
+                          flipX: flipCenter,
+                          child: Text(
+                            card.value.toString(),
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                              fontSize: card.value == 10 ? 14 : 16,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Bottom-right value and suit (rotated)
+                  Positioned(
+                    bottom: 4 * scale,
+                    //Center to the bottom middle
+                    left: 4 * scale + (30 * scale),
+                    child: Transform.rotate(
+                      angle: 3.1416, // 180 degrees in radians
+                      child: Transform.flip(
+                        flipX: flipCenter,
+                        // flipX: true,
+                        child: SizedBox(
+                          width: (30 * scale),
+                          child: Text(
+                            cardNumberToString(card.value) == "A"
+                                ? "1"
+                                : cardNumberToString(card.value),
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                              fontSize: card.value == 10 ? 14 : 16,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 4 * scale,
+                    left: 4 * scale,
+                    child: Transform.flip(
+                      child: Image.asset(
+                        card.suit == CardSuit.clubs
+                            ? "assets/yellow_girl.png"
+                            : card.suit == CardSuit.spades
+                            ? "assets/green_girl.png"
+                            : card.suit == CardSuit.hearts
+                            ? "assets/red_boy.png"
+                            : "assets/blue_boy.png",
+                        width: 30 * scale,
+                        height: 45 * scale,
+                        fit: BoxFit.cover,
+
+                        // Replace with your Dutch Blitz card background image
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 4 * scale,
+                    right: 4 * scale,
+                    child: Transform.flip(
+                      flipX: true,
+
+                      child: Image.asset(
+                        card.suit == CardSuit.clubs
+                            ? "assets/yellow_girl.png"
+                            : card.suit == CardSuit.spades
+                            ? "assets/green_girl.png"
+                            : card.suit == CardSuit.hearts
+                            ? "assets/red_boy.png"
+                            : "assets/blue_boy.png",
+                        width: 30 * scale,
+                        height: 45 * scale,
+                        fit: BoxFit.cover,
+
+                        // Replace with your Dutch Blitz card background image
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 4 * scale,
+                    right: 4 * scale,
+                    child: Transform.flip(
+                      flipX: true,
+
+                      child: Image.asset(
+                        card.suit == CardSuit.clubs
+                            ? "assets/yellow_girl.png"
+                            : card.suit == CardSuit.spades
+                            ? "assets/green_girl.png"
+                            : card.suit == CardSuit.hearts
+                            ? "assets/red_boy.png"
+                            : "assets/blue_boy.png",
+                        width: 30 * scale,
+                        height: 45 * scale,
+                        fit: BoxFit.cover,
+
+                        // Replace with your Dutch Blitz card background image
+                      ),
+                    ),
+                  ),
+                  // Center suit symbol (large, faded)
+                  Center(
+                    child: Image.asset(
+                      card.suit == CardSuit.clubs
+                          ? "assets/yellow_center.png"
+                          : card.suit == CardSuit.spades
+                          ? "assets/green_center.png"
+                          : card.suit == CardSuit.hearts
+                          ? "assets/red_center.png"
+                          : "assets/blue_center.png",
+                      // Replace with your center image
+                      fit: BoxFit.cover,
+                      width: 50 * scale,
+                      height: 50 * scale,
+                    ),
+                  ),
+                ],
+              )
+              : ClipRRect(
+                borderRadius: BorderRadius.circular(8 * scale),
+
+                child: Center(
+                  child: Image.asset(
+                    'assets/blitz_card_back.png',
+                    // Replace with your card back image
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+    );
+  }
+
+  Widget dutchBlitzCardMini(BuildContext context) {
     print(MediaQuery.of(context).size.width / 2);
     return Container(
       height: 150 * scale,
@@ -435,46 +857,10 @@ class CardContent extends StatelessWidget {
                       // Replace with your Dutch Blitz card background image
                     ),
                   ),
+
                   // Top-left value and suit
-                  Positioned(
-                    top: 4 * scale,
-                    left:
-                        card.value == 10
-                            ? (100 * scale) / 2 - 20 * scale
-                            : (100 * scale) / 2 - 12 * scale,
-                    child: Text(
-                      cardNumberToString(card.value) == "A"
-                          ? "1"
-                          : cardNumberToString(card.value),
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: card.value == 10 ? 15 : 16,
-                      ),
-                    ),
-                  ),
+
                   // Bottom-right value and suit (rotated)
-                  Positioned(
-                    bottom: 4 * scale,
-                    //Center to the bottom middle
-                    left:
-                        card.value == 10
-                            ? (100 * scale) / 2 - 18 * scale
-                            : (100 * scale) / 2 - 10 * scale,
-                    child: Transform.rotate(
-                      angle: 3.1416, // 180 degrees in radians
-                      child: Text(
-                        cardNumberToString(card.value) == "A"
-                            ? "1"
-                            : cardNumberToString(card.value),
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                          fontSize: card.value == 10 ? 15 : 16,
-                        ),
-                      ),
-                    ),
-                  ),
                   Positioned(
                     bottom: 4 * scale,
                     left: 4 * scale,
@@ -537,18 +923,13 @@ class CardContent extends StatelessWidget {
                   ),
                   // Center suit symbol (large, faded)
                   Center(
-                    child: Image.asset(
-                      card.suit == CardSuit.clubs
-                          ? "assets/yellow_center.png"
-                          : card.suit == CardSuit.spades
-                          ? "assets/green_center.png"
-                          : card.suit == CardSuit.hearts
-                          ? "assets/red_center.png"
-                          : "assets/blue_center.png",
-                      // Replace with your center image
-                      fit: BoxFit.cover,
-                      width: 50 * scale,
-                      height: 50 * scale,
+                    child: Text(
+                      card.value.toString(),
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: card.value == 10 ? 17 : 18,
+                      ),
                     ),
                   ),
                 ],

@@ -353,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                                     game:
                                                                         Game.nertz,
                                                                     maxPlayers:
-                                                                        6,
+                                                                        8,
                                                                   ),
                                                             ),
                                                           );
@@ -537,7 +537,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                                     game:
                                                                         Game.blitz,
                                                                     maxPlayers:
-                                                                        6,
+                                                                        8,
                                                                   ),
                                                             ),
                                                           );
@@ -764,6 +764,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             padding: const EdgeInsets.all(4.0),
                             onPressed: () {
+                              SharedPrefs.hapticButtonPress();
                               showHowSheet();
                             },
 
@@ -791,6 +792,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             padding: const EdgeInsets.all(4.0),
                             onPressed: () {
+                              SharedPrefs.hapticButtonPress();
                               nextScreen(context, SettingsPage());
                             },
 

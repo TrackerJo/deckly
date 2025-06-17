@@ -13,6 +13,7 @@ import 'package:deckly/pages/nertz.dart';
 import 'package:deckly/widgets/action_button.dart';
 import 'package:deckly/widgets/custom_app_bar.dart';
 import 'package:deckly/widgets/fancy_border.dart';
+import 'package:deckly/widgets/fancy_widget.dart';
 import 'package:deckly/widgets/gradient_input_field.dart';
 
 import 'package:flutter/material.dart';
@@ -56,6 +57,17 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
       if (!mounted) return;
       setState(() {});
     });
+    connectionService.onCantFindRoom = () {
+      if (!mounted) return;
+      showSnackBar(
+        context,
+        Colors.red,
+        "The game was not found. Make sure you have the correct room code.",
+      );
+      setState(() {
+        _connectionState = blue.ConnectionState.disconnected;
+      });
+    };
   }
 
   void _initSubscriptions() {
@@ -315,25 +327,33 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
                     Spacer(),
                     SizedBox(
                       width: double.infinity,
-                      child: ActionButton(
-                        onTap:
-                            !_initialized &&
-                                    _connectionState ==
-                                        blue.ConnectionState.disconnected
-                                ? _joinRoom
-                                : () {},
-                        text: Text(
-                          _getButtonText(),
-                          style: TextStyle(
-                            color:
-                                Colors
-                                    .white, // This will be masked by the gradient
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
+                      child:
+                          _connectionState == blue.ConnectionState.disconnected
+                              ? ActionButton(
+                                onTap: _joinRoom,
+                                text: Text(
+                                  _getButtonText(),
+                                  style: TextStyle(
+                                    color:
+                                        Colors
+                                            .white, // This will be masked by the gradient
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              )
+                              : FancyWidget(
+                                child: Text(
+                                  _getButtonText(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
                     ),
                   ],
                 ),
@@ -350,7 +370,7 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
       case blue.ConnectionState.searching:
         return 'Searching for game...';
       default:
-        return _initialized ? 'Scanning...' : 'Join Game';
+        return 'Join Game';
     }
   }
 }

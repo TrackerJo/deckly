@@ -221,7 +221,7 @@ class _CardDeckState extends State<CardDeck> {
           ),
         ),
 
-        SizedBox(width: 20 * widget.scale),
+        SizedBox(width: 12 * widget.scale),
 
         // Pile (face up cards)
         Container(

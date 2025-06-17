@@ -14,6 +14,7 @@ class NertzBot {
   Function(String botId) onBlitz;
   Function(String zoneId, List<CardData> cards) updatePublicDropZone;
   Function(List<CardData> cards, String botId) updateBitzDeck;
+  NertzGameState Function() getGameState;
   BotDifficulty difficulty;
   bool playingRound;
   int playSpeed = 1000; // Speed of the bot's turn, can be adjusted
@@ -24,6 +25,7 @@ class NertzBot {
   NertzBot({
     required this.name,
     required this.id,
+    required this.getGameState,
     List<CardData>? deck,
     List<CardData>? pile,
     List<DropZoneData>? publicDropZones,
@@ -56,7 +58,12 @@ class NertzBot {
         break;
     }
     this.publicDropZones = publicDropZones;
-    List<CardData> shuffledDeck = [...fullDeck];
+    List<CardData> shuffledDeck;
+    if (isDutchBlitz) {
+      shuffledDeck = [...fullBlitzDeck];
+    } else {
+      shuffledDeck = [...fullDeck];
+    }
     shuffledDeck.shuffle();
     privateDropZones = [
       DropZoneData(
@@ -120,6 +127,11 @@ class NertzBot {
     //Wait between 1 and 3 seconds before starting the game loop
   }
 
+  void pauseGame() {
+    playingRound = false;
+    print("Bot $name has paused its game.");
+  }
+
   void reset() {
     deck.clear();
     pile.clear();
@@ -130,51 +142,75 @@ class NertzBot {
   }
 
   void gameLoop() async {
-    if (!playingRound) {
-      return;
-    }
-    // Implement the bot's game logic here
-    // This could include making decisions based on the current state of the game,
-    // playing cards, drawing from the deck, etc.
-    if (blitzDeck.isEmpty) {
-      // If the blitz deck is empty, we can't play any more cards from it
-      onBlitz(id);
-      playingRound = false; // End the bot's turn
-      return;
-    }
-    print(
-      "Bot $name is playing its turn with blitz deck: ${blitzDeck.map((card) => card.value.toString()).join(', ')}",
-    );
-    if (checkBlitzDeckPlays()) {
-      print("Bot $name played a card from the blitz deck.");
-      // If we can play a card from the blitz deck, we do so
-      //Call gameLoop again to continue the bot's turn
-      await Future.delayed(Duration(milliseconds: playSpeed), () => gameLoop());
-      return;
-    } else if (checkPilePlays()) {
-      print("Bot $name played a card from the pile.");
-      // If we can play a card from the pile, we do so
-      //Call gameLoop again to continue the bot's turn
-      await Future.delayed(Duration(milliseconds: playSpeed), () => gameLoop());
-      return;
-    } else if (checkPileMoves()) {
-      print("Bot $name moved cards between piles.");
-      // If we can move cards between piles, we do so
-      //Call gameLoop again to continue the bot's turn
-      await Future.delayed(Duration(milliseconds: playSpeed), () => gameLoop());
-      return;
-    } else if (checkDeckMoves()) {
-      print("Bot $name drew cards from the deck.");
-      // If we can draw cards from the deck, we do so
-      //Call gameLoop again to continue the bot's turn
-      await Future.delayed(Duration(milliseconds: playSpeed), () => gameLoop());
-      return;
-    } else {
-      print("Bot $name has no valid moves.");
-      await Future.delayed(Duration(milliseconds: playSpeed), () {
-        // If no moves are possible, end the bot's turn
-        gameLoop();
-      });
+    try {
+      if (!playingRound) {
+        return;
+      }
+      NertzGameState currentState = getGameState();
+      if (currentState != NertzGameState.playing) {
+        print(
+          "Bot $name is not in a playing state. Current state: $currentState",
+        );
+        return;
+      }
+      // Implement the bot's game logic here
+      // This could include making decisions based on the current state of the game,
+      // playing cards, drawing from the deck, etc.
+      if (blitzDeck.isEmpty) {
+        // If the blitz deck is empty, we can't play any more cards from it
+        onBlitz(id);
+        playingRound = false; // End the bot's turn
+        return;
+      }
+      print(
+        "Bot $name is playing its turn with blitz deck: ${blitzDeck.map((card) => card.value.toString()).join(', ')}",
+      );
+      if (checkBlitzDeckPlays()) {
+        print("Bot $name played a card from the blitz deck.");
+        // If we can play a card from the blitz deck, we do so
+        //Call gameLoop again to continue the bot's turn
+        await Future.delayed(
+          Duration(milliseconds: playSpeed),
+          () => gameLoop(),
+        );
+        return;
+      } else if (checkPilePlays()) {
+        print("Bot $name played a card from the pile.");
+        // If we can play a card from the pile, we do so
+        //Call gameLoop again to continue the bot's turn
+        await Future.delayed(
+          Duration(milliseconds: playSpeed),
+          () => gameLoop(),
+        );
+        return;
+      } else if (checkPileMoves()) {
+        print("Bot $name moved cards between piles.");
+        // If we can move cards between piles, we do so
+        //Call gameLoop again to continue the bot's turn
+        await Future.delayed(
+          Duration(milliseconds: playSpeed),
+          () => gameLoop(),
+        );
+        return;
+      } else if (checkDeckMoves()) {
+        print("Bot $name drew cards from the deck.");
+        // If we can draw cards from the deck, we do so
+        //Call gameLoop again to continue the bot's turn
+        await Future.delayed(
+          Duration(milliseconds: playSpeed),
+          () => gameLoop(),
+        );
+        return;
+      } else {
+        print("Bot $name has no valid moves.");
+        await Future.delayed(Duration(milliseconds: playSpeed), () {
+          // If no moves are possible, end the bot's turn
+          gameLoop();
+        });
+      }
+    } catch (e) {
+      print("Error in bot game loop: $e");
+      // End the bot's turn on error
     }
   }
 
