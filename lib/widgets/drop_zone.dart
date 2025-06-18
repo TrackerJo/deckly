@@ -93,6 +93,7 @@ class _DropZoneWidgetState extends State<DropZoneWidget> {
   }
 
   bool willAcceptCard(DragTargetDetails<DragData> data) {
+    print('Will accept card: ${data.data.sourceZoneId}');
     if (data.data.sourceZoneId == widget.zone.id) return false;
     if (data.data.cards.length > 1 &&
         widget.zone.stackMode == StackMode.overlay) {
@@ -135,6 +136,7 @@ class _DropZoneWidgetState extends State<DropZoneWidget> {
       }
       if (!isValidSuit) return false;
       if (widget.customWillAccept != null) {
+        print("Will Accept: ${widget.customWillAccept!()}");
         return widget.customWillAccept!();
       }
       return true; // If no rules, allow any card to start
@@ -241,6 +243,7 @@ class _DropZoneWidgetState extends State<DropZoneWidget> {
     }
     if (!isValidSuit) return false;
     if (widget.customWillAccept != null) {
+      print("Will Accept: ${widget.customWillAccept!()}");
       return widget.customWillAccept!();
     }
     return true;

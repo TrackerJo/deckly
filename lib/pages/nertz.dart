@@ -206,6 +206,58 @@ class _NertzState extends State<Nertz> {
         setState(() {
           gameState = NertzGameState.playing;
         });
+      } else if (dataMap['type'] == 'host_left') {
+        // Handle host left scenario
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            Timer(Duration(seconds: 2), () {
+              connectionService.dispose();
+              Navigator.of(context).pop();
+              Navigator.of(context).pop(); // Close the game screen
+            });
+            return Dialog(
+              backgroundColor: Colors.transparent,
+
+              child: Container(
+                width: 400,
+                height: 200,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [styling.primary, styling.secondary],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Container(
+                  margin: EdgeInsets.all(2), // Creates the border thickness
+                  decoration: BoxDecoration(
+                    color: styling.background,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        "The host has left the game!",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
       }
     });
 
@@ -989,13 +1041,20 @@ class _NertzState extends State<Nertz> {
                                   ActionButton(
                                     height: 40,
                                     width: 100,
-                                    onTap: () {
-                                      connectionService.dispose();
+                                    onTap: () async {
+                                      setState(() {
+                                        gameState = NertzGameState.gameOver;
+                                      });
                                       if (currentPlayer!.getIsHost()) {
                                         for (var bot in bots) {
                                           bot.dispose();
                                         }
+                                        await connectionService
+                                            .broadcastMessage({
+                                              'type': 'host_left',
+                                            }, currentPlayer!.id);
                                       }
+                                      connectionService.dispose();
                                       Navigator.of(context).pop();
                                       Navigator.of(context).pop();
                                     },

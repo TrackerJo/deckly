@@ -201,6 +201,58 @@ class _DutchBlitzState extends State<DutchBlitz> {
         setState(() {
           gameState = NertzGameState.playing;
         });
+      } else if (dataMap['type'] == 'host_left') {
+        // Handle host left scenario
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            Timer(Duration(seconds: 2), () {
+              connectionService.dispose();
+              Navigator.of(context).pop();
+              Navigator.of(context).pop(); // Close the game screen
+            });
+            return Dialog(
+              backgroundColor: Colors.transparent,
+
+              child: Container(
+                width: 400,
+                height: 200,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [styling.primary, styling.secondary],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Container(
+                  margin: EdgeInsets.all(2), // Creates the border thickness
+                  decoration: BoxDecoration(
+                    color: styling.background,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        "The host has left the game!",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
       }
     });
 
@@ -891,115 +943,120 @@ class _DutchBlitzState extends State<DutchBlitz> {
                   },
                 ),
             ],
-            customBackButton: FancyWidget(
-              child: IconButton(
-                splashColor: Colors.transparent,
-                splashRadius: 25,
-                icon: Transform.flip(
-                  flipX: true,
-                  child: const SFIcon(
-                    SFIcons
-                        .sf_rectangle_portrait_and_arrow_right, // 'heart.fill'
-                    // fontSize instead of size
-                    fontWeight: FontWeight.bold, // fontWeight instead of weight
-                    color: Colors.white,
-                  ),
+            customBackButton: IconButton(
+              splashColor: Colors.transparent,
+              splashRadius: 25,
+              icon: Transform.flip(
+                flipX: true,
+                child: SFIcon(
+                  SFIcons.sf_rectangle_portrait_and_arrow_right, // 'heart.fill'
+                  // fontSize instead of size
+                  fontWeight: FontWeight.bold, // fontWeight instead of weight
+                  color: styling.primary,
                 ),
-                onPressed: () async {
-                  SharedPrefs.hapticButtonPress();
-                  //Confirm with user before leaving
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (BuildContext context) {
-                      return Dialog(
-                        backgroundColor: Colors.transparent,
+              ),
+              onPressed: () async {
+                SharedPrefs.hapticButtonPress();
+                //Confirm with user before leaving
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (BuildContext context) {
+                    return Dialog(
+                      backgroundColor: Colors.transparent,
 
-                        child: Container(
-                          width: 400,
-                          height: 200,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [styling.primary, styling.secondary],
-                            ),
-                            borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        width: 400,
+                        height: 200,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [styling.primary, styling.secondary],
                           ),
-                          child: Container(
-                            margin: EdgeInsets.all(
-                              2,
-                            ), // Creates the border thickness
-                            decoration: BoxDecoration(
-                              color: styling.background,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Text(
-                                  "Are you sure you want to leave the game?",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Container(
+                          margin: EdgeInsets.all(
+                            2,
+                          ), // Creates the border thickness
+                          decoration: BoxDecoration(
+                            color: styling.background,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Text(
+                                "Are you sure you want to leave the game?",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              SizedBox(height: 16),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  ActionButton(
+                                    height: 40,
+                                    width: 100,
+                                    onTap: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                    text: Text(
+                                      "Cancel",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                      ),
+                                    ),
                                   ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                SizedBox(height: 16),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    ActionButton(
-                                      height: 40,
-                                      width: 100,
-                                      onTap: () {
-                                        Navigator.of(context).pop();
-                                      },
-                                      text: Text(
-                                        "Cancel",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    ),
-                                    ActionButton(
-                                      height: 40,
-                                      width: 100,
-                                      onTap: () {
-                                        connectionService.dispose();
-                                        if (currentPlayer!.getIsHost()) {
-                                          for (var bot in bots) {
-                                            bot.dispose();
-                                          }
+                                  ActionButton(
+                                    height: 40,
+                                    width: 100,
+                                    onTap: () async {
+                                      setState(() {
+                                        gameState = NertzGameState.gameOver;
+                                      });
+                                      if (currentPlayer!.getIsHost()) {
+                                        for (var bot in bots) {
+                                          bot.dispose();
                                         }
-                                        Navigator.of(context).pop();
-                                        Navigator.of(context).pop();
-                                      },
-                                      text: Text(
-                                        "Leave",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                        ),
+                                        await connectionService
+                                            .broadcastMessage({
+                                              'type': 'host_left',
+                                            }, currentPlayer!.id);
+                                      }
+                                      connectionService.dispose();
+
+                                      Navigator.of(context).pop();
+                                      Navigator.of(context).pop();
+                                    },
+                                    text: Text(
+                                      "Leave",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
                                       ),
                                     ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
-                      );
-                    },
-                  );
-                },
-                color: Colors.white,
-              ),
+                      ),
+                    );
+                  },
+                );
+              },
+              color: Colors.white,
             ),
           ),
         ),
@@ -1082,7 +1139,8 @@ class _DutchBlitzState extends State<DutchBlitz> {
             // Calculate optimal grid layout with constraints
             // Minimum 3 columns, maximum 3 rows
             int bestCols = 3; // Start with minimum 3 columns
-            final maxRows = 4;
+            final maxRows =
+                players.length >= 6 ? 4 : 3; // Maximum rows based on players
             final minCols = 3;
             final maxCols =
                 (middleZones.length / 1).ceil(); // Maximum possible columns

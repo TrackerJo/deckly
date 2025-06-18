@@ -219,144 +219,159 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
   Widget build(BuildContext context) {
     final isConnected = _connectionState == blue.ConnectionState.connected;
 
-    return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(kToolbarHeight),
-        child: CustomAppBar(
-          title: game == null ? "Join Game" : game!.toString(),
-          showBackButton: true,
-          onBackButtonPressed: (context) {
-            Navigator.pop(context);
-          },
+    return PopScope(
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop && result == true) {
+          connectionService.dispose();
+        }
+      },
+      child: Scaffold(
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(kToolbarHeight),
+          child: CustomAppBar(
+            title: game == null ? "Join Game" : game!.toString(),
+            showBackButton: true,
+            onBackButtonPressed: (context) {
+              Navigator.pop(context);
+              connectionService.dispose();
+            },
+          ),
         ),
-      ),
-      backgroundColor: styling.background,
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child:
-            isConnected
-                ? Column(
-                  children: [
-                    Text(
-                      'You have joined the game!',
-                      style: const TextStyle(fontSize: 24, color: Colors.white),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      'Players:',
-                      style: const TextStyle(fontSize: 18, color: Colors.white),
-                    ),
-                    const SizedBox(height: 12),
-                    Expanded(
-                      child: FancyBorder(
-                        child: ListView(
-                          children:
-                              _players
-                                  .map(
-                                    (p) => ListTile(
-                                      leading: Icon(
-                                        p.isHost
-                                            ? Icons.star
-                                            : p.isBot
-                                            ? Icons.computer
-                                            : Icons.person,
-                                        color:
-                                            p.isHost
-                                                ? Colors.yellow
-                                                : Colors.white,
-                                      ),
-                                      title: Text(
-                                        p.name,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 18,
+        backgroundColor: styling.background,
+        body: Padding(
+          padding: const EdgeInsets.all(24),
+          child:
+              isConnected
+                  ? Column(
+                    children: [
+                      Text(
+                        'You have joined the game!',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'Players:',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: FancyBorder(
+                          child: ListView(
+                            children:
+                                _players
+                                    .map(
+                                      (p) => ListTile(
+                                        leading: Icon(
+                                          p.isHost
+                                              ? Icons.star
+                                              : p.isBot
+                                              ? Icons.computer
+                                              : Icons.person,
+                                          color:
+                                              p.isHost
+                                                  ? Colors.yellow
+                                                  : Colors.white,
                                         ),
+                                        title: Text(
+                                          p.name,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 18,
+                                          ),
+                                        ),
+                                        subtitle:
+                                            p.isBot && p is BotPlayer
+                                                ? Text(
+                                                  'Bot Difficulty: ${p.difficulty.toString()}',
+                                                  style: const TextStyle(
+                                                    color: Colors.white70,
+                                                    fontSize: 14,
+                                                  ),
+                                                )
+                                                : null,
                                       ),
-                                      subtitle:
-                                          p.isBot && p is BotPlayer
-                                              ? Text(
-                                                'Bot Difficulty: ${p.difficulty.toString()}',
-                                                style: const TextStyle(
-                                                  color: Colors.white70,
-                                                  fontSize: 14,
-                                                ),
-                                              )
-                                              : null,
+                                    )
+                                    .toList(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                  : Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      GradientInputField(
+                        textField: TextField(
+                          controller: _codeCtrl,
+                          decoration: styling
+                              .gradientInputDecoration()
+                              .copyWith(hintText: 'Enter 4-digit code'),
+                          keyboardType: TextInputType.number,
+                          cursorColor: Colors.white,
+                          style: const TextStyle(color: Colors.white),
+                          maxLength: 4,
+                          onTap: () {
+                            SharedPrefs.hapticInputSelect();
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      GradientInputField(
+                        textField: TextField(
+                          controller: _nameCtrl,
+                          decoration: styling
+                              .gradientInputDecoration()
+                              .copyWith(hintText: 'Enter your name'),
+                          cursorColor: Colors.white,
+                          style: const TextStyle(color: Colors.white),
+                          onTap: () {
+                            SharedPrefs.hapticInputSelect();
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Spacer(),
+                      SizedBox(
+                        width: double.infinity,
+                        child:
+                            _connectionState ==
+                                    blue.ConnectionState.disconnected
+                                ? ActionButton(
+                                  onTap: _joinRoom,
+                                  text: Text(
+                                    _getButtonText(),
+                                    style: TextStyle(
+                                      color:
+                                          Colors
+                                              .white, // This will be masked by the gradient
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
                                     ),
-                                  )
-                                  .toList(),
-                        ),
-                      ),
-                    ),
-                  ],
-                )
-                : Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    GradientInputField(
-                      textField: TextField(
-                        controller: _codeCtrl,
-                        decoration: styling.gradientInputDecoration().copyWith(
-                          hintText: 'Enter 4-digit code',
-                        ),
-                        keyboardType: TextInputType.number,
-                        cursorColor: Colors.white,
-                        style: const TextStyle(color: Colors.white),
-                        maxLength: 4,
-                        onTap: () {
-                          SharedPrefs.hapticInputSelect();
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    GradientInputField(
-                      textField: TextField(
-                        controller: _nameCtrl,
-                        decoration: styling.gradientInputDecoration().copyWith(
-                          hintText: 'Enter your name',
-                        ),
-                        cursorColor: Colors.white,
-                        style: const TextStyle(color: Colors.white),
-                        onTap: () {
-                          SharedPrefs.hapticInputSelect();
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Spacer(),
-                    SizedBox(
-                      width: double.infinity,
-                      child:
-                          _connectionState == blue.ConnectionState.disconnected
-                              ? ActionButton(
-                                onTap: _joinRoom,
-                                text: Text(
-                                  _getButtonText(),
-                                  style: TextStyle(
-                                    color:
-                                        Colors
-                                            .white, // This will be masked by the gradient
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
+                                    textAlign: TextAlign.center,
                                   ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              )
-                              : FancyWidget(
-                                child: Text(
-                                  _getButtonText(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
+                                )
+                                : FancyWidget(
+                                  child: Text(
+                                    _getButtonText(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
                                   ),
-                                  textAlign: TextAlign.center,
                                 ),
-                              ),
-                    ),
-                  ],
-                ),
+                      ),
+                    ],
+                  ),
+        ),
       ),
     );
   }

@@ -245,9 +245,8 @@ class _CardFlipState extends State<CardFlip> with TickerProviderStateMixin {
                     alignment: Alignment.center,
                     transform:
                         widget.isDutchBlitz
-                              ? Matrix4.identity()
-                              : Matrix4.identity()
-                          ..rotateX(pi),
+                            ? Matrix4.identity()
+                            : (Matrix4.identity()..rotateX(pi)),
 
                     child: CardContent(
                       card: widget.card,
@@ -314,6 +313,55 @@ class CardContent extends StatelessWidget {
     }
   }
 
+  double idealDutchFontSize() {
+    // Adjust the range as needed
+    //  final maxWidth = (30 * scale);
+    // final maxHeight = (45 * scale);
+    // final fontSize = min(maxWidth / 2, maxHeight / 2);
+    // return fontSize.clamp(12.0, 18.0);
+    final double containerWidth = 30 * scale;
+
+    // Base font sizes for different card values based on their visual width
+    Map<String, double> baseFontSizes = {
+      '1': 18.0, // Narrow character
+      '2': 16.0, // Medium width
+      '3': 16.0, // Medium width
+      '4': 15.0, // Medium width
+      '5': 16.0, // Medium width
+      '6': 16.0, // Medium width
+      '7': 16.0, // Medium width
+      '8': 15.0, // Medium width
+      '9': 15.0, // Medium width
+      '10': 12.0, // Widest - two characters
+      'J': 16.0, // Medium width
+      'Q': 14.0, // Wide character
+      'K': 15.0, // Medium-wide
+      'A': 16.0, // Medium width
+    };
+
+    // Get the display string for the card
+    String displayValue = cardNumberToString(card.value);
+    if (displayValue == "A")
+      displayValue = "1"; // Dutch Blitz uses "1" instead of "A"
+
+    // Get base font size for this character/string
+    double baseFontSize = baseFontSizes[displayValue] ?? 16.0;
+
+    // Scale the font size based on the scale factor
+    double scaledFontSize = baseFontSize;
+
+    // Ensure minimum readability
+    double minFontSize = 8.0 * scale;
+
+    // Ensure maximum size doesn't exceed container
+    double maxFontSize = containerWidth * 0.8; // 80% of container width
+
+    // Apply constraints
+    scaledFontSize = scaledFontSize.clamp(minFontSize, maxFontSize);
+
+    return scaledFontSize;
+  }
+
   @override
   Widget build(BuildContext context) {
     print("SCALE: $scale");
@@ -377,7 +425,7 @@ class CardContent extends StatelessWidget {
                         spacing: -6, // Reduced spacing
                         children: [
                           Text(
-                            cardNumberToString(card.value),
+                            card.value.toString(),
                             style: TextStyle(
                               color:
                                   card.suit == CardSuit.clubs ||
@@ -669,7 +717,7 @@ class CardContent extends StatelessWidget {
                             style: TextStyle(
                               color: Colors.black,
                               fontWeight: FontWeight.bold,
-                              fontSize: card.value == 10 ? 14 : 16,
+                              fontSize: idealDutchFontSize(),
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -696,7 +744,7 @@ class CardContent extends StatelessWidget {
                             style: TextStyle(
                               color: Colors.black,
                               fontWeight: FontWeight.bold,
-                              fontSize: card.value == 10 ? 14 : 16,
+                              fontSize: idealDutchFontSize(),
                             ),
                             textAlign: TextAlign.center,
                           ),
