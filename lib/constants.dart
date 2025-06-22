@@ -644,3 +644,204 @@ void showSnackBar(BuildContext context, Color color, String message) {
     ),
   );
 }
+
+List<Widget> nertzRules = [
+  Padding(
+    padding: const EdgeInsets.all(8.0),
+    child: Text(
+      "How to Play Nertz",
+      style: TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.bold,
+        color: styling.primary,
+      ),
+    ),
+  ),
+  Divider(color: styling.primary, thickness: 1.5),
+  sectionTitle('🎯 Goal'),
+  sectionText(
+    'The goal of Nertz is to be the first player to get rid of all the cards '
+    'in your Nertz pile. Everyone plays at the same time and tries to move cards as fast as possible.',
+  ),
+  sectionTitle('🧰 Setup'),
+  sectionText(
+    'Each player has:\n'
+    '- A Nertz pile with 13 cards. Only the top card is face up and can be played.\n'
+    '- A draw pile made from the rest of your cards. You flip through it three cards at a time.\n'
+    '- Four work piles where you build cards from high to low, switching red and black colors.\n'
+    '- Shared center piles where everyone builds piles starting with Aces, going up to Kings, in the same suit.',
+  ),
+  sectionTitle('🃏 Gameplay'),
+  sectionText(
+    'You can:\n'
+    '- Move the top card of your Nertz pile to your work piles or the center piles.\n'
+    '- Move cards between your work piles to make space.\n'
+    '- Use the top card from your draw pile if it can be played.\n'
+    '- Flip through your draw pile again and again.\n\n'
+    'Everyone plays at the same time. When a player uses all the cards in their Nertz pile, '
+    'they press “Nertz!” and the round ends.',
+  ),
+
+  sectionTitle('🧮 Scoring'),
+  sectionText(
+    'At the end of the round:\n'
+    '- You get 1 point for each card played in the center piles.\n'
+    '- You lose 1 point for each card left in your Nertz pile.\n'
+    '- The player who called “Nertz” gets 5 extra points.',
+  ),
+
+  sectionTitle('🏁 Ending the Game'),
+  sectionText(
+    'Keep playing rounds until someone reaches a set number of points, like 100 or 150.\n'
+    'You can also stop after a certain number of rounds or when one player is far ahead.',
+  ),
+];
+
+List<Widget> dutchBlitzRules = [
+  Padding(
+    padding: const EdgeInsets.all(8.0),
+    child: Text(
+      "How to Play Dutch Blitz",
+      style: TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.bold,
+        color: styling.primary,
+      ),
+    ),
+  ),
+  Divider(color: styling.primary, thickness: 1.5),
+  sectionTitle('🎯 Goal'),
+  sectionText(
+    'The goal of Dutch Blitz is to be the first player to get rid of all the cards '
+    'in your Blitz pile. Everyone plays at the same time and tries to move cards as fast as possible.',
+  ),
+  sectionTitle('🧰 Setup'),
+  sectionText(
+    'Each player has:\n'
+    '- A Blitz pile with 10 cards. Only the top card is face up and can be played.\n'
+    '- A draw pile made from the rest of your cards. You flip through it three cards at a time.\n'
+    '- Four work piles where you build cards from high to low, switching guys and girls.\n'
+    '- Shared center piles where everyone builds piles starting with 1s, going up to 10s, in the same suit.',
+  ),
+  sectionTitle('🃏 Gameplay'),
+  sectionText(
+    'You can:\n'
+    '- Move the top card of your Blitz pile to your work piles or the center piles.\n'
+    '- Move cards between your work piles to make space.\n'
+    '- Use the top card from your draw pile if it can be played.\n'
+    '- Flip through your draw pile again and again.\n\n'
+    'Everyone plays at the same time. When a player uses all the cards in their Blitz pile, '
+    'they press Blitz!” and the round ends.',
+  ),
+
+  sectionTitle('🧮 Scoring'),
+  sectionText(
+    'At the end of the round:\n'
+    '- You get 1 point for each card played in the center piles.\n'
+    '- You lose 2 points for each card left in your Blitz pile.',
+  ),
+
+  sectionTitle('🏁 Ending the Game'),
+  sectionText(
+    'Keep playing rounds until someone reaches a set number of points, like 100 or 150.\n'
+    'You can also stop after a certain number of rounds or when one player is far ahead.',
+  ),
+];
+
+List<Widget> euchreRules = [
+  Padding(
+    padding: const EdgeInsets.all(8.0),
+    child: Text(
+      "How to Play Euchre",
+      style: TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.bold,
+        color: styling.primary,
+      ),
+    ),
+  ),
+  Divider(color: styling.primary, thickness: 1.5),
+  sectionTitle('🎯 Goal'),
+  sectionText(
+    'Be the first team to reach 10 points by winning tricks. A trick is one round where everyone plays one card.',
+  ),
+  sectionTitle('🧰 Setup'),
+  sectionText(
+    'Players: 4 players in 2 teams.\n'
+    'Deck: 24 cards (9 through Ace in each suit).\n'
+    'Deal: Each player gets 5 cards. The rest goes in a pile next to the dealer; top card is turned face up.',
+  ),
+  sectionTitle('🃏 Gameplay'),
+  secitonHeader('1. Deciding Trump'),
+  sectionText(
+    '- The suit of the face-up card in the pile next to the dealer can be called trump (the strongest suit).\n'
+    '- Going clockwise, each player decides whether to "order up" (make that suit trump) or pass.\n'
+    '- If a player orders up, the dealer picks up the card and discards one from their hand.\n'
+    '- If everyone passes, a second round of choosing a different trump suit happens.\n'
+    '- Players can also choose to "go alone" (play without their partner for bonus points).\n'
+    '- If no one calls trump, the dealer must pick a suit.\n\n'
+    'In trump suits:\n'
+    '- The highest card is the Jack of trump (called the Right Bower).\n'
+    '- The second highest is the other Jack of the same color (called the Left Bower).\n'
+    '- Then Ace, King, Queen, 10, 9 follow in that suit.',
+  ),
+  secitonHeader('2. Playing Tricks'),
+  sectionText(
+    '- The player to the left of the dealer starts.\n'
+    '- Players must follow the suit led if they can.\n'
+    '- If not, they can play any card.\n'
+    '- The highest trump card wins the trick. If no trump is played, the highest card in the lead suit wins.\n'
+    '- The winner of the trick leads the next one.',
+  ),
+
+  sectionTitle('🧮 Scoring'),
+  sectionText(
+    'Scoring is based on how many tricks your team wins, wether your team called trump, and if you went alone:\n'
+    'If your team called trump:\n'
+    '- 3 or 4 tricks: 1 point\n'
+    '- 5 tricks: 2 points\n'
+    'If your team went alone and won:\n'
+    '- 3 or 4 tricks: 1 point\n'
+    '- 5 tricks: 4 points\n'
+    'If your team did not call trump:\n'
+    '- 3+ tricks: 2 points',
+  ),
+
+  sectionTitle('🏁 Ending the Game'),
+  sectionText('Play continues until one team reaches 10 points.'),
+];
+
+Widget sectionTitle(String title) {
+  return Padding(
+    padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+    child: Text(
+      title,
+      style: TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+        color: styling.primary,
+      ),
+    ),
+  );
+}
+
+Widget secitonHeader(String title) {
+  return Padding(
+    padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+    child: Text(
+      title,
+      style: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
+      ),
+    ),
+  );
+}
+
+Widget sectionText(String text) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 12.0),
+    child: Text(text, style: TextStyle(fontSize: 16, color: Colors.white)),
+  );
+}

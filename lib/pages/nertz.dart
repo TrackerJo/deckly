@@ -40,6 +40,7 @@ class _NertzState extends State<Nertz> {
 
   final CardDeckAnimController deckController = CardDeckAnimController();
   final BlitzDeckController blitzDeckController = BlitzDeckController();
+  final ScrollController scrollController = ScrollController();
   Map<String, DropZoneController> dropZoneControllers = {};
   NertzGameState gameState = NertzGameState.playing;
   DragData currentDragData = DragData(
@@ -71,12 +72,51 @@ class _NertzState extends State<Nertz> {
                 .map((c) => CardData.fromMap(c as Map<String, dynamic>))
                 .toList();
 
+        if (currentPlayer!.getIsHost()) {
+          //check if the zone is able to be updated
+          //Call fixZone in 1 second if the zone is not empty and the first card is an Ace
+          if (cards.first.value == 1) {
+            print("Zone $zoneId has an Ace, checking if it can be fixed");
+            // Future.delayed(Duration(milliseconds: 500), () {
+            fixZone(zoneId, cards);
+            // });
+            return;
+          }
+        }
+
         setState(() {
           final targetZone = dropZones.firstWhere((zone) => zone.id == zoneId);
           targetZone.controller!.startFlash();
 
           targetZone.cards.clear();
           targetZone.cards.addAll(cards);
+        });
+      } else if (dataMap['type'] == 'move_card') {
+        final zoneId = dataMap['zoneId'] as String;
+        final cardsData = dataMap['cards'] as List;
+        final cards =
+            cardsData
+                .map((c) => CardData.fromMap(c as Map<String, dynamic>))
+                .toList();
+        final oldZoneId = dataMap['oldZoneId'] as String;
+        final oldCardsData = dataMap['oldCards'] as List;
+        final oldCards =
+            oldCardsData
+                .map((c) => CardData.fromMap(c as Map<String, dynamic>))
+                .toList();
+        setState(() {
+          final targetZone = dropZones.firstWhere((zone) => zone.id == zoneId);
+          targetZone.controller!.startFlash();
+
+          // Clear the target zone and add the new cards
+          targetZone.cards.clear();
+          targetZone.cards.addAll(cards);
+
+          // Find the old zone and remove the old cards
+          final oldZone = dropZones.firstWhere((zone) => zone.id == oldZoneId);
+          oldZone.controller!.startFlash();
+          oldZone.cards.clear();
+          oldZone.cards.addAll(oldCards);
         });
       } else if (dataMap['type'] == 'blitz') {
         final playerData = dataMap['player'] as Map<String, dynamic>;
@@ -196,6 +236,7 @@ class _NertzState extends State<Nertz> {
         for (var bot in bots) {
           bot.playingRound = false;
         }
+        scrollController.jumpTo(0);
         setState(() {
           gameState = NertzGameState.paused;
         });
@@ -264,6 +305,58 @@ class _NertzState extends State<Nertz> {
     _stateSub = connectionService.connectionStateStream.listen((state) {});
 
     _playersSub = connectionService.playersStream.listen((playersData) {});
+  }
+
+  void fixZone(String zoneId, List<CardData> cards) {
+    final targetZone = dropZones.firstWhere((zone) => zone.id == zoneId);
+    final card = cards.first;
+    if (card.value == 1 && targetZone.cards.isNotEmpty) {
+      print("Card is an Ace and zone is not empty, moving to a new zone");
+      // If the card is an Ace and the zone already has cards, move the ace to a new zone
+      //Find a new zone that is empty
+      final emptyZone = dropZones.firstWhere(
+        (zone) => zone.id != zoneId && zone.cards.isEmpty && zone.isPublic,
+        orElse:
+            () => DropZoneData(
+              id: 'empty',
+              rules: DropZoneRules(
+                cardOrder: CardOrder.ascending,
+                allowedCards: AllowedCards.sameSuit,
+                startingCards: [],
+                bannedCards: [],
+              ),
+              stackMode: StackMode.overlay,
+              cards: [],
+              scale: 0.1,
+              isPublic: true,
+            ),
+      );
+      if (emptyZone.id != 'empty') {
+        // Move the ace to the empty zone
+        emptyZone.cards.add(card);
+
+        setState(() {
+          targetZone.controller!.startFlash();
+          emptyZone.controller!.startFlash();
+        });
+
+        connectionService.broadcastMessage({
+          'type': 'move_card',
+          'zoneId': emptyZone.id,
+          'cards': emptyZone.cards.map((c) => c.toMap()).toList(),
+          'oldZoneId': zoneId,
+          'oldCards': targetZone.cards.map((c) => c.toMap()).toList(),
+        }, currentPlayer!.id);
+        return;
+      }
+    } else {
+      print("Card is not an Ace or zone is empty, no action taken");
+      setState(() {
+        targetZone.controller!.startFlash();
+        targetZone.cards.clear();
+        targetZone.cards.addAll(cards);
+      });
+    }
   }
 
   List<dynamic> scoreGame() {
@@ -694,6 +787,12 @@ class _NertzState extends State<Nertz> {
           dragData.sourceIndex,
           dragData.sourceIndex + dragData.cards.length,
         );
+      } else if (dragData.sourceZoneId == 'pile') {
+        final card = dragData.cards.first;
+        deckCards.removeWhere((c) => c.id == card.id);
+      } else if (dragData.sourceZoneId == 'blitz_deck') {
+        final card = dragData.cards.first;
+        blitzDeck.removeWhere((c) => c.id == card.id);
       }
 
       if (targetZone.isPublic) {
@@ -946,6 +1045,45 @@ class _NertzState extends State<Nertz> {
               Navigator.pop(context);
             },
             actions: [
+              IconButton(
+                icon: SFIcon(
+                  SFIcons.sf_pencil_and_list_clipboard, // 'heart.fill'
+                  // fontSize instead of size
+                  fontWeight: FontWeight.bold, // fontWeight instead of weight
+                  color: styling.primary,
+                ),
+                onPressed: () {
+                  SharedPrefs.hapticButtonPress();
+                  showModalBottomSheet<void>(
+                    context: context,
+                    backgroundColor: styling.background,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(23),
+                        topRight: Radius.circular(23),
+                      ),
+                    ),
+                    isScrollControlled: true,
+                    builder: (BuildContext context) {
+                      return StatefulBuilder(
+                        builder: (context, setState) {
+                          return Container(
+                            height: MediaQuery.of(context).size.height * 0.8,
+                            width: double.infinity,
+                            child: SingleChildScrollView(
+                              padding: EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: nertzRules,
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
               if (currentPlayer!.getIsHost() &&
                   gameState == NertzGameState.playing)
                 IconButton(
@@ -958,6 +1096,7 @@ class _NertzState extends State<Nertz> {
                     connectionService.broadcastMessage({
                       'type': 'pause_game',
                     }, currentPlayer!.id);
+                    scrollController.jumpTo(0);
                     setState(() {
                       gameState = NertzGameState.paused;
                     });
@@ -1085,13 +1224,23 @@ class _NertzState extends State<Nertz> {
           height: double.infinity,
           padding: EdgeInsets.all(16.0),
           child: SingleChildScrollView(
+            controller: scrollController,
+            physics:
+                gameState == NertzGameState.paused
+                    ? NeverScrollableScrollPhysics()
+                    : null,
             child:
-                gameState == NertzGameState.playing
-                    ? buildPlayingScreen(calculatedScale)
+                gameState == NertzGameState.playing ||
+                        gameState == NertzGameState.paused
+                    ? Stack(
+                      children: [
+                        buildPlayingScreen(calculatedScale),
+                        if (gameState == NertzGameState.paused)
+                          buildPausedScreen(context),
+                      ],
+                    )
                     : gameState == NertzGameState.leaderboard
                     ? buildLeaderboardScreen()
-                    : gameState == NertzGameState.paused
-                    ? buildPausedScreen(context)
                     : gameState == NertzGameState.gameOver
                     ? buildGameOverScreen()
                     : Container(),
@@ -1143,7 +1292,6 @@ class _NertzState extends State<Nertz> {
                                 fontSize: 16.0,
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
-                                overflow: TextOverflow.ellipsis,
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -1492,8 +1640,9 @@ class _NertzState extends State<Nertz> {
   Widget buildPausedScreen(BuildContext context) {
     // Sort players by score
 
-    return SizedBox(
+    return Container(
       height: MediaQuery.of(context).size.height,
+      decoration: BoxDecoration(color: styling.background),
 
       child: Center(
         child: Column(

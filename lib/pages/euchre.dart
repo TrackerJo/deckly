@@ -685,7 +685,7 @@ class _EuchreState extends State<Euchre> {
 
     _stateSub = connectionService.connectionStateStream.listen((state) {});
 
-     _playersSub = connectionService.playersStream.listen((playersData) {});
+    _playersSub = connectionService.playersStream.listen((playersData) {});
   }
 
   List<CardData> sortHand(List<CardData> hand, CardSuit? trumpSuit) {
@@ -1820,6 +1820,47 @@ class _EuchreState extends State<Euchre> {
               connectionService.dispose();
               Navigator.pop(context);
             },
+            actions: [
+              IconButton(
+                icon: SFIcon(
+                  SFIcons.sf_pencil_and_list_clipboard, // 'heart.fill'
+                  // fontSize instead of size
+                  fontWeight: FontWeight.bold, // fontWeight instead of weight
+                  color: styling.primary,
+                ),
+                onPressed: () {
+                  SharedPrefs.hapticButtonPress();
+                  showModalBottomSheet<void>(
+                    context: context,
+                    backgroundColor: styling.background,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(23),
+                        topRight: Radius.circular(23),
+                      ),
+                    ),
+                    isScrollControlled: true,
+                    builder: (BuildContext context) {
+                      return StatefulBuilder(
+                        builder: (context, setState) {
+                          return Container(
+                            height: MediaQuery.of(context).size.height * 0.8,
+                            width: double.infinity,
+                            child: SingleChildScrollView(
+                              padding: EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: euchreRules,
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
             customBackButton: FancyWidget(
               child: IconButton(
                 splashColor: Colors.transparent,

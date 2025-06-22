@@ -150,7 +150,7 @@ class _CardDeckAnimState extends State<CardDeckAnim> {
       setState(() {});
 
       // Wait for a short duration to simulate flip animation
-      await Future.delayed(Duration(milliseconds: 350));
+      await Future.delayed(Duration(milliseconds: 300));
       // flipCards.remove(card);
       pileCards.add(
         CardData(
@@ -175,8 +175,10 @@ class _CardDeckAnimState extends State<CardDeckAnim> {
 
   void unstuck() {
     // Reset the drag state
+
     List<CardData> dealtCards = deckCards.toList();
     deckCards.clear();
+    pileCards.removeWhere((card) => card.id == "nil");
     pileCards.addAll(
       dealtCards.map(
         (card) => CardData(
@@ -297,7 +299,7 @@ class _CardDeckAnimState extends State<CardDeckAnim> {
                   top: 0,
                   left: 0,
                   child:
-                      isTopCard
+                      isTopCard && !isAnimating
                           ? DraggableCardWidget(
                             card: card,
                             zoneId: 'pile',

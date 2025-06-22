@@ -17,8 +17,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_nearby_connections/flutter_nearby_connections.dart';
 import 'package:nearby_connections/nearby_connections.dart';
 
-final NearbyService nearbyService = NearbyService();
-final Nearby androidNearby = Nearby();
 final Styling styling = Styling();
 final ConnectionService connectionService = ConnectionService();
 

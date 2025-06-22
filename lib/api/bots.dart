@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:deckly/constants.dart';
 
 class NertzBot {
@@ -21,6 +23,7 @@ class NertzBot {
   //Hard: 3000ms
   //Medium: 6000ms
   //Easy: 9000ms
+  int cyclesStuck = 0; // Counter for cycles stuck
 
   NertzBot({
     required this.name,
@@ -167,6 +170,7 @@ class NertzBot {
       );
       if (checkBlitzDeckPlays()) {
         print("Bot $name played a card from the blitz deck.");
+        cyclesStuck = 0; // Reset cycles stuck counter
         // If we can play a card from the blitz deck, we do so
         //Call gameLoop again to continue the bot's turn
         await Future.delayed(
@@ -176,6 +180,7 @@ class NertzBot {
         return;
       } else if (checkPilePlays()) {
         print("Bot $name played a card from the pile.");
+        cyclesStuck = 0; // Reset cycles stuck counter
         // If we can play a card from the pile, we do so
         //Call gameLoop again to continue the bot's turn
         await Future.delayed(
@@ -185,6 +190,7 @@ class NertzBot {
         return;
       } else if (checkPileMoves()) {
         print("Bot $name moved cards between piles.");
+        cyclesStuck = 0; // Reset cycles stuck counter
         // If we can move cards between piles, we do so
         //Call gameLoop again to continue the bot's turn
         await Future.delayed(
@@ -194,6 +200,7 @@ class NertzBot {
         return;
       } else if (checkDeckMoves()) {
         print("Bot $name drew cards from the deck.");
+        cyclesStuck = 0; // Reset cycles stuck counter
         // If we can draw cards from the deck, we do so
         //Call gameLoop again to continue the bot's turn
         await Future.delayed(
@@ -202,7 +209,13 @@ class NertzBot {
         );
         return;
       } else {
-        print("Bot $name has no valid moves.");
+        cyclesStuck++;
+        print("Bot $name has no valid moves. Cycles stuck: $cyclesStuck");
+
+        if (cyclesStuck >= 11) {
+          unstuckBot();
+          print("Bot $name was stuck for too long and has been unstuck.");
+        }
         await Future.delayed(Duration(milliseconds: playSpeed), () {
           // If no moves are possible, end the bot's turn
           gameLoop();
@@ -212,6 +225,17 @@ class NertzBot {
       print("Error in bot game loop: $e");
       // End the bot's turn on error
     }
+  }
+
+  void unstuckBot() {
+    // If the bot is stuck, we can reset its state or take some action
+    print("Bot $name is stuck. Resetting its state.");
+    cyclesStuck = 0; // Reset cycles stuck counter
+    pile.addAll(deck);
+    deck = List.from(pile);
+    pile.clear();
+    pile.add(deck[0]);
+    deck.removeAt(0);
   }
 
   bool checkBlitzDeckPlays() {

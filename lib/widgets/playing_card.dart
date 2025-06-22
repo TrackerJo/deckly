@@ -215,7 +215,7 @@ class _CardFlipState extends State<CardFlip> with TickerProviderStateMixin {
     // TODO: implement initState
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 250),
       vsync: this,
     );
     _controller.forward();
@@ -425,7 +425,7 @@ class CardContent extends StatelessWidget {
                         spacing: -6, // Reduced spacing
                         children: [
                           Text(
-                            card.value.toString(),
+                            cardNumberToString(card.value),
                             style: TextStyle(
                               color:
                                   card.suit == CardSuit.clubs ||

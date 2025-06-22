@@ -3,10 +3,11 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:deckly/constants.dart';
-import 'package:deckly/main.dart';
-import 'package:flutter/material.dart';
+
 import 'package:flutter_nearby_connections/flutter_nearby_connections.dart';
+import 'package:location/location.dart';
 import 'package:nearby_connections/nearby_connections.dart' as nearby;
+import 'package:permission_handler/permission_handler.dart';
 
 enum ConnectionRole { host, client }
 
@@ -22,6 +23,9 @@ class ConnectionService {
   String? _connectedEndpointId;
   bool _isInitialized = false;
   Timer? _connectionTimeout;
+
+  final NearbyService nearbyService = NearbyService();
+  final nearby.Nearby androidNearby = nearby.Nearby();
 
   // Stream controllers
   final StreamController<List<GamePlayer>> playersController =
@@ -378,6 +382,93 @@ class ConnectionService {
 
     if (!isHost && endpointId == _connectedEndpointId) {
       _updateConnectionState(ConnectionState.disconnected);
+    }
+  }
+
+  Future<void> requestAndroidPermissions() async {
+    bool locationIsGranted = await Permission.location.isGranted;
+    // Check Permission
+    if (!locationIsGranted) {
+      await Permission.location.request();
+    } // Ask
+    bool locationWhenInUseIsGranted =
+        await Permission.locationWhenInUse.isGranted;
+    if (!locationWhenInUseIsGranted) {
+      await [Permission.locationWhenInUse].request();
+    } // Ask
+
+    // Check Location Status
+    bool locationSeriveEnabled =
+        await Permission.location.serviceStatus.isEnabled;
+    if (!locationSeriveEnabled) {
+      // If location service is not enabled, request it
+      await Location().requestService();
+    }
+
+    bool stoargeIsGranted = await Permission.storage.isGranted;
+    if (!stoargeIsGranted) {
+      // Check Permission
+      await Permission.storage.request(); // Ask
+    }
+    // Bluetooth permissions
+    bool granted =
+        !(await Future.wait([
+          // Check Permissions
+          Permission.bluetooth.isGranted,
+          Permission.bluetoothAdvertise.isGranted,
+          Permission.bluetoothConnect.isGranted,
+          Permission.bluetoothScan.isGranted,
+        ])).any((element) => false);
+    [
+      // Ask Permissions
+      Permission.bluetooth,
+      Permission.bluetoothAdvertise,
+      Permission.bluetoothConnect,
+      Permission.bluetoothScan,
+    ].request();
+
+    // Check Bluetooth Status
+    bool nearbyWifiDevicesIsGranted =
+        await Permission.nearbyWifiDevices.isGranted;
+    if (!nearbyWifiDevicesIsGranted) {
+      // Android 12+
+      await Permission.nearbyWifiDevices.request();
+    }
+  }
+
+  Future<void> requestPermissions() async {
+    if (Platform.isAndroid) {
+      await requestAndroidPermissions();
+    }
+  }
+
+  Future<bool> allowedAllPermissions() async {
+    if (Platform.isIOS) {
+      // iOS permissions are handled by NearbyService
+
+      return await Permission.bluetooth.isGranted;
+    } else {
+      // Android permissions check
+      bool hasLocationPermission = await Permission.location.isGranted;
+      bool locationSeriveEnabled =
+          await Permission.location.serviceStatus.isEnabled;
+      bool stoargeIsGranted = await Permission.storage.isGranted;
+      bool locationWhenInUseIsGranted =
+          await Permission.locationWhenInUse.isGranted;
+      bool hasBluetoothPermission =
+          await Permission.bluetooth.isGranted &&
+          await Permission.bluetoothAdvertise.isGranted &&
+          await Permission.bluetoothConnect.isGranted &&
+          await Permission.bluetoothScan.isGranted;
+      bool nearbyWifiDevicesIsGranted =
+          await Permission.nearbyWifiDevices.isGranted;
+
+      return hasLocationPermission &&
+          locationSeriveEnabled &&
+          stoargeIsGranted &&
+          locationWhenInUseIsGranted &&
+          hasBluetoothPermission &&
+          nearbyWifiDevicesIsGranted;
     }
   }
 

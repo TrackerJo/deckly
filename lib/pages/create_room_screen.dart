@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'dart:math';
 
 import 'package:deckly/api/connection_service.dart' as blue;
+import 'package:deckly/api/connection_service.dart';
 import 'package:deckly/api/shared_prefs.dart';
 import 'package:deckly/pages/dutch_blitz.dart';
 import 'package:deckly/pages/euchre.dart';
@@ -17,6 +19,9 @@ import 'package:deckly/widgets/fancy_widget.dart';
 import 'package:deckly/widgets/fancy_border.dart';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_sficon/flutter_sficon.dart';
+import 'package:permission_handler/permission_handler.dart'
+    as permissionHandler;
 
 class CreateRoomScreen extends StatefulWidget {
   final Game game;
@@ -42,13 +47,102 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
 
   List<GamePlayer> _players = [];
 
+  void initConnection() async {
+    bool firstUse = await SharedPrefs.getFirstUse();
+    if (firstUse) {
+      if (Platform.isIOS) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return Dialog(
+              backgroundColor: Colors.transparent,
+
+              child: Container(
+                width: 400,
+
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [styling.primary, styling.secondary],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Container(
+                  margin: EdgeInsets.all(2), // Creates the border thickness
+                  decoration: BoxDecoration(
+                    color: styling.background,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        "Important! Permission Required!",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      Text(
+                        "After this dialog, you will be prompted to allow local network permissions. Please allow this permission to allow other players to join your game, this is required for the app to work!",
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          ActionButton(
+                            height: 50,
+                            width: 200,
+                            onTap: () async {
+                              Navigator.of(context).pop();
+                              await SharedPrefs.setFirstUse(false);
+                              connectionService.requestPermissions();
+
+                              _initSubscriptions();
+
+                              _initService();
+                            },
+                            text: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text(
+                                "Okay",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      }
+    } else {
+      _initSubscriptions();
+
+      _initService();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-
-    _initSubscriptions();
-
-    _initService();
+    initConnection();
   }
 
   void _initSubscriptions() {
@@ -120,6 +214,88 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
 
   @override
   Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      bool allowedAllowed = await connectionService.allowedAllPermissions();
+      if (!allowedAllowed) {
+        if (Platform.isIOS) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context) {
+              return Dialog(
+                backgroundColor: Colors.transparent,
+
+                child: Container(
+                  width: 400,
+
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [styling.primary, styling.secondary],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Container(
+                    margin: EdgeInsets.all(2), // Creates the border thickness
+                    decoration: BoxDecoration(
+                      color: styling.background,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          "Important! Permissions Required!",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        Text(
+                          "Please enable local network and bluetooth permissions in settings to allow other players to join your game.",
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            ActionButton(
+                              height: 50,
+                              width: 200,
+                              onTap: () async {
+                                Navigator.of(context).pop();
+                                await permissionHandler.openAppSettings();
+                              },
+                              text: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Text(
+                                  "Open Settings",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        }
+      }
+    });
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
         if (didPop && result == true) {
@@ -136,6 +312,63 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
               Navigator.pop(context);
               connectionService.dispose();
             },
+            actions: [
+              IconButton(
+                icon: SFIcon(
+                  SFIcons.sf_pencil_and_list_clipboard, // 'heart.fill'
+                  // fontSize instead of size
+                  fontWeight: FontWeight.bold, // fontWeight instead of weight
+                  color: styling.primary,
+                ),
+
+                onPressed: () {
+                  SharedPrefs.hapticButtonPress();
+                  showModalBottomSheet<void>(
+                    context: context,
+                    backgroundColor: styling.background,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(23),
+                        topRight: Radius.circular(23),
+                      ),
+                    ),
+                    isScrollControlled: true,
+                    builder: (BuildContext context) {
+                      return StatefulBuilder(
+                        builder: (context, setState) {
+                          return Container(
+                            height: MediaQuery.of(context).size.height * 0.8,
+                            width: double.infinity,
+                            child: SingleChildScrollView(
+                              padding: EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children:
+                                    widget.game == Game.nertz
+                                        ? nertzRules
+                                        : widget.game == Game.blitz
+                                        ? dutchBlitzRules
+                                        : widget.game == Game.euchre
+                                        ? euchreRules
+                                        : [
+                                          Text(
+                                            'No rules available for this game.',
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
           ),
         ),
         backgroundColor: styling.background,

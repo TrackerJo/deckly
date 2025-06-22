@@ -328,6 +328,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                                           ),
                                                         ),
                                                         onTap: () {
+                                                          if (myController
+                                                              .text
+                                                              .isEmpty) {
+                                                            showSnackBar(
+                                                              context,
+                                                              Colors.red,
+                                                              "Please enter a name",
+                                                            );
+                                                            return;
+                                                          }
                                                           SharedPrefs.setLastUsedName(
                                                             myController.text,
                                                           );
@@ -511,6 +521,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                                           ),
                                                         ),
                                                         onTap: () {
+                                                          if (myController
+                                                              .text
+                                                              .isEmpty) {
+                                                            showSnackBar(
+                                                              context,
+                                                              Colors.red,
+
+                                                              "Please enter a name",
+                                                            );
+                                                            return;
+                                                          }
                                                           SharedPrefs.setLastUsedName(
                                                             myController.text,
                                                           );
@@ -557,190 +578,201 @@ class _HomeScreenState extends State<HomeScreen> {
                               },
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: ActionButton(
-                              text: Text(
-                                'Euchre',
-                                style: TextStyle(
-                                  color:
-                                      Colors
-                                          .white, // This will be masked by the gradient
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              onTap: () {
-                                showDialog(
-                                  context: context,
-                                  builder: (BuildContext context) {
-                                    final myController =
-                                        TextEditingController();
-                                    if (lastUsedName.isNotEmpty) {
-                                      myController.text = lastUsedName;
-                                    }
-                                    return Dialog(
-                                      backgroundColor: Colors.transparent,
+                          // const SizedBox(width: 8),
+                          // Expanded(
+                          //   child: ActionButton(
+                          //     text: Text(
+                          //       'Euchre',
+                          //       style: TextStyle(
+                          //         color:
+                          //             Colors
+                          //                 .white, // This will be masked by the gradient
+                          //         fontSize: 14,
+                          //         fontWeight: FontWeight.bold,
+                          //       ),
+                          //       textAlign: TextAlign.center,
+                          //     ),
+                          //     onTap: () {
+                          //       showDialog(
+                          //         context: context,
+                          //         builder: (BuildContext context) {
+                          //           final myController =
+                          //               TextEditingController();
+                          //           if (lastUsedName.isNotEmpty) {
+                          //             myController.text = lastUsedName;
+                          //           }
+                          //           return Dialog(
+                          //             backgroundColor: Colors.transparent,
 
-                                      child: Container(
-                                        width: 400,
-                                        height: 200,
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                            colors: [
-                                              styling.primary,
-                                              styling.secondary,
-                                            ],
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                        child: Container(
-                                          margin: EdgeInsets.all(
-                                            2,
-                                          ), // Creates the border thickness
-                                          decoration: BoxDecoration(
-                                            color: styling.background,
-                                            borderRadius: BorderRadius.circular(
-                                              10,
-                                            ),
-                                          ),
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.center,
-                                            children: [
-                                              Text(
-                                                "Enter Your Name",
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 24,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                              Padding(
-                                                padding: const EdgeInsets.all(
-                                                  8.0,
-                                                ),
-                                                child: GradientInputField(
-                                                  textField: TextField(
-                                                    controller: myController,
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                    ),
-                                                    decoration: styling
-                                                        .gradientInputDecoration()
-                                                        .copyWith(
-                                                          hintText: "Your Name",
-                                                        ),
-                                                    onTap: () {
-                                                      SharedPrefs.hapticInputSelect();
-                                                    },
-                                                  ),
-                                                ),
-                                              ),
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.end,
-                                                children: [
-                                                  TextButton(
-                                                    child: Text(
-                                                      "Cancel",
-                                                      style: TextStyle(
-                                                        color:
-                                                            styling.secondary,
-                                                      ),
-                                                    ),
-                                                    onPressed: () {
-                                                      SharedPrefs.hapticButtonPress();
-                                                      Navigator.of(
-                                                        context,
-                                                      ).pop();
-                                                    },
-                                                  ),
-                                                  SizedBox(
-                                                    width: 128,
+                          //             child: Container(
+                          //               width: 400,
+                          //               height: 200,
+                          //               decoration: BoxDecoration(
+                          //                 gradient: LinearGradient(
+                          //                   begin: Alignment.topLeft,
+                          //                   end: Alignment.bottomRight,
+                          //                   colors: [
+                          //                     styling.primary,
+                          //                     styling.secondary,
+                          //                   ],
+                          //                 ),
+                          //                 borderRadius: BorderRadius.circular(
+                          //                   12,
+                          //                 ),
+                          //               ),
+                          //               child: Container(
+                          //                 margin: EdgeInsets.all(
+                          //                   2,
+                          //                 ), // Creates the border thickness
+                          //                 decoration: BoxDecoration(
+                          //                   color: styling.background,
+                          //                   borderRadius: BorderRadius.circular(
+                          //                     10,
+                          //                   ),
+                          //                 ),
+                          //                 child: Column(
+                          //                   mainAxisSize: MainAxisSize.min,
+                          //                   mainAxisAlignment:
+                          //                       MainAxisAlignment.center,
+                          //                   crossAxisAlignment:
+                          //                       CrossAxisAlignment.center,
+                          //                   children: [
+                          //                     Text(
+                          //                       "Enter Your Name",
+                          //                       style: TextStyle(
+                          //                         color: Colors.white,
+                          //                         fontSize: 24,
+                          //                         fontWeight: FontWeight.bold,
+                          //                       ),
+                          //                     ),
+                          //                     Padding(
+                          //                       padding: const EdgeInsets.all(
+                          //                         8.0,
+                          //                       ),
+                          //                       child: GradientInputField(
+                          //                         textField: TextField(
+                          //                           controller: myController,
+                          //                           style: TextStyle(
+                          //                             color: Colors.white,
+                          //                           ),
+                          //                           decoration: styling
+                          //                               .gradientInputDecoration()
+                          //                               .copyWith(
+                          //                                 hintText: "Your Name",
+                          //                               ),
+                          //                           onTap: () {
+                          //                             SharedPrefs.hapticInputSelect();
+                          //                           },
+                          //                         ),
+                          //                       ),
+                          //                     ),
+                          //                     Row(
+                          //                       mainAxisAlignment:
+                          //                           MainAxisAlignment.end,
+                          //                       children: [
+                          //                         TextButton(
+                          //                           child: Text(
+                          //                             "Cancel",
+                          //                             style: TextStyle(
+                          //                               color:
+                          //                                   styling.secondary,
+                          //                             ),
+                          //                           ),
+                          //                           onPressed: () {
+                          //                             SharedPrefs.hapticButtonPress();
+                          //                             Navigator.of(
+                          //                               context,
+                          //                             ).pop();
+                          //                           },
+                          //                         ),
+                          //                         SizedBox(
+                          //                           width: 128,
 
-                                                    child: Padding(
-                                                      padding:
-                                                          const EdgeInsets.all(
-                                                            8.0,
-                                                          ),
-                                                      child: SolidActionButton(
-                                                        text: Padding(
-                                                          padding:
-                                                              const EdgeInsets.all(
-                                                                8.0,
-                                                              ),
-                                                          child: Text(
-                                                            "Create Local Game",
-                                                            style: TextStyle(
-                                                              color:
-                                                                  Colors
-                                                                      .white, // This will be masked by the gradient
-                                                              fontSize: 14,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                            ),
-                                                            textAlign:
-                                                                TextAlign
-                                                                    .center,
-                                                          ),
-                                                        ),
-                                                        onTap: () {
-                                                          SharedPrefs.setLastUsedName(
-                                                            myController.text,
-                                                          );
-                                                          setState(() {
-                                                            lastUsedName =
-                                                                myController
-                                                                    .text;
-                                                          });
-                                                          SharedPrefs.hapticButtonPress();
-                                                          Navigator.of(
-                                                            context,
-                                                          ).pop();
-                                                          // Navigate to the browser screen with the room code
-                                                          Navigator.push(
-                                                            context,
-                                                            MaterialPageRoute(
-                                                              builder:
-                                                                  (
-                                                                    _,
-                                                                  ) => CreateRoomScreen(
-                                                                    userName:
-                                                                        myController
-                                                                            .text,
-                                                                    game:
-                                                                        Game.euchre,
-                                                                    requiredPlayers:
-                                                                        4,
-                                                                  ),
-                                                            ),
-                                                          );
-                                                        },
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                );
-                              },
-                            ),
-                          ),
+                          //                           child: Padding(
+                          //                             padding:
+                          //                                 const EdgeInsets.all(
+                          //                                   8.0,
+                          //                                 ),
+                          //                             child: SolidActionButton(
+                          //                               text: Padding(
+                          //                                 padding:
+                          //                                     const EdgeInsets.all(
+                          //                                       8.0,
+                          //                                     ),
+                          //                                 child: Text(
+                          //                                   "Create Local Game",
+                          //                                   style: TextStyle(
+                          //                                     color:
+                          //                                         Colors
+                          //                                             .white, // This will be masked by the gradient
+                          //                                     fontSize: 14,
+                          //                                     fontWeight:
+                          //                                         FontWeight
+                          //                                             .bold,
+                          //                                   ),
+                          //                                   textAlign:
+                          //                                       TextAlign
+                          //                                           .center,
+                          //                                 ),
+                          //                               ),
+                          //                               onTap: () {
+                          //                                 if (myController
+                          //                                     .text
+                          //                                     .isEmpty) {
+                          //                                  showSnackBar(
+                          //                                     context,
+                          //                                      Colors.red,
+                          //                                     "Please enter a name",
+
+                          //                                   );
+                          //                                   return;
+                          //                                 }
+                          //                                 SharedPrefs.setLastUsedName(
+                          //                                   myController.text,
+                          //                                 );
+                          //                                 setState(() {
+                          //                                   lastUsedName =
+                          //                                       myController
+                          //                                           .text;
+                          //                                 });
+                          //                                 SharedPrefs.hapticButtonPress();
+                          //                                 Navigator.of(
+                          //                                   context,
+                          //                                 ).pop();
+                          //                                 // Navigate to the browser screen with the room code
+                          //                                 Navigator.push(
+                          //                                   context,
+                          //                                   MaterialPageRoute(
+                          //                                     builder:
+                          //                                         (
+                          //                                           _,
+                          //                                         ) => CreateRoomScreen(
+                          //                                           userName:
+                          //                                               myController
+                          //                                                   .text,
+                          //                                           game:
+                          //                                               Game.euchre,
+                          //                                           requiredPlayers:
+                          //                                               4,
+                          //                                         ),
+                          //                                   ),
+                          //                                 );
+                          //                               },
+                          //                             ),
+                          //                           ),
+                          //                         ),
+                          //                       ],
+                          //                     ),
+                          //                   ],
+                          //                 ),
+                          //               ),
+                          //             ),
+                          //           );
+                          //         },
+                          //       );
+                          //     },
+                          //   ),
+                          // ),
                         ],
                       ),
                     ),
