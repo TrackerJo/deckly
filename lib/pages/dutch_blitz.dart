@@ -49,6 +49,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
     sourceIndex: -1,
   );
   Map<String, int> playerAdditionalScores = {};
+  final Stopwatch stopwatch = Stopwatch();
 
   @override
   void initState() {
@@ -132,6 +133,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
           couldBeStuck = false;
           hasMovedCards = false;
         });
+        SharedPrefs.addBlitzRoundsPlayed(1);
         currentPlayer = players.firstWhere(
           (p) => p.id == currentPlayer!.id,
           orElse: () => currentPlayer!,
@@ -200,6 +202,9 @@ class _DutchBlitzState extends State<DutchBlitz> {
       } else if (dataMap['type'] == 'next_round') {
         nextRound();
       } else if (dataMap['type'] == 'end_game') {
+        if (players.first.id == currentPlayer!.id) {
+          SharedPrefs.addNertzGamesWon(1);
+        }
         setState(() {
           gameState = NertzGameState.gameOver;
         });
@@ -233,6 +238,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
           bot.playingRound = false;
         }
         scrollController.jumpTo(0);
+        stopwatch.stop();
         setState(() {
           gameState = NertzGameState.paused;
         });
@@ -240,6 +246,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
         for (var bot in bots) {
           bot.playingRound = true;
         }
+        stopwatch.start();
         setState(() {
           gameState = NertzGameState.playing;
         });
@@ -382,6 +389,8 @@ class _DutchBlitzState extends State<DutchBlitz> {
       'players': scoredPlayers.map((p) => p.toMap()).toList(),
       'playerAdditionalScores': playerAdditionalScores,
     }, currentPlayer!.id);
+    await SharedPrefs.addBlitzRoundsPlayed(1);
+
     final botPlayer = players.firstWhere((p) => p.id == botId);
     showDialog(
       context: context,
@@ -458,7 +467,8 @@ class _DutchBlitzState extends State<DutchBlitz> {
       'players': scoredPlayers.map((p) => p.toMap()).toList(),
       'playerAdditionalScores': playerAdditionalScores,
     }, currentPlayer!.id);
-
+    await SharedPrefs.addBlitzRoundsPlayed(1);
+    await SharedPrefs.addBlitzRoundsBlitzed(1);
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -667,6 +677,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
     deckCards = shuffledDeck.sublist(10);
 
     // Initialize blitz deck with some cards
+    stopwatch.start();
 
     setState(() {});
     await Future.delayed(Duration(milliseconds: 1000));
@@ -690,6 +701,9 @@ class _DutchBlitzState extends State<DutchBlitz> {
 
   void _moveCards(DragData dragData, String targetZoneId) async {
     final targetZone = dropZones.firstWhere((zone) => zone.id == targetZoneId);
+    double stopwatchElapsed = stopwatch.elapsedMilliseconds.toDouble();
+    stopwatch.reset();
+    SharedPrefs.addBlitzPlaySpeed(stopwatchElapsed);
     setState(() {
       couldBeStuck = false;
       hasMovedCards = true;
@@ -891,7 +905,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
 
     // Remaining cards for deck
     deckCards = shuffledDeck.sublist(4);
-
+    stopwatch.reset();
     // Reset blitz deck for all players
     setState(() {
       hasMovedCards = false;
@@ -1074,6 +1088,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
                     for (var bot in bots) {
                       bot.pauseGame();
                     }
+                    stopwatch.stop();
                     connectionService.broadcastMessage({
                       'type': 'pause_game',
                     }, currentPlayer!.id);
@@ -1546,6 +1561,9 @@ class _DutchBlitzState extends State<DutchBlitz> {
         if (currentPlayer!.getIsHost())
           ActionButton(
             onTap: () {
+              if (players.first.id == currentPlayer!.id) {
+                SharedPrefs.addNertzGamesWon(1);
+              }
               connectionService.broadcastMessage({
                 'type': 'end_game',
               }, currentPlayer!.id);
@@ -1652,6 +1670,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
                   setState(() {
                     gameState = NertzGameState.playing;
                   });
+                  stopwatch.start();
                   for (var bot in bots) {
                     bot.playingRound = true;
                     await Future.delayed(

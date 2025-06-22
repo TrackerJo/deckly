@@ -49,6 +49,7 @@ class _NertzState extends State<Nertz> {
     sourceIndex: -1,
   );
   Map<String, int> playerAdditionalScores = {};
+  final Stopwatch stopwatch = Stopwatch();
 
   @override
   void initState() {
@@ -136,6 +137,7 @@ class _NertzState extends State<Nertz> {
           couldBeStuck = false;
           hasMovedCards = false;
         });
+        SharedPrefs.addNertzRoundsPlayed(1);
         currentPlayer = players.firstWhere(
           (p) => p.id == currentPlayer!.id,
           orElse: () => currentPlayer!,
@@ -204,6 +206,9 @@ class _NertzState extends State<Nertz> {
       } else if (dataMap['type'] == 'next_round') {
         nextRound();
       } else if (dataMap['type'] == 'end_game') {
+        if (players.first.id == currentPlayer!.id) {
+          SharedPrefs.addNertzGamesWon(1);
+        }
         setState(() {
           gameState = NertzGameState.gameOver;
         });
@@ -236,6 +241,7 @@ class _NertzState extends State<Nertz> {
         for (var bot in bots) {
           bot.playingRound = false;
         }
+        stopwatch.stop();
         scrollController.jumpTo(0);
         setState(() {
           gameState = NertzGameState.paused;
@@ -244,6 +250,7 @@ class _NertzState extends State<Nertz> {
         for (var bot in bots) {
           bot.playingRound = true;
         }
+        stopwatch.start();
         setState(() {
           gameState = NertzGameState.playing;
         });
@@ -469,6 +476,7 @@ class _NertzState extends State<Nertz> {
       'playerAdditionalScores': playerAdditionalScores,
     }, currentPlayer!.id);
     final botPlayer = players.firstWhere((p) => p.id == botId);
+    await SharedPrefs.addNertzRoundsPlayed(1);
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -542,6 +550,8 @@ class _NertzState extends State<Nertz> {
       'players': scoredPlayers.map((p) => p.toMap()).toList(),
       'playerAdditionalScores': playerAdditionalScores,
     }, currentPlayer!.id);
+    await SharedPrefs.addNertzRoundsNertzed(1);
+    await SharedPrefs.addNertzRoundsPlayed(1);
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -757,6 +767,7 @@ class _NertzState extends State<Nertz> {
 
     // Initialize deck cards
     deckCards = shuffledDeck.sublist(13);
+    stopwatch.start();
     setState(() {});
     await Future.delayed(Duration(milliseconds: 1000));
     // Initialize blitz deck with some cards
@@ -773,6 +784,11 @@ class _NertzState extends State<Nertz> {
 
   void _moveCards(DragData dragData, String targetZoneId) async {
     final targetZone = dropZones.firstWhere((zone) => zone.id == targetZoneId);
+    double stopwatchElapsed = stopwatch.elapsedMilliseconds.toDouble();
+    stopwatch.reset();
+    SharedPrefs.addNertzPlaySpeed(stopwatchElapsed);
+    print("Time since round start: $stopwatchElapsed ms");
+
     setState(() {
       hasMovedCards = true;
       couldBeStuck = false;
@@ -828,7 +844,6 @@ class _NertzState extends State<Nertz> {
   }
 
   void _onDragEnd() {
-    print("Drag ended");
     setState(() {
       currentDragData = DragData(cards: [], sourceZoneId: '', sourceIndex: -1);
     });
@@ -994,6 +1009,7 @@ class _NertzState extends State<Nertz> {
     deckCards = shuffledDeck.sublist(4);
 
     // Reset blitz deck for all players
+    stopwatch.reset();
     setState(() {
       hasMovedCards = false;
       couldBeStuck = false;
@@ -1093,6 +1109,7 @@ class _NertzState extends State<Nertz> {
                     for (var bot in bots) {
                       bot.pauseGame();
                     }
+                    stopwatch.stop();
                     connectionService.broadcastMessage({
                       'type': 'pause_game',
                     }, currentPlayer!.id);
@@ -1251,6 +1268,7 @@ class _NertzState extends State<Nertz> {
   }
 
   void onReachEndOfDeck() {
+    print("Reached end of deck hasMovedCards: $hasMovedCards");
     if (!hasMovedCards) {
       setState(() {
         couldBeStuck = true;
@@ -1482,9 +1500,7 @@ class _NertzState extends State<Nertz> {
                               players
                                   .firstWhere((p) => p.id == currentPlayer!.id)
                                   .isStuck = true;
-                              print(
-                                "Players who are not stuck: ${players.where((p) => !p.isStuck && !p.isBot).length}",
-                              );
+
                               if (players
                                   .where((p) => !p.isStuck && !p.isBot)
                                   .isEmpty) {
@@ -1561,6 +1577,9 @@ class _NertzState extends State<Nertz> {
         if (currentPlayer!.getIsHost())
           ActionButton(
             onTap: () {
+              if (players.first.id == currentPlayer!.id) {
+                SharedPrefs.addNertzGamesWon(1);
+              }
               connectionService.broadcastMessage({
                 'type': 'end_game',
               }, currentPlayer!.id);
@@ -1664,6 +1683,7 @@ class _NertzState extends State<Nertz> {
                   connectionService.broadcastMessage({
                     'type': 'resume_game',
                   }, currentPlayer!.id);
+                  stopwatch.start();
                   setState(() {
                     gameState = NertzGameState.playing;
                   });

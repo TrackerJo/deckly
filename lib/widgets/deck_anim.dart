@@ -129,9 +129,6 @@ class _CardDeckAnimState extends State<CardDeckAnim> {
       //     ),
       //   ),
       // );
-      if (deckCards.isEmpty) {
-        widget.onReachEndOfDeck();
-      }
     });
   }
 
@@ -227,7 +224,7 @@ class _CardDeckAnimState extends State<CardDeckAnim> {
       0,
       CardData(id: "nil", value: 1, suit: CardSuit.hearts, isFaceUp: false),
     );
-    print("DECK SCALE: ${widget.scale}");
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [

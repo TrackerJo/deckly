@@ -11,9 +11,13 @@ class SharedPrefs {
   static String lastUsedNameKey = "LASTUSEDNAMEKEY";
   static String firstUseKey = "FIRSTUSEKEY";
   static String nertzRoundsPlayedKey = "NERTZROUNDSPLAYEDKEY";
-  static String nertzRoundsWonKey = "NERTZROUNDSWONKEY";
+  static String nertzRoundsNertzedKey = "NERTZROUNDSNERTZEDKEY";
+  static String nertzGamesWonKey = "NERTZGAMESWONKEY";
+  static String nertzPlaySpeedKey = "NERTZPLAYSPEEDKEY";
   static String blitzRoundsPlayedKey = "BLITZROUNDSPLAYEDKEY";
-  static String blitzRoundsWonKey = "BLITZROUNDSWONKEY";
+  static String blitzRoundsBlitzedKey = "BLITZROUNDSBLITZEDKEY";
+  static String blitzGamesWonKey = "BLITZGAMESWONKEY";
+  static String blitzPlaySpeedKey = "BLITZPLAYSPEEDKEY";
 
   static Future<bool> setNertzRoundsPlayed(int val) async {
     SharedPreferences sf = await SharedPreferences.getInstance();
@@ -31,20 +35,72 @@ class SharedPrefs {
     return sf.getInt(nertzRoundsPlayedKey) ?? 0;
   }
 
-  static Future<bool> setNertzRoundsWon(int val) async {
+  static Future<bool> setNertzRoundsNertzed(int val) async {
     SharedPreferences sf = await SharedPreferences.getInstance();
-    return await sf.setInt(nertzRoundsWonKey, val);
+    return await sf.setInt(nertzRoundsNertzedKey, val);
   }
 
-  static Future<bool> addNertzRoundsWon(int val) async {
+  static Future<bool> addNertzRoundsNertzed(int val) async {
     SharedPreferences sf = await SharedPreferences.getInstance();
-    int currentRounds = sf.getInt(nertzRoundsWonKey) ?? 0;
-    return await sf.setInt(nertzRoundsWonKey, currentRounds + val);
+    int currentRounds = sf.getInt(nertzRoundsNertzedKey) ?? 0;
+    return await sf.setInt(nertzRoundsNertzedKey, currentRounds + val);
   }
 
-  static Future<int> getNertzRoundsWon() async {
+  static Future<int> getNertzRoundsNertzed() async {
     SharedPreferences sf = await SharedPreferences.getInstance();
-    return sf.getInt(nertzRoundsWonKey) ?? 0;
+    return sf.getInt(nertzRoundsNertzedKey) ?? 0;
+  }
+
+  static Future<bool> setNertzGamesWon(int val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return await sf.setInt(nertzGamesWonKey, val);
+  }
+
+  static Future<bool> addNertzGamesWon(int val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    int currentRounds = sf.getInt(nertzGamesWonKey) ?? 0;
+    return await sf.setInt(nertzGamesWonKey, currentRounds + val);
+  }
+
+  static Future<int> getNertzGamesWon() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return sf.getInt(nertzGamesWonKey) ?? 0;
+  }
+
+  static Future<bool> setNertzPlaySpeed(List<double> val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return await sf.setStringList(
+      nertzPlaySpeedKey,
+      val.map((e) => e.toString()).toList(),
+    );
+  }
+
+  static Future<bool> addNertzPlaySpeed(double val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    List<String>? currentSpeeds = sf.getStringList(nertzPlaySpeedKey);
+    currentSpeeds ??= [];
+    currentSpeeds.add(val.toString());
+    return await sf.setStringList(nertzPlaySpeedKey, currentSpeeds);
+  }
+
+  static Future<List<double>> getNertzPlaySpeed() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    List<String>? speedStrings = sf.getStringList(nertzPlaySpeedKey);
+    if (speedStrings == null) {
+      return [];
+    }
+    return speedStrings.map((e) => double.tryParse(e) ?? 1.0).toList();
+  }
+
+  static Future<double> getNertzAveragePlaySpeed() async {
+    List<double> speeds = await getNertzPlaySpeed();
+    if (speeds.isEmpty) {
+      return 0.0;
+    }
+    double total = speeds.reduce((a, b) => a + b);
+    double avg = (total / 1000) / speeds.length;
+    //return average rounded to 2 decimal places
+    return double.parse(avg.toStringAsFixed(2));
   }
 
   static Future<bool> setBlitzRoundsPlayed(int val) async {
@@ -63,20 +119,72 @@ class SharedPrefs {
     return sf.getInt(blitzRoundsPlayedKey) ?? 0;
   }
 
-  static Future<bool> setBlitzRoundsWon(int val) async {
+  static Future<bool> setBlitzRoundsBlitzed(int val) async {
     SharedPreferences sf = await SharedPreferences.getInstance();
-    return await sf.setInt(blitzRoundsWonKey, val);
+    return await sf.setInt(blitzRoundsBlitzedKey, val);
   }
 
-  static Future<bool> addBlitzRoundsWon(int val) async {
+  static Future<bool> addBlitzRoundsBlitzed(int val) async {
     SharedPreferences sf = await SharedPreferences.getInstance();
-    int currentRounds = sf.getInt(blitzRoundsWonKey) ?? 0;
-    return await sf.setInt(blitzRoundsWonKey, currentRounds + val);
+    int currentRounds = sf.getInt(blitzRoundsBlitzedKey) ?? 0;
+    return await sf.setInt(blitzRoundsBlitzedKey, currentRounds + val);
   }
 
-  static Future<int> getBlitzRoundsWon() async {
+  static Future<int> getBlitzRoundsBlitzed() async {
     SharedPreferences sf = await SharedPreferences.getInstance();
-    return sf.getInt(blitzRoundsWonKey) ?? 0;
+    return sf.getInt(blitzRoundsBlitzedKey) ?? 0;
+  }
+
+  static Future<bool> setBlitzGamesWon(int val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return await sf.setInt(blitzGamesWonKey, val);
+  }
+
+  static Future<bool> addBlitzGamesWon(int val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    int currentRounds = sf.getInt(blitzGamesWonKey) ?? 0;
+    return await sf.setInt(blitzGamesWonKey, currentRounds + val);
+  }
+
+  static Future<int> getBlitzGamesWon() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return sf.getInt(blitzGamesWonKey) ?? 0;
+  }
+
+  static Future<bool> setBlitzPlaySpeed(List<double> val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return await sf.setStringList(
+      blitzPlaySpeedKey,
+      val.map((e) => e.toString()).toList(),
+    );
+  }
+
+  static Future<bool> addBlitzPlaySpeed(double val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    List<String>? currentSpeeds = sf.getStringList(blitzPlaySpeedKey);
+    currentSpeeds ??= [];
+    currentSpeeds.add(val.toString());
+    return await sf.setStringList(blitzPlaySpeedKey, currentSpeeds);
+  }
+
+  static Future<List<double>> getBlitzPlaySpeed() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    List<String>? speedStrings = sf.getStringList(blitzPlaySpeedKey);
+    if (speedStrings == null) {
+      return [];
+    }
+    return speedStrings.map((e) => double.tryParse(e) ?? 1.0).toList();
+  }
+
+  static Future<double> getBlitzAveragePlaySpeed() async {
+    List<double> speeds = await getBlitzPlaySpeed();
+    if (speeds.isEmpty) {
+      return 0.0;
+    }
+    double total = speeds.reduce((a, b) => a + b);
+    double avg = (total / 1000) / speeds.length;
+    //return average rounded to 2 decimal places
+    return double.parse(avg.toStringAsFixed(2));
   }
 
   static Future<bool> setFirstUse(bool val) async {

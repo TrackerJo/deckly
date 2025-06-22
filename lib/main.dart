@@ -9,13 +9,13 @@ import 'package:deckly/pages/flip_page.dart';
 
 import 'package:deckly/pages/home_screen.dart';
 import 'package:deckly/pages/nertz.dart';
-import 'package:deckly/pages/nertz.dart';
 
 import 'package:deckly/styling.dart';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_nearby_connections/flutter_nearby_connections.dart';
+
 import 'package:nearby_connections/nearby_connections.dart';
+import 'package:overlay_support/overlay_support.dart';
 
 final Styling styling = Styling();
 final ConnectionService connectionService = ConnectionService();
@@ -44,33 +44,35 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MediaQuery(
-      data: MediaQuery.of(context).copyWith(textScaleFactor: 1.0),
-      child: MaterialApp(
-        title: 'Deckly',
-        theme: ThemeData(primarySwatch: Colors.purple),
-        debugShowCheckedModeBanner: false,
-        home: HomeScreen(),
-        // home: NertzWithBot(
-        //   player: GamePlayer(
-        //     id: "Deckly-test-1704-host",
-        //     name: "test",
-        //     isHost: true,
-        //   ),
-        //   players: [
-        //     GamePlayer(id: "Deckly-test-1704-host", name: "test", isHost: true),
-        //     BotPlayer(
-        //       id: "Deckly-test3-1704",
-        //       name: "Test Bot",
-        //       difficulty: BotDifficulty.hard,
-        //     ),
-        //     BotPlayer(
-        //       id: "Deckly-test4-1704",
-        //       name: "Test Bot 2",
-        //       difficulty: BotDifficulty.hard,
-        //     ),
-        //   ],
-        // ),
+    return OverlaySupport(
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(textScaleFactor: 1.0),
+        child: MaterialApp(
+          title: 'Deckly',
+          theme: ThemeData(primarySwatch: Colors.purple),
+          debugShowCheckedModeBanner: false,
+          home: HomeScreen(),
+          // home: NertzWithBot(
+          //   player: GamePlayer(
+          //     id: "Deckly-test-1704-host",
+          //     name: "test",
+          //     isHost: true,
+          //   ),
+          //   players: [
+          //     GamePlayer(id: "Deckly-test-1704-host", name: "test", isHost: true),
+          //     BotPlayer(
+          //       id: "Deckly-test3-1704",
+          //       name: "Test Bot",
+          //       difficulty: BotDifficulty.hard,
+          //     ),
+          //     BotPlayer(
+          //       id: "Deckly-test4-1704",
+          //       name: "Test Bot 2",
+          //       difficulty: BotDifficulty.hard,
+          //     ),
+          //   ],
+          // ),
+        ),
       ),
     );
   }

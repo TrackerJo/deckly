@@ -38,7 +38,6 @@ class DraggableCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    print("SCALE: $scale");
     final cardsBeingDragged = getCardsFromIndex(zoneId, index);
 
     // Check if this card should be hidden because a card above it is being dragged
@@ -364,7 +363,6 @@ class CardContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    print("SCALE: $scale");
     return isDutchBlitz
         ? scale < 0.5
             ? dutchBlitzCardMini(context)
@@ -644,7 +642,6 @@ class CardContent extends StatelessWidget {
   }
 
   Widget dutchBlitzCard(BuildContext context) {
-    print("SHOULD BE FLIP CENTER: $flipCenter");
     return Container(
       height: 150 * scale,
       width: 100 * scale,
@@ -849,7 +846,6 @@ class CardContent extends StatelessWidget {
   }
 
   Widget dutchBlitzCardMini(BuildContext context) {
-    print(MediaQuery.of(context).size.width / 2);
     return Container(
       height: 150 * scale,
       width: 100 * scale,

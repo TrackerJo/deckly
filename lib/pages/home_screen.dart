@@ -1,5 +1,6 @@
 import 'package:deckly/api/shared_prefs.dart';
 import 'package:deckly/pages/settings_page.dart';
+import 'package:deckly/pages/stats_page.dart';
 
 import 'package:deckly/widgets/gradient_input_field.dart';
 import 'package:deckly/widgets/solid_action_button.dart';
@@ -830,6 +831,34 @@ class _HomeScreenState extends State<HomeScreen> {
 
                             icon: Icon(
                               Icons.settings_outlined,
+                              color: styling.primary,
+                              size: 32,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 48,
+                          height: 48,
+
+                          child: IconButton(
+                            style: IconButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                                side: BorderSide(
+                                  color: styling.primary,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            padding: const EdgeInsets.all(4.0),
+                            onPressed: () {
+                              SharedPrefs.hapticButtonPress();
+                              nextScreen(context, StatsPage());
+                            },
+
+                            icon: Icon(
+                              Icons.leaderboard_outlined,
                               color: styling.primary,
                               size: 32,
                             ),
