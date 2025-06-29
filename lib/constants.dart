@@ -258,8 +258,26 @@ class CardData {
     };
   }
 
+  String displayValue() {
+    return value.toString() + suit.toIcon();
+  }
+
   MiniCard toMiniCard() {
     return MiniCard(value: value, suit: suit);
+  }
+
+  int toSortingValue({CardSuit? trumpSuit}) {
+    // Convert card to value for scoring
+    if (value == 1) {
+      return 14; // Ace is third highest
+    }
+    if (value == 11 && suit.alternateSuit == trumpSuit) {
+      return 15; // Jack of alternate trump suit is second highest
+    }
+    if (value == 11 && suit == trumpSuit) {
+      return 16; // Jack of trump suit is highest
+    }
+    return value; // Other cards retain their value
   }
 }
 
@@ -549,7 +567,13 @@ enum NertzGameState {
   paused,
 }
 
-enum EuchreGameState { teamSelection, waitingForPlayers, playing, gameOver }
+enum EuchreGameState {
+  teamSelection,
+  waitingForPlayers,
+  playing,
+  gameOver,
+  paused,
+}
 
 enum EuchreGamePhase { decidingTrump, discardingCard, playing }
 
@@ -634,6 +658,8 @@ class BotPlayer extends GamePlayer {
     };
   }
 }
+
+enum UpdateStatus { none, available, required }
 
 void showSnackBar(BuildContext context, Color color, String message) {
   ScaffoldMessenger.of(context).showSnackBar(

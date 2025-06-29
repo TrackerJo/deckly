@@ -5,11 +5,21 @@ import 'package:flutter/material.dart';
 class SolidActionButton extends StatelessWidget {
   final Widget text;
   final VoidCallback onTap;
-  const SolidActionButton({required this.text, required this.onTap});
+  final double width;
+  final double height;
+  const SolidActionButton({
+    required this.text,
+    required this.onTap,
+    this.width = double.infinity,
+    this.height = 55,
+    super.key,
+  });
   @override
   Widget build(BuildContext context) {
     return Container(
       // Creates the border thickness
+      width: width,
+      height: height,
       decoration: BoxDecoration(
         color: styling.secondary,
         borderRadius: BorderRadius.circular(6), // Slightly smaller radius

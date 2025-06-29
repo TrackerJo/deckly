@@ -78,7 +78,11 @@ class _HandState extends State<Hand> {
     print('Hand initState called with ${widget.handCards.length} cards');
 
     // If not my hand, we don't allow dragging
-    blitzDeck = List.from(widget.handCards);
+    if (!widget.myHand) {
+      blitzDeck = widget.handCards;
+    } else {
+      blitzDeck = List.from(widget.handCards);
+    }
 
     widget.controller?._attach(this);
   }
@@ -167,7 +171,11 @@ class _HandState extends State<Hand> {
                             30 *
                             widget.scale), // Slight offset for visibility
                 child:
-                    widget.myHand && widget.draggableCards
+                    widget.myHand &&
+                            widget.draggableCards &&
+                            (widget.isCardPlayable != null
+                                ? widget.isCardPlayable!(card)
+                                : true)
                         ? DraggableCardWidget(
                           card: card,
                           zoneId: 'hand',
@@ -206,6 +214,10 @@ class _HandState extends State<Hand> {
                           card: card,
                           scale: widget.scale,
                           isDutchBlitz: widget.isDutchBlitz,
+                          isCardPlayable:
+                              widget.isCardPlayable != null
+                                  ? widget.isCardPlayable!(card)
+                                  : true,
                           onTap:
                               widget
                                   .onTapCard, // Only allow tap if onTapCard is provided

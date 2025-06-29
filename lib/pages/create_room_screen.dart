@@ -214,6 +214,11 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
 
   @override
   Widget build(BuildContext context) {
+    print("PLAYERS: $_players");
+    print("REQUIRED: ${widget.requiredPlayers}");
+    print(
+      "CAN START: ${(widget.requiredPlayers != null ? (_players.length < widget.requiredPlayers!) : false)}",
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       bool allowedAllowed = await connectionService.allowedAllPermissions();
       if (!allowedAllowed) {
@@ -513,8 +518,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              if ((widget.game == Game.nertz || widget.game == Game.blitz) &&
-                  (widget.maxPlayers == null ||
+              if ((widget.maxPlayers == null ||
                       _players.length < widget.maxPlayers!) &&
                   (widget.requiredPlayers != null
                       ? _players.length < widget.requiredPlayers!
@@ -540,10 +544,10 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                   },
                 ),
               const SizedBox(height: 16),
-              if (_players.length < 2 &&
+              if (_players.length < 2 ||
                   (widget.requiredPlayers != null
-                      ? _players.length < widget.requiredPlayers!
-                      : true))
+                      ? (_players.length < widget.requiredPlayers!)
+                      : false))
                 FancyWidget(
                   child: const Text(
                     'Waiting for more players to join...',

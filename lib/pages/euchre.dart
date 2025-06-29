@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'package:deckly/api/bots.dart';
 import 'package:deckly/api/shared_prefs.dart';
 import 'package:deckly/constants.dart';
 import 'package:deckly/main.dart';
@@ -29,6 +30,7 @@ class _EuchreState extends State<Euchre> {
   List<DropZoneData> dropZones = [];
   List<CardData> deckCards = [];
   List<EuchrePlayer> players = [];
+  List<EuchreBot> bots = [];
   EuchrePlayer? currentPlayer;
   late StreamSubscription<dynamic> _stateSub;
   late StreamSubscription<dynamic> _dataSub;
@@ -48,6 +50,9 @@ class _EuchreState extends State<Euchre> {
   EuchreGamePhase gamePhase = EuchreGamePhase.decidingTrump;
   bool upCardTurnedDown = false;
   CardSuit? leadSuit;
+  bool someonesGoneAlone = false;
+  String playerToSkip = "";
+  List<CardData> cardsPlayedInRound = [];
 
   @override
   void initState() {
@@ -66,18 +71,26 @@ class _EuchreState extends State<Euchre> {
             cardsData
                 .map((c) => CardData.fromMap(c as Map<String, dynamic>))
                 .toList();
+        final playedBy = dataMap['playedBy'] as String;
 
+        final indexOfPlayer = players.indexWhere((p) => p.id == playedBy);
+        final card = cards.first;
         setState(() {
           final targetZone = dropZones.firstWhere((zone) => zone.id == zoneId);
           targetZone.cards.clear();
           targetZone.cards.addAll(cards);
+          card.playedBy = playedBy;
+          cardsPlayedInRound.add(card);
+          players[indexOfPlayer].hand.removeWhere((c) => c.id == card.id);
+
           if (leadSuit == null && cards.isNotEmpty) {
             final playedCard = cards.first;
             if (playedCard.value == 11 &&
-                playedCard.suit.alternateSuit == trumpSuit) {
+                playedCard.suit.alternateSuit == trumpSuit &&
+                leadSuit == null) {
               leadSuit =
                   trumpSuit; // If a Jack of trump suit is played, set lead suit to trump suit
-            } else {
+            } else if (leadSuit == null) {
               leadSuit =
                   playedCard
                       .suit; // Otherwise, set lead suit to the suit of the played card
@@ -154,6 +167,7 @@ class _EuchreState extends State<Euchre> {
         final player = players.firstWhere((p) => p.id == playerId);
         final playerIndex = players.indexOf(player);
         final nextPlayerIndex = (players.indexOf(player) + 1) % players.length;
+
         setState(() {
           if (player.isDealer) {
             upCardTurnedDown = true;
@@ -164,95 +178,129 @@ class _EuchreState extends State<Euchre> {
         });
         bool currentPlayersTurn =
             players[nextPlayerIndex].id == currentPlayer!.id;
-        showDialog(
-          context: context,
+        // showDialog(
+        //   context: context,
 
-          builder: (BuildContext dialogContext) {
-            Timer(Duration(seconds: 1), () {
-              try {
-                if (dialogContext.mounted)
-                  Navigator.of(dialogContext).pop();
-                else
-                  print("Dialog context is not mounted, cannot pop dialog.");
-              } catch (e) {
-                print("Error popping dialog: $e");
-              }
-            });
-            return Dialog(
-              backgroundColor: Colors.transparent,
+        //   builder: (BuildContext dialogContext) {
+        //     Timer(Duration(seconds: 1), () {
+        //       try {
+        //         if (dialogContext.mounted)
+        //           Navigator.of(dialogContext).pop();
+        //         else
+        //           print("Dialog context is not mounted, cannot pop dialog.");
+        //       } catch (e) {
+        //         print("Error popping dialog: $e");
+        //       }
+        //     });
+        //     return Dialog(
+        //       backgroundColor: Colors.transparent,
 
-              child: Container(
-                width: 400,
-                height: 200,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [styling.primary, styling.secondary],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Container(
-                  margin: EdgeInsets.all(2), // Creates the border thickness
-                  decoration: BoxDecoration(
-                    color: styling.background,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text(
-                        player.name + " passed",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      if (currentPlayersTurn)
-                        Text(
-                          "It's your turn now!",
-                          style: TextStyle(color: Colors.white, fontSize: 18),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
+        //       child: Container(
+        //         width: 400,
+        //         height: 200,
+        //         decoration: BoxDecoration(
+        //           gradient: LinearGradient(
+        //             begin: Alignment.topLeft,
+        //             end: Alignment.bottomRight,
+        //             colors: [styling.primary, styling.secondary],
+        //           ),
+        //           borderRadius: BorderRadius.circular(12),
+        //         ),
+        //         child: Container(
+        //           margin: EdgeInsets.all(2), // Creates the border thickness
+        //           decoration: BoxDecoration(
+        //             color: styling.background,
+        //             borderRadius: BorderRadius.circular(10),
+        //           ),
+        //           child: Column(
+        //             mainAxisSize: MainAxisSize.min,
+        //             mainAxisAlignment: MainAxisAlignment.center,
+        //             crossAxisAlignment: CrossAxisAlignment.center,
+        //             children: [
+        //               Text(
+        //                 player.name + " passed",
+        //                 style: TextStyle(
+        //                   color: Colors.white,
+        //                   fontSize: 24,
+        //                   fontWeight: FontWeight.bold,
+        //                 ),
+        //                 textAlign: TextAlign.center,
+        //               ),
+        //               if (currentPlayersTurn)
+        //                 Text(
+        //                   "It's your turn now!",
+        //                   style: TextStyle(color: Colors.white, fontSize: 18),
+        //                 ),
+        //             ],
+        //           ),
+        //         ),
+        //       ),
+        //     );
+        //   },
+        // );
+        if (players[nextPlayerIndex].isBot && currentPlayer!.getIsHost()) {
+          Future.delayed(Duration(seconds: 1), () {
+            bots
+                .firstWhere((b) => b.id == players[nextPlayerIndex].id)
+                .decideTrump(
+                  upCardTurnedDown
+                      ? CardSuit.values
+                          .where((s) => s != deckCards.last.suit)
+                          .toList()
+                      : [deckCards.last.suit],
+                  upCardTurnedDown ? players[nextPlayerIndex].isDealer : false,
+                  upCardTurnedDown ? null : deckCards.last,
+                  players,
+                );
+          });
+        }
       } else if (dataMap['type'] == 'up_card_picked') {
         final playerCalledBy = players.firstWhere(
           (p) => p.id == dataMap['playerId'],
         );
+        final goingAlone = dataMap['goingAlone'] as bool;
+        final playerToSkipId = dataMap['playerToSkip'] as String;
         CardSuit upCardSuit = deckCards.last.suit;
-
-        setState(() {
-          upCardTurnedDown = true;
-          trumpSuit = upCardSuit;
-          gamePhase = EuchreGamePhase.discardingCard;
-          final playersTurn = players.firstWhere((p) => p.myTurn);
-          final playersTurnIndex = players.indexOf(playersTurn);
-          players[playersTurnIndex].myTurn = false;
-          //set turn to be next player after dealer
-          final dealerIndex = players.indexOf(
-            players.firstWhere((p) => p.isDealer),
-          );
-          players[dealerIndex].hand.add(deckCards.last);
-          final nextPlayerIndex = (dealerIndex + 1) % players.length;
-          players[nextPlayerIndex].myTurn = true;
-
-          currentPlayer = players.firstWhere((p) => p.id == currentPlayer!.id);
-          if (playerCalledBy.onTeamA) {
-            teamA.madeIt = true;
-          } else {
-            teamB.madeIt = true;
+        someonesGoneAlone = goingAlone;
+        playerToSkip = playerToSkipId;
+        upCardTurnedDown = true;
+        trumpSuit = upCardSuit;
+        if (currentPlayer!.getIsHost()) {
+          for (var bot in bots) {
+            bot.trumpSuit = upCardSuit;
           }
-          handCards = sortHand(currentPlayer!.hand, upCardSuit);
-        });
+        }
+        gamePhase = EuchreGamePhase.discardingCard;
+        final playersTurn = players.firstWhere((p) => p.myTurn);
+        final playersTurnIndex = players.indexOf(playersTurn);
+        players[playersTurnIndex].myTurn = false;
+        //set turn to be next player after dealer
+        final dealerIndex = players.indexOf(
+          players.firstWhere((p) => p.isDealer),
+        );
+        players[dealerIndex].hand.add(deckCards.last);
+        int nextPlayerIndex = (dealerIndex + 1) % players.length;
+        if (goingAlone) {
+          int indexToSkip = players.indexWhere((p) => p.id == playerToSkip);
+          if (nextPlayerIndex == indexToSkip) {
+            nextPlayerIndex = (nextPlayerIndex + 1) % players.length;
+          }
+          players[players.indexWhere((p) => p.id == playerToSkip)].hand.clear();
+          if (playerToSkip == currentPlayer!.id) {
+            handCards.clear();
+            handController.updateHand(handCards);
+          }
+        }
+        players[nextPlayerIndex].myTurn = true;
+
+        currentPlayer = players.firstWhere((p) => p.id == currentPlayer!.id);
+        if (playerCalledBy.onTeamA) {
+          teamA.madeIt = true;
+        } else {
+          teamB.madeIt = true;
+        }
+        handCards = sortHand(currentPlayer!.hand, upCardSuit);
+        setState(() {});
 
         // handCards.clear();
         // handCards.addAll(currentPlayer!.hand);
@@ -299,7 +347,7 @@ class _EuchreState extends State<Euchre> {
                     children: [
                       Text(
                         playerCalledBy.name +
-                            " picked the up card. The trump suit is ${upCardSuit.toString()}",
+                            " picked the up card${goingAlone ? " and is going alone" : ""}. The trump suit is ${upCardSuit.toString()}",
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 24,
@@ -319,6 +367,13 @@ class _EuchreState extends State<Euchre> {
             );
           },
         );
+        if (players[dealerIndex].isBot && currentPlayer!.getIsHost()) {
+          Future.delayed(Duration(seconds: 1), () {
+            bots
+                .firstWhere((b) => b.id == players[dealerIndex].id)
+                .discardCard();
+          });
+        }
       } else if (dataMap['type'] == 'card_discarded') {
         final playerId = dataMap['playerId'] as String;
         final cardData = dataMap['card'] as Map<String, dynamic>;
@@ -393,32 +448,61 @@ class _EuchreState extends State<Euchre> {
             },
           );
         }
+        final playersTurnIndex = players.indexWhere((p) => p.myTurn);
+        if (players[playersTurnIndex].isBot && currentPlayer!.getIsHost()) {
+          Future.delayed(Duration(seconds: 1), () {
+            bots
+                .firstWhere((b) => b.id == players[playersTurnIndex].id)
+                .playCard([], null, players);
+          });
+        }
       } else if (dataMap['type'] == 'chose_trump_suit') {
         final playerId = dataMap['playerId'] as String;
         final suit = CardSuit.values.firstWhere(
           (s) => s.toString() == dataMap['suit'],
         );
+        final goingAlone = dataMap['goingAlone'] as bool;
+        final playerToSkipId = dataMap['playerToSkip'] as String;
         final player = players.firstWhere((p) => p.id == playerId);
-        setState(() {
-          trumpSuit = suit;
-          gamePhase = EuchreGamePhase.playing;
-          upCardTurnedDown = true;
-          //set turn to be next player after dealer
-          final dealerIndex = players.indexOf(
-            players.firstWhere((p) => p.isDealer),
-          );
-          final previousPlayerIndex = players.indexOf(player);
-          players[previousPlayerIndex].myTurn = false;
-          final nextPlayerIndex = (dealerIndex + 1) % players.length;
-          players[nextPlayerIndex].myTurn = true;
-          currentPlayer = players.firstWhere((p) => p.id == currentPlayer!.id);
-          if (player.onTeamA) {
-            teamA.madeIt = true;
-          } else {
-            teamB.madeIt = true;
+        someonesGoneAlone = goingAlone;
+        playerToSkip = playerToSkipId;
+
+        trumpSuit = suit;
+        if (currentPlayer!.getIsHost()) {
+          for (var bot in bots) {
+            bot.trumpSuit = suit;
           }
-          handCards = sortHand(currentPlayer!.hand, suit);
-        });
+        }
+        gamePhase = EuchreGamePhase.playing;
+        upCardTurnedDown = true;
+        //set turn to be next player after dealer
+        final dealerIndex = players.indexOf(
+          players.firstWhere((p) => p.isDealer),
+        );
+        final previousPlayerIndex = players.indexOf(player);
+        players[previousPlayerIndex].myTurn = false;
+        int nextPlayerIndex = (dealerIndex + 1) % players.length;
+        if (goingAlone) {
+          int indexToSkip = players.indexWhere((p) => p.id == playerToSkip);
+          if (nextPlayerIndex == indexToSkip) {
+            nextPlayerIndex = (nextPlayerIndex + 1) % players.length;
+          }
+          players[players.indexWhere((p) => p.id == playerToSkip)].hand.clear();
+          if (playerToSkip == currentPlayer!.id) {
+            handCards.clear();
+            handController.updateHand(handCards);
+            upCardTurnedDown = false;
+          }
+        }
+        players[nextPlayerIndex].myTurn = true;
+        currentPlayer = players.firstWhere((p) => p.id == currentPlayer!.id);
+        if (player.onTeamA) {
+          teamA.madeIt = true;
+        } else {
+          teamB.madeIt = true;
+        }
+        handCards = sortHand(currentPlayer!.hand, suit);
+        setState(() {});
 
         // handCards.clear();
         // handCards.addAll(currentPlayer!.hand);
@@ -464,7 +548,7 @@ class _EuchreState extends State<Euchre> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Text(
-                        "${player.name} chose ${suit.toString()} as the trump suit",
+                        "${player.name} chose ${suit.toString()} as the trump suit${goingAlone ? " and is going alone" : ""}",
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 24,
@@ -484,74 +568,91 @@ class _EuchreState extends State<Euchre> {
             );
           },
         );
+        if (players[nextPlayerIndex].isBot && currentPlayer!.getIsHost()) {
+          Future.delayed(Duration(seconds: 1), () {
+            bots
+                .firstWhere((b) => b.id == players[nextPlayerIndex].id)
+                .playCard([], null, players);
+          });
+        }
       } else if (dataMap['type'] == 'player_played') {
-        final playedCardData = dataMap['card'] as Map<String, dynamic>;
-        final playedCard = CardData.fromMap(playedCardData);
         final playerId = dataMap['playerId'] as String;
         final nextPlayerId = dataMap['nextPlayerId'] as String;
         final player = players.firstWhere((p) => p.id == playerId);
         final nextPlayer = players.firstWhere((p) => p.id == nextPlayerId);
         setState(() {
           players[players.indexOf(player)].myTurn = false;
-          players[players.indexOf(player)].hand.removeWhere(
-            (c) => c.id == playedCard.id,
-          );
+
           players[players.indexOf(nextPlayer)].myTurn = true;
           currentPlayer = players.firstWhere((p) => p.id == currentPlayer!.id);
+
           player.myTurn = false;
           nextPlayer.myTurn = true;
         });
-        if (currentPlayer!.myTurn) {
-          showDialog(
-            context: context,
+        // if (currentPlayer!.myTurn) {
+        //   showDialog(
+        //     context: context,
 
-            builder: (BuildContext dialogContext) {
-              Timer(Duration(seconds: 1), () {
-                try {
-                  if (dialogContext.mounted)
-                    Navigator.of(dialogContext).pop();
-                  else
-                    print("Dialog context is not mounted, cannot pop dialog.");
-                } catch (e) {
-                  print("Error popping dialog: $e");
-                }
-              });
-              return Dialog(
-                backgroundColor: Colors.transparent,
+        //     builder: (BuildContext dialogContext) {
+        //       Timer(Duration(seconds: 1), () {
+        //         try {
+        //           if (dialogContext.mounted)
+        //             Navigator.of(dialogContext).pop();
+        //           else
+        //             print("Dialog context is not mounted, cannot pop dialog.");
+        //         } catch (e) {
+        //           print("Error popping dialog: $e");
+        //         }
+        //       });
+        //       return Dialog(
+        //         backgroundColor: Colors.transparent,
 
-                child: Container(
-                  width: 400,
-                  height: 200,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [styling.primary, styling.secondary],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Container(
-                    margin: EdgeInsets.all(2), // Creates the border thickness
-                    decoration: BoxDecoration(
-                      color: styling.background,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          "It's your turn now!",
-                          style: TextStyle(color: Colors.white, fontSize: 18),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          );
+        //         child: Container(
+        //           width: 400,
+        //           height: 200,
+        //           decoration: BoxDecoration(
+        //             gradient: LinearGradient(
+        //               begin: Alignment.topLeft,
+        //               end: Alignment.bottomRight,
+        //               colors: [styling.primary, styling.secondary],
+        //             ),
+        //             borderRadius: BorderRadius.circular(12),
+        //           ),
+        //           child: Container(
+        //             margin: EdgeInsets.all(2), // Creates the border thickness
+        //             decoration: BoxDecoration(
+        //               color: styling.background,
+        //               borderRadius: BorderRadius.circular(10),
+        //             ),
+        //             child: Column(
+        //               mainAxisSize: MainAxisSize.min,
+        //               mainAxisAlignment: MainAxisAlignment.center,
+        //               crossAxisAlignment: CrossAxisAlignment.center,
+        //               children: [
+        //                 Text(
+        //                   "It's your turn now!",
+        //                   style: TextStyle(color: Colors.white, fontSize: 18),
+        //                 ),
+        //               ],
+        //             ),
+        //           ),
+        //         ),
+        //       );
+        //     },
+        //   );
+        // }
+        if (nextPlayer.isBot && currentPlayer!.getIsHost()) {
+          Future.delayed(Duration(seconds: 1), () {
+            List<CardData> playedCards = [];
+            for (var zone in dropZones) {
+              if (zone.isPublic) {
+                playedCards.addAll(zone.cards);
+              }
+            }
+            bots
+                .firstWhere((b) => b.id == nextPlayer.id)
+                .playCard(playedCards, leadSuit, players);
+          });
         }
       } else if (dataMap["type"] == "trick_ended") {
         // Handle trick ended logic
@@ -644,19 +745,46 @@ class _EuchreState extends State<Euchre> {
           if (teamA.tricksTaken + teamB.tricksTaken >= 5) {
             // If the current player has no cards left, end the round
             scoreRound();
+          } else {
+            final nextPlayerIndex = players.indexWhere((p) => p.myTurn);
+            if (players[nextPlayerIndex].isBot && currentPlayer!.getIsHost()) {
+              Future.delayed(Duration(seconds: 1), () {
+                bots
+                    .firstWhere((b) => b.id == players[nextPlayerIndex].id)
+                    .playCard([], null, players);
+              });
+            }
           }
         });
       } else if (dataMap["type"] == "new_round") {
+        someonesGoneAlone = false;
+        playerToSkip = "";
         final deckData = dataMap['deckCards'] as List;
         deckCards =
             deckData
                 .map((c) => CardData.fromMap(c as Map<String, dynamic>))
                 .toList();
         final playersData = dataMap['players'] as List;
-        players =
-            playersData
-                .map((p) => EuchrePlayer.fromMap(p as Map<String, dynamic>))
-                .toList();
+        for (var player in playersData) {
+          final playerMap = player as Map<String, dynamic>;
+          final newPlayer = EuchrePlayer.fromMap(playerMap);
+
+          final existingPlayerIndex = players.indexWhere(
+            (p) => p.id == newPlayer.id,
+          );
+          if (existingPlayerIndex != -1) {
+            // Update existing player
+            players[existingPlayerIndex].hand.clear();
+            players[existingPlayerIndex].hand.addAll(newPlayer.hand);
+          } else {
+            // Add new player
+            players.add(newPlayer);
+          }
+        }
+        // players =
+        //     playersData
+        //         .map((p) => EuchrePlayer.fromMap(p as Map<String, dynamic>))
+        //         .toList();
 
         players.sort((a, b) {
           return playOrder.indexOf(a.id).compareTo(playOrder.indexOf(b.id));
@@ -679,7 +807,60 @@ class _EuchreState extends State<Euchre> {
         // handCards.clear();
         // handCards.addAll(currentPlayer!.hand);
         // handController.updateHand(handCards);
+        upCardTurnedDown = false;
         setState(() {});
+      } else if (dataMap['type'] == 'host_left') {
+        // Handle host left scenario
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            Timer(Duration(seconds: 2), () {
+              connectionService.dispose();
+              Navigator.of(context).pop();
+              Navigator.of(context).pop(); // Close the game screen
+            });
+            return Dialog(
+              backgroundColor: Colors.transparent,
+
+              child: Container(
+                width: 400,
+                height: 200,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [styling.primary, styling.secondary],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Container(
+                  margin: EdgeInsets.all(2), // Creates the border thickness
+                  decoration: BoxDecoration(
+                    color: styling.background,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        "The host has left the game!",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
       }
     });
 
@@ -719,24 +900,24 @@ class _EuchreState extends State<Euchre> {
     }
 
     heartCards.sort(
-      (b, a) => (a.value == 1 ? 14 : a.value).compareTo(
-        (b.value == 1 ? 14 : b.value),
-      ),
+      (b, a) => a
+          .toSortingValue(trumpSuit: trumpSuit)
+          .compareTo(b.toSortingValue(trumpSuit: trumpSuit)),
     );
     clubCards.sort(
-      (b, a) => (a.value == 1 ? 14 : a.value).compareTo(
-        (b.value == 1 ? 14 : b.value),
-      ),
+      (b, a) => a
+          .toSortingValue(trumpSuit: trumpSuit)
+          .compareTo(b.toSortingValue(trumpSuit: trumpSuit)),
     );
     diamondCards.sort(
-      (b, a) => (a.value == 1 ? 14 : a.value).compareTo(
-        (b.value == 1 ? 14 : b.value),
-      ),
+      (b, a) => a
+          .toSortingValue(trumpSuit: trumpSuit)
+          .compareTo(b.toSortingValue(trumpSuit: trumpSuit)),
     );
     spadeCards.sort(
-      (b, a) => (a.value == 1 ? 14 : a.value).compareTo(
-        (b.value == 1 ? 14 : b.value),
-      ),
+      (b, a) => a
+          .toSortingValue(trumpSuit: trumpSuit)
+          .compareTo(b.toSortingValue(trumpSuit: trumpSuit)),
     );
 
     List<String> sortPlan = ["hearts", "clubs", "diamonds", "spades"];
@@ -869,32 +1050,32 @@ class _EuchreState extends State<Euchre> {
       hand: [],
       isHost: widget.player.isHost,
     );
-    players =
-        widget.players.map((p) {
-          return EuchrePlayer(
-            id: p.id,
+    for (var p in widget.players) {
+      EuchrePlayer player = EuchrePlayer(
+        id: p.id,
+        name: p.name,
+        onTeamA: false,
+        hand: [],
+        isHost: p.isHost,
+        isBot: p is BotPlayer,
+      );
+      if (p is BotPlayer) {
+        bots.add(
+          EuchreBot(
             name: p.name,
-            onTeamA: false,
-            hand: [],
-            isHost: p.isHost,
-          );
-        }).toList();
-    // players = [
-    //   EuchrePlayer(id: '1', name: 'Player 1', onTeamA: true, hand: []),
-    //   EuchrePlayer(id: '2', name: 'Player 2', onTeamA: false, hand: []),
-    //   EuchrePlayer(
-    //     id: '3',
-    //     name: 'Player 3',
-    //     onTeamA: false,
-    //     hand: [],
-    //     isHost: true,
-    //     myTurn: true,
-    //   ),
-    //   EuchrePlayer(id: '4', name: 'Player 4', onTeamA: true, hand: []),
-    // ];
-    // teamA.players = players.where((p) => p.onTeamA).toList();
-    // teamB.players = [players[1]];
-    // currentPlayer = players.firstWhere((p) => p.id == '3');
+            id: p.id,
+            difficulty: p.difficulty,
+            botPlayer: player,
+            onDecideTrump: onDecideTrumpBot,
+            onDiscard: onDiscardBot,
+            onPlayCard: onPlayCardBot,
+            playedCards: cardsPlayedInRound,
+          ),
+        );
+      }
+      print("Adding player: ${player.name} with id: ${player.id}");
+      players.add(player);
+    }
 
     dropZones.add(
       DropZoneData(
@@ -997,6 +1178,7 @@ class _EuchreState extends State<Euchre> {
         (card) => dragData.cards.any((dragCard) => dragCard.id == card.id),
       );
       handCards.removeWhere((c) => c.id == draggedCard.id);
+      cardsPlayedInRound.addAll(dragData.cards);
 
       //
       if (targetZone.isPublic) {
@@ -1008,10 +1190,11 @@ class _EuchreState extends State<Euchre> {
       });
       final playedCard = dragData.cards.first;
       if (playedCard.value == 11 &&
-          playedCard.suit.alternateSuit == trumpSuit) {
+          playedCard.suit.alternateSuit == trumpSuit &&
+          leadSuit == null) {
         leadSuit =
             trumpSuit; // If a Jack of trump suit is played, set lead suit to trump suit
-      } else {
+      } else if (leadSuit == null) {
         leadSuit =
             playedCard
                 .suit; // Otherwise, set lead suit to the suit of the played card
@@ -1025,10 +1208,14 @@ class _EuchreState extends State<Euchre> {
         'type': 'update_zone',
         'zoneId': targetZone.id,
         'cards': dragData.cards.map((c) => c.toMap()).toList(),
+        'playedBy': currentPlayer!.id,
       }, currentPlayer!.id);
     }
 
-    final nextPlayer = players[1];
+    EuchrePlayer nextPlayer = players[1];
+    if (playerToSkip == nextPlayer.id) {
+      nextPlayer = players[2];
+    }
     final nextPlayersDropZone = dropZones.firstWhere(
       (zone) => zone.id == nextPlayer.id,
     );
@@ -1038,18 +1225,585 @@ class _EuchreState extends State<Euchre> {
     });
     if (nextPlayersDropZone.cards.isEmpty) {
       setState(() {
-        players[1].myTurn = true;
+        players[players.indexWhere((p) => p.id == nextPlayer.id)].myTurn = true;
       });
 
       connectionService.broadcastMessage({
         'type': 'player_played',
         'playerId': currentPlayer!.id,
         'nextPlayerId': nextPlayer.id,
-        'card': dragData.cards.first.toMap(),
       }, currentPlayer!.id);
+      if (nextPlayer.isBot) {
+        final bot = bots.firstWhere((b) => b.id == nextPlayer.id);
+        List<CardData> playedCards = [];
+        for (var zone in dropZones) {
+          if (zone.isPublic) {
+            playedCards.addAll(zone.cards);
+          }
+        }
+        Future.delayed(Duration(milliseconds: 1000), () {
+          bot.playCard([...playedCards], leadSuit, players);
+        });
+      }
     } else {
       //Score the played cards
       scorePlayedCards();
+    }
+  }
+
+  void onDecideTrumpBot(CardSuit? trump, String botId, bool alone) async {
+    final indexOfBot = players.indexWhere((p) => p.id == botId);
+
+    if (trump == null) {
+      final nextPlayerIndex = (indexOfBot + 1) % players.length;
+      players[nextPlayerIndex].myTurn = true;
+
+      players[indexOfBot].myTurn = false;
+      if (players[indexOfBot].isDealer) {
+        upCardTurnedDown = true;
+      }
+      currentPlayer = players.firstWhere((p) => p.id == currentPlayer!.id);
+      setState(() {});
+
+      connectionService.broadcastMessage({
+        'type': 'player_passed',
+        'playerId': botId,
+      }, currentPlayer!.id);
+      // await showDialog(
+      //   context: context,
+
+      //   builder: (BuildContext dialogContext) {
+      //     Timer(Duration(seconds: 1), () {
+      //       try {
+      //         if (dialogContext.mounted)
+      //           Navigator.of(dialogContext).pop();
+      //         else
+      //           print("Dialog context is not mounted, cannot pop dialog.");
+      //       } catch (e) {
+      //         print("Error popping dialog: $e");
+      //       }
+      //     });
+      //     return Dialog(
+      //       backgroundColor: Colors.transparent,
+
+      //       child: Container(
+      //         width: 400,
+      //         height: 200,
+      //         decoration: BoxDecoration(
+      //           gradient: LinearGradient(
+      //             begin: Alignment.topLeft,
+      //             end: Alignment.bottomRight,
+      //             colors: [styling.primary, styling.secondary],
+      //           ),
+      //           borderRadius: BorderRadius.circular(12),
+      //         ),
+      //         child: Container(
+      //           margin: EdgeInsets.all(2), // Creates the border thickness
+      //           decoration: BoxDecoration(
+      //             color: styling.background,
+      //             borderRadius: BorderRadius.circular(10),
+      //           ),
+      //           child: Column(
+      //             mainAxisSize: MainAxisSize.min,
+      //             mainAxisAlignment: MainAxisAlignment.center,
+      //             crossAxisAlignment: CrossAxisAlignment.center,
+      //             children: [
+      //               Text(
+      //                 players[indexOfBot].name + " passed",
+      //                 style: TextStyle(
+      //                   color: Colors.white,
+      //                   fontSize: 24,
+      //                   fontWeight: FontWeight.bold,
+      //                 ),
+      //                 textAlign: TextAlign.center,
+      //               ),
+      //               if (currentPlayer!.myTurn)
+      //                 Text(
+      //                   "It's your turn now!",
+      //                   style: TextStyle(color: Colors.white, fontSize: 18),
+      //                 ),
+      //             ],
+      //           ),
+      //         ),
+      //       ),
+      //     );
+      //   },
+      // );
+
+      if (players[nextPlayerIndex].isBot) {
+        Future.delayed(Duration(seconds: 1), () {
+          final bot = bots.firstWhere(
+            (b) => b.id == players[nextPlayerIndex].id,
+          );
+          bot.decideTrump(
+            upCardTurnedDown
+                ? CardSuit.values
+                    .where((s) => s != deckCards.last.suit)
+                    .toList()
+                : [deckCards.last.suit],
+            upCardTurnedDown ? players[nextPlayerIndex].isDealer : false,
+            upCardTurnedDown ? null : deckCards.last,
+            players,
+          );
+        });
+      }
+    } else if (trump == deckCards.last.suit && !upCardTurnedDown) {
+      trumpSuit = trump;
+      for (var bot in bots) {
+        bot.trumpSuit = trump;
+      }
+      //set turn to be next player after dealer
+      players[indexOfBot].myTurn = false;
+
+      final dealerIndex = players.indexOf(
+        players.firstWhere((p) => p.isDealer),
+      );
+      players[dealerIndex].hand.add(deckCards.last);
+      int nextPlayerIndex = (dealerIndex + 1) % players.length;
+      if (alone) {
+        someonesGoneAlone = true;
+        playerToSkip = players[(indexOfBot + 2) % players.length].id;
+        if ((indexOfBot + 2) % players.length == nextPlayerIndex) {
+          nextPlayerIndex = (nextPlayerIndex + 1) % players.length;
+        }
+      }
+
+      players[nextPlayerIndex].myTurn = true;
+      currentPlayer = players.firstWhere((p) => p.id == currentPlayer!.id);
+      upCardTurnedDown = true;
+      gamePhase = EuchreGamePhase.discardingCard;
+      if (players[indexOfBot].onTeamA) {
+        teamA.madeIt = true;
+      } else {
+        teamB.madeIt = true;
+      }
+      handCards = sortHand(currentPlayer!.hand, trump);
+      showDialog(
+        context: context,
+
+        builder: (BuildContext dialogContext) {
+          Timer(Duration(seconds: 1), () {
+            try {
+              if (dialogContext.mounted)
+                Navigator.of(dialogContext).pop();
+              else
+                print("Dialog context is not mounted, cannot pop dialog.");
+            } catch (e) {
+              print("Error popping dialog: $e");
+            }
+          });
+          return Dialog(
+            backgroundColor: Colors.transparent,
+
+            child: Container(
+              width: 400,
+              height: 200,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [styling.primary, styling.secondary],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Container(
+                margin: EdgeInsets.all(2), // Creates the border thickness
+                decoration: BoxDecoration(
+                  color: styling.background,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      players[indexOfBot].name +
+                          " picked the up card${alone ? " and is going alone" : ""}. The trump suit is ${trump.toString()}",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    if (currentPlayer!.isDealer)
+                      Text(
+                        "Tap on a card to discard it",
+                        style: TextStyle(color: Colors.white, fontSize: 18),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+
+      setState(() {});
+
+      // handCards.clear();
+      // handCards.addAll(currentPlayer!.hand);
+      // handController.updateHand(handCards);
+
+      connectionService.broadcastMessage({
+        'type': 'up_card_picked',
+        'goingAlone': alone,
+        'playerToSkip':
+            alone ? players[(indexOfBot + 2) % players.length].id : "",
+        'playerId': botId,
+      }, currentPlayer!.id);
+      if (players[dealerIndex].isBot) {
+        Future.delayed(Duration(seconds: 1), () {
+          final bot = bots.firstWhere((b) => b.id == players[dealerIndex].id);
+          bot.discardCard();
+        });
+      }
+    } else {
+      trumpSuit = trump;
+      for (var bot in bots) {
+        bot.trumpSuit = trump;
+      }
+      gamePhase = EuchreGamePhase.playing;
+      upCardTurnedDown = true;
+      //set turn to be next player after dealer
+      final dealerIndex = players.indexOf(
+        players.firstWhere((p) => p.isDealer),
+      );
+
+      players[indexOfBot].myTurn = false;
+      int nextPlayerIndex = (dealerIndex + 1) % players.length;
+      if (alone) {
+        someonesGoneAlone = true;
+        playerToSkip = players[(indexOfBot + 2) % players.length].id;
+        if ((indexOfBot + 2) % players.length == nextPlayerIndex) {
+          nextPlayerIndex = (nextPlayerIndex + 1) % players.length;
+        }
+      }
+
+      players[nextPlayerIndex].myTurn = true;
+      currentPlayer = players.firstWhere((p) => p.id == currentPlayer!.id);
+      if (players[indexOfBot].onTeamA) {
+        teamA.madeIt = true;
+      } else {
+        teamB.madeIt = true;
+      }
+      showDialog(
+        context: context,
+
+        builder: (BuildContext dialogContext) {
+          Timer(Duration(seconds: 1), () {
+            try {
+              if (dialogContext.mounted)
+                Navigator.of(dialogContext).pop();
+              else
+                print("Dialog context is not mounted, cannot pop dialog.");
+            } catch (e) {
+              print("Error popping dialog: $e");
+            }
+          });
+          return Dialog(
+            backgroundColor: Colors.transparent,
+
+            child: Container(
+              width: 400,
+              height: 200,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [styling.primary, styling.secondary],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Container(
+                margin: EdgeInsets.all(2), // Creates the border thickness
+                decoration: BoxDecoration(
+                  color: styling.background,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      "${players[indexOfBot].name} chose ${trump.toString()} as the trump suit${alone ? " and is going alone" : ""}",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    if (currentPlayer!.myTurn)
+                      Text(
+                        "It's your turn now!",
+                        style: TextStyle(color: Colors.white, fontSize: 18),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+
+      setState(() {});
+      handCards = sortHand(currentPlayer!.hand, trump);
+
+      // handCards.clear();
+      // handCards.addAll(currentPlayer!.hand);
+      // handController.updateHand(handCards);
+      setState(() {});
+      connectionService.broadcastMessage({
+        'type': 'chose_trump_suit',
+        'suit': trump.toString(),
+        'goingAlone': alone,
+        'playerToSkip':
+            alone ? players[(indexOfBot + 2) % players.length].id : "",
+        'playerId': botId,
+      }, currentPlayer!.id);
+      if (players[nextPlayerIndex].isBot) {
+        Future.delayed(Duration(seconds: 1), () {
+          final bot = bots.firstWhere(
+            (b) => b.id == players[nextPlayerIndex].id,
+          );
+          bot.playCard([], null, players);
+        });
+      }
+    }
+  }
+
+  void onDiscardBot(CardData card, String botId) {
+    final indexOfBot = players.indexWhere((p) => p.id == botId);
+
+    players[indexOfBot].hand.removeWhere((c) => c.id == card.id);
+    final dealerIndex = players.indexOf(players.firstWhere((p) => p.isDealer));
+
+    final nextPlayerIndex = (dealerIndex + 1) % players.length;
+
+    setState(() {});
+
+    // handCards.clear();
+    // handCards.addAll(currentPlayer!.hand);
+    // handController.updateHand(handCards);
+    players[indexOfBot].myTurn = false;
+
+    players[nextPlayerIndex].myTurn = true;
+    currentPlayer = players.firstWhere((p) => p.id == currentPlayer!.id);
+    if (currentPlayer!.myTurn) {
+      showDialog(
+        context: context,
+
+        builder: (BuildContext dialogContext) {
+          Timer(Duration(seconds: 1), () {
+            try {
+              if (dialogContext.mounted)
+                Navigator.of(dialogContext).pop();
+              else
+                print("Dialog context is not mounted, cannot pop dialog.");
+            } catch (e) {
+              print("Error popping dialog: $e");
+            }
+          });
+          return Dialog(
+            backgroundColor: Colors.transparent,
+
+            child: Container(
+              width: 400,
+              height: 200,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [styling.primary, styling.secondary],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Container(
+                margin: EdgeInsets.all(2), // Creates the border thickness
+                decoration: BoxDecoration(
+                  color: styling.background,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      "${players[indexOfBot].name} discarded a card",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+
+                    Text(
+                      "It's your turn now!",
+                      style: TextStyle(color: Colors.white, fontSize: 18),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    }
+    setState(() {
+      gamePhase = EuchreGamePhase.playing;
+      deckCards.add(card);
+    });
+    connectionService.broadcastMessage({
+      'type': 'card_discarded',
+      'playerId': botId,
+      'card': card.toMap(),
+    }, currentPlayer!.id);
+    if (players[nextPlayerIndex].isBot) {
+      Future.delayed(Duration(seconds: 1), () {
+        final bot = bots.firstWhere((b) => b.id == players[nextPlayerIndex].id);
+        bot.playCard([], null, players);
+      });
+    }
+  }
+
+  void onPlayCardBot(CardData card, String botId) {
+    final indexOfBot = players.indexWhere((p) => p.id == botId);
+    final targetZone = dropZones.firstWhere((zone) => zone.id == botId);
+    players[indexOfBot].myTurn = false;
+
+    setState(() {
+      //
+      if (targetZone.isPublic) {
+        print("Played to goal zone: ${targetZone.id}");
+      }
+      card.playedBy = botId;
+      targetZone.cards.add(card);
+      cardsPlayedInRound.add(card);
+      if (card.value == 11 &&
+          card.suit.alternateSuit == trumpSuit &&
+          leadSuit == null) {
+        leadSuit =
+            trumpSuit; // If a Jack of trump suit is played, set lead suit to trump suit
+      } else if (leadSuit == null) {
+        leadSuit =
+            card.suit; // Otherwise, set lead suit to the suit of the played card
+      }
+      // Set lead suit to the first card played
+    });
+
+    if (targetZone.isPublic) {
+      print("Played to goal zone: ${targetZone.id}");
+      connectionService.broadcastMessage({
+        'type': 'update_zone',
+        'zoneId': targetZone.id,
+        'cards': [card.toMap()],
+        'playedBy': botId,
+      }, currentPlayer!.id);
+    }
+
+    int nextPlayerIndex = (indexOfBot + 1) % players.length;
+
+    EuchrePlayer nextPlayer = players[nextPlayerIndex];
+    if (playerToSkip == nextPlayer.id) {
+      nextPlayerIndex = (nextPlayerIndex + 1) % players.length;
+      nextPlayer = players[nextPlayerIndex];
+    }
+    final nextPlayersDropZone = dropZones.firstWhere(
+      (zone) => zone.id == nextPlayer.id,
+    );
+    setState(() {
+      currentPlayer = players.firstWhere((p) => p.id == currentPlayer!.id);
+    });
+
+    if (nextPlayersDropZone.cards.isEmpty) {
+      players[players.indexWhere((p) => p.id == nextPlayer.id)].myTurn = true;
+      currentPlayer = players.firstWhere((p) => p.id == currentPlayer!.id);
+
+      // if (currentPlayer!.myTurn) {
+      //   showDialog(
+      //     context: context,
+
+      //     builder: (BuildContext dialogContext) {
+      //       Timer(Duration(seconds: 1), () {
+      //         try {
+      //           if (dialogContext.mounted)
+      //             Navigator.of(dialogContext).pop();
+      //           else
+      //             print("Dialog context is not mounted, cannot pop dialog.");
+      //         } catch (e) {
+      //           print("Error popping dialog: $e");
+      //         }
+      //       });
+      //       return Dialog(
+      //         backgroundColor: Colors.transparent,
+
+      //         child: Container(
+      //           width: 400,
+      //           height: 200,
+      //           decoration: BoxDecoration(
+      //             gradient: LinearGradient(
+      //               begin: Alignment.topLeft,
+      //               end: Alignment.bottomRight,
+      //               colors: [styling.primary, styling.secondary],
+      //             ),
+      //             borderRadius: BorderRadius.circular(12),
+      //           ),
+      //           child: Container(
+      //             margin: EdgeInsets.all(2), // Creates the border thickness
+      //             decoration: BoxDecoration(
+      //               color: styling.background,
+      //               borderRadius: BorderRadius.circular(10),
+      //             ),
+      //             child: Column(
+      //               mainAxisSize: MainAxisSize.min,
+      //               mainAxisAlignment: MainAxisAlignment.center,
+      //               crossAxisAlignment: CrossAxisAlignment.center,
+      //               children: [
+      //                 Text(
+      //                   "It's your turn now!",
+      //                   style: TextStyle(color: Colors.white, fontSize: 18),
+      //                 ),
+      //               ],
+      //             ),
+      //           ),
+      //         ),
+      //       );
+      //     },
+      //   );
+      // }
+      setState(() {});
+      print(
+        "BOT HAND: ${players[indexOfBot].hand.map((e) => e.displayValue()).toList()}",
+      );
+      connectionService.broadcastMessage({
+        'type': 'player_played',
+        'playerId': botId,
+        'nextPlayerId': nextPlayer.id,
+      }, currentPlayer!.id);
+      if (players[players.indexWhere((p) => p.id == nextPlayer.id)].isBot) {
+        Future.delayed(Duration(seconds: 1), () {
+          final bot = bots.firstWhere(
+            (b) => b.id == players[nextPlayerIndex].id,
+          );
+          List<CardData> playedCards = [];
+          for (var zone in dropZones) {
+            if (zone.isPublic) {
+              playedCards.addAll(zone.cards);
+            }
+          }
+          bot.playCard([...playedCards], leadSuit, players);
+        });
+      }
+    } else {
+      Future.delayed(Duration(seconds: 1), () {
+        scorePlayedCards();
+      });
+      //Score the played cards
     }
   }
 
@@ -1086,16 +1840,26 @@ class _EuchreState extends State<Euchre> {
               )
               .toList();
       CardData highestTrumpCard = trumpCards.reduce(
-        (a, b) => convertCardToValue(a) > convertCardToValue(b) ? a : b,
+        (a, b) =>
+            a.toSortingValue(trumpSuit: trumpSuit) >
+                    b.toSortingValue(trumpSuit: trumpSuit)
+                ? a
+                : b,
       );
-      print("Highest trump card played: ${highestTrumpCard.toString()}");
+      print(
+        "Highest trump card played: ${highestTrumpCard.value} of ${highestTrumpCard.suit}",
+      );
       highCard = highestTrumpCard;
     } else {
       // No trump played
       CardData highestCard = playedCards.reduce(
-        (a, b) => convertCardToValue(a) > convertCardToValue(b) ? a : b,
+        (a, b) =>
+            a.toSortingValue(trumpSuit: trumpSuit) >
+                    b.toSortingValue(trumpSuit: trumpSuit)
+                ? a
+                : b,
       );
-      print("Highest card played: ${highestCard.toString()}");
+      print("Highest card played: ${highestCard.value} of ${highestCard.suit}");
       highCard = highestCard;
     }
 
@@ -1199,22 +1963,17 @@ class _EuchreState extends State<Euchre> {
       if (teamA.tricksTaken + teamB.tricksTaken >= 5) {
         // If the current player has no cards left, end the round
         scoreRound();
+      } else {
+        final nextPlayerIndex = players.indexWhere((p) => p.myTurn);
+        if (players[nextPlayerIndex].isBot && currentPlayer!.getIsHost()) {
+          Future.delayed(Duration(seconds: 1), () {
+            bots
+                .firstWhere((b) => b.id == players[nextPlayerIndex].id)
+                .playCard([], null, players);
+          });
+        }
       }
     });
-  }
-
-  int convertCardToValue(CardData card) {
-    // Convert card to value for scoring
-    if (card.value == 1) {
-      return 14; // Ace is third highest
-    }
-    if (card.value == 11 && card.suit.alternateSuit == trumpSuit) {
-      return 15; // Jack of alternate trump suit is second highest
-    }
-    if (card.value == 11 && card.suit == trumpSuit) {
-      return 16; // Jack of trump suit is highest
-    }
-    return card.value; // Other cards retain their value
   }
 
   List<CardData> _getCardsFromIndex(String zoneId, int index) {
@@ -1238,9 +1997,14 @@ class _EuchreState extends State<Euchre> {
   }
 
   void scoreRound() {
+    print("TEAM A TRICKS: ${teamA.tricksTaken}");
+    print("TEAM B TRICKS: ${teamB.tricksTaken}");
+    int teamAScoreBefore = teamA.tricksTaken;
+    int teamBScoreBefore = teamB.tricksTaken;
     if (teamA.tricksTaken == 5 && teamA.madeIt) {
       // Team A wins the round + 2
-      teamA.score += 2;
+      bool teamAAlone = players.any((p) => p.onTeamA && p.id == playerToSkip);
+      teamA.score += teamAAlone ? 4 : 2;
       showDialog(
         context: context,
 
@@ -1281,7 +2045,7 @@ class _EuchreState extends State<Euchre> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
-                      "Team A took all 5 tricks! + 2 points for Team A",
+                      "Team A took all 5 tricks${teamAAlone ? " and went alone" : ""}!\n+ ${teamAAlone ? "4" : "2"} points for Team A",
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 24,
@@ -1298,11 +2062,27 @@ class _EuchreState extends State<Euchre> {
       ).then((_) {
         if (teamA.score >= 10 || teamB.score >= 10) {
           scoreGame();
+        } else if (currentPlayer!.getIsHost()) {
+          final nextPlayerIndex = players.indexWhere((p) => p.myTurn);
+          if (players[nextPlayerIndex].isBot) {
+            Future.delayed(Duration(seconds: 1), () {
+              final bot = bots.firstWhere(
+                (b) => b.id == players[nextPlayerIndex].id,
+              );
+              bot.decideTrump(
+                [deckCards.last.suit],
+                false,
+                deckCards.last,
+                players,
+              );
+            });
+          }
         }
       });
     } else if (teamA.tricksTaken >= 3 && teamA.madeIt) {
       // Team A wins the round + 1
       teamA.score += 1;
+      print("TEAM A TRICKS: ${teamA.tricksTaken}");
       showDialog(
         context: context,
 
@@ -1343,7 +2123,7 @@ class _EuchreState extends State<Euchre> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
-                      "Team A took ${teamA.tricksTaken} tricks! + 1 point for Team A",
+                      "Team A took $teamAScoreBefore tricks!\n+ 1 point for Team A",
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 24,
@@ -1360,6 +2140,21 @@ class _EuchreState extends State<Euchre> {
       ).then((_) {
         if (teamA.score >= 10 || teamB.score >= 10) {
           scoreGame();
+        } else if (currentPlayer!.getIsHost()) {
+          final nextPlayerIndex = players.indexWhere((p) => p.myTurn);
+          if (players[nextPlayerIndex].isBot) {
+            Future.delayed(Duration(seconds: 1), () {
+              final bot = bots.firstWhere(
+                (b) => b.id == players[nextPlayerIndex].id,
+              );
+              bot.decideTrump(
+                [deckCards.last.suit],
+                false,
+                deckCards.last,
+                players,
+              );
+            });
+          }
         }
       });
     } else if (teamB.tricksTaken >= 3 && teamA.madeIt) {
@@ -1405,7 +2200,7 @@ class _EuchreState extends State<Euchre> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
-                      "Team B euchred Team A! + 2 points for Team B",
+                      "Team B euchred Team A!\n+ 2 points for Team B",
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 24,
@@ -1422,11 +2217,27 @@ class _EuchreState extends State<Euchre> {
       ).then((_) {
         if (teamA.score >= 10 || teamB.score >= 10) {
           scoreGame();
+        } else if (currentPlayer!.getIsHost()) {
+          final nextPlayerIndex = players.indexWhere((p) => p.myTurn);
+          if (players[nextPlayerIndex].isBot) {
+            Future.delayed(Duration(seconds: 1), () {
+              final bot = bots.firstWhere(
+                (b) => b.id == players[nextPlayerIndex].id,
+              );
+              bot.decideTrump(
+                [deckCards.last.suit],
+                false,
+                deckCards.last,
+                players,
+              );
+            });
+          }
         }
       });
     } else if (teamB.tricksTaken == 5 && teamB.madeIt) {
       // Team B wins the round + 2
-      teamA.score += 2;
+      bool teamBAlone = players.any((p) => !p.onTeamA && p.id == playerToSkip);
+      teamB.score += teamBAlone ? 4 : 2;
       showDialog(
         context: context,
 
@@ -1467,7 +2278,7 @@ class _EuchreState extends State<Euchre> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
-                      "Team B took all 5 tricks! + 2 points for Team B",
+                      'Team B took all 5 tricks${teamBAlone ? " and went alone" : ""}!\n+ ${teamBAlone ? "4" : "2"} points for Team B',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 24,
@@ -1484,11 +2295,26 @@ class _EuchreState extends State<Euchre> {
       ).then((_) {
         if (teamA.score >= 10 || teamB.score >= 10) {
           scoreGame();
+        } else if (currentPlayer!.getIsHost()) {
+          final nextPlayerIndex = players.indexWhere((p) => p.myTurn);
+          if (players[nextPlayerIndex].isBot) {
+            Future.delayed(Duration(seconds: 1), () {
+              final bot = bots.firstWhere(
+                (b) => b.id == players[nextPlayerIndex].id,
+              );
+              bot.decideTrump(
+                [deckCards.last.suit],
+                false,
+                deckCards.last,
+                players,
+              );
+            });
+          }
         }
       });
     } else if (teamB.tricksTaken >= 3 && teamB.madeIt) {
       // Team B wins the round + 1
-      teamB.score += 2;
+      teamB.score += 1;
       showDialog(
         context: context,
 
@@ -1529,7 +2355,7 @@ class _EuchreState extends State<Euchre> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
-                      "Team B took ${teamB.tricksTaken} tricks! + 1 point for Team B",
+                      "Team B took ${teamBScoreBefore} tricks!\n+ 1 point for Team B",
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 24,
@@ -1546,6 +2372,21 @@ class _EuchreState extends State<Euchre> {
       ).then((_) {
         if (teamA.score >= 10 || teamB.score >= 10) {
           scoreGame();
+        } else if (currentPlayer!.getIsHost()) {
+          final nextPlayerIndex = players.indexWhere((p) => p.myTurn);
+          if (players[nextPlayerIndex].isBot) {
+            Future.delayed(Duration(seconds: 1), () {
+              final bot = bots.firstWhere(
+                (b) => b.id == players[nextPlayerIndex].id,
+              );
+              bot.decideTrump(
+                [deckCards.last.suit],
+                false,
+                deckCards.last,
+                players,
+              );
+            });
+          }
         }
       });
     } else if (teamA.tricksTaken >= 3 && teamB.madeIt) {
@@ -1591,7 +2432,7 @@ class _EuchreState extends State<Euchre> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
-                      "Team A euchred Team B! + 2 points for Team A",
+                      "Team A euchred Team B!\n+ 2 points for Team A",
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 24,
@@ -1608,11 +2449,33 @@ class _EuchreState extends State<Euchre> {
       ).then((_) {
         if (teamA.score >= 10 || teamB.score >= 10) {
           scoreGame();
+        } else if (currentPlayer!.getIsHost()) {
+          final nextPlayerIndex = players.indexWhere((p) => p.myTurn);
+          if (players[nextPlayerIndex].isBot) {
+            Future.delayed(Duration(seconds: 1), () {
+              final bot = bots.firstWhere(
+                (b) => b.id == players[nextPlayerIndex].id,
+              );
+              bot.decideTrump(
+                [deckCards.last.suit],
+                false,
+                deckCards.last,
+                players,
+              );
+            });
+          }
         }
       });
     }
     if (teamA.score < 10 && teamB.score < 10) {
+      someonesGoneAlone = false;
+      playerToSkip = "";
       //Move dealer to next player
+      //previous persons turn should be false
+      final previousPlayerIndex = players.indexWhere((p) => p.myTurn);
+      if (previousPlayerIndex != -1) {
+        players[previousPlayerIndex].myTurn = false;
+      }
       final dealerIndex = players.indexWhere((p) => p.isDealer);
       final nextDealerIndex = (dealerIndex + 1) % players.length;
       final playerNextToDealer = (nextDealerIndex + 1) % players.length;
@@ -1638,7 +2501,8 @@ class _EuchreState extends State<Euchre> {
         currentPlayer!.hand = [...handCards];
         players.forEach((player) {
           if (player.id != currentPlayer!.id) {
-            player.hand = shuffledDeck.sublist(0, 5);
+            player.hand.clear();
+            player.hand.addAll(shuffledDeck.sublist(0, 5));
             shuffledDeck.removeRange(0, 5);
           } else {
             player.hand = [...handCards];
@@ -1648,87 +2512,31 @@ class _EuchreState extends State<Euchre> {
         deckCards = [...shuffledDeck];
         print("Deck cards: ${deckCards.length}");
         handCards = sortHand(currentPlayer!.hand, null);
+        cardsPlayedInRound.clear();
         // handCards = [...currentPlayer!.hand];
         // handCards.clear();
         // handCards.addAll(currentPlayer!.hand);
         // handController.updateHand(handCards);
+        for (var bot in bots) {
+          bot.trumpSuit = null;
+        }
         setState(() {});
         connectionService.broadcastMessage({
           'type': 'new_round',
           'players': players.map((p) => p.toMap()).toList(),
-          'handCards': handCards.map((c) => c.toMap()).toList(),
+
           'deckCards': deckCards.map((c) => c.toMap()).toList(),
         }, currentPlayer!.id);
       }
+      setState(() {
+        upCardTurnedDown = false;
+      });
     }
   }
 
   void scoreGame() {
-    showDialog(
-      context: context,
-
-      builder: (BuildContext dialogContext) {
-        Timer(Duration(seconds: 1), () {
-          try {
-            if (dialogContext.mounted)
-              Navigator.of(dialogContext).pop();
-            else
-              print("Dialog context is not mounted, cannot pop dialog.");
-          } catch (e) {
-            print("Error popping dialog: $e");
-          }
-        });
-        return Dialog(
-          backgroundColor: Colors.transparent,
-
-          child: Container(
-            width: 400,
-            height: 200,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [styling.primary, styling.secondary],
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Container(
-              margin: EdgeInsets.all(2), // Creates the border thickness
-              decoration: BoxDecoration(
-                color: styling.background,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    "Game Over!",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (teamA.score > teamB.score)
-                    Text(
-                      "Team A wins with ${teamA.score} points!",
-                      style: TextStyle(color: Colors.white, fontSize: 18),
-                    )
-                  else if (teamB.score > teamA.score)
-                    Text(
-                      "Team B wins with ${teamB.score} points!",
-                      style: TextStyle(color: Colors.white, fontSize: 18),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    ).then((_) {
-      Navigator.pop(context);
+    setState(() {
+      gameState = EuchreGameState.gameOver;
     });
   }
 
@@ -1940,8 +2748,13 @@ class _EuchreState extends State<Euchre> {
                                     ActionButton(
                                       height: 40,
                                       width: 100,
-                                      onTap: () {
+                                      onTap: () async {
+                                        await connectionService
+                                            .broadcastMessage({
+                                              'type': 'host_left',
+                                            }, currentPlayer!.id);
                                         connectionService.dispose();
+
                                         Navigator.of(context).pop();
                                         Navigator.of(context).pop();
                                       },
@@ -1979,17 +2792,9 @@ class _EuchreState extends State<Euchre> {
                   ? buildPlayingScreen(calculatedScale, context, handScale)
                   : gameState == EuchreGameState.teamSelection
                   ? buildTeamSelectionScreen(calculatedScale, context)
-                  : Container(
-                    child: Center(
-                      child: Text(
-                        "Waiting for players to join...",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24 * calculatedScale,
-                        ),
-                      ),
-                    ),
-                  ),
+                  : gameState == EuchreGameState.gameOver
+                  ? buildGameOverScreen()
+                  : Container(),
         ),
       ),
     );
@@ -2004,6 +2809,7 @@ class _EuchreState extends State<Euchre> {
     players[0].hand.removeWhere((c) => c.id == card.id);
     currentPlayer!.hand.removeWhere((c) => c.id == card.id);
     handController.removeCardFromPile(card.id);
+    handCards = sortHand(currentPlayer!.hand, trumpSuit);
     setState(() {
       deckCards.add(card);
       gamePhase = EuchreGamePhase.playing;
@@ -2013,29 +2819,54 @@ class _EuchreState extends State<Euchre> {
       'playerId': currentPlayer!.id,
       'card': card.toMap(),
     }, currentPlayer!.id);
+    final playersTurn = players.firstWhere((p) => p.myTurn);
+    if (playersTurn.isBot) {
+      final bot = bots.firstWhere((b) => b.id == playersTurn.id);
+      Future.delayed(Duration(seconds: 1), () {
+        bot.playCard([], null, players);
+      });
+    }
   }
 
-  void chooseTrumpSuit(CardSuit suit) {
-    setState(() {
-      trumpSuit = suit;
-      gamePhase = EuchreGamePhase.playing;
-      upCardTurnedDown = true;
-      //set turn to be next player after dealer
-      final dealerIndex = players.indexOf(
-        players.firstWhere((p) => p.isDealer),
-      );
+  void chooseTrumpSuit(CardSuit suit) async {
+    bool goingAlone = await askIfGoingAlone();
+    if (goingAlone) {
+      someonesGoneAlone = true;
+      playerToSkip =
+          players
+              .firstWhere(
+                (p) =>
+                    p.onTeamA == currentPlayer!.onTeamA &&
+                    p.id != currentPlayer!.id,
+              )
+              .id;
+    }
+    trumpSuit = suit;
+    for (var bot in bots) {
+      bot.trumpSuit = suit;
+    }
+    gamePhase = EuchreGamePhase.playing;
+    upCardTurnedDown = true;
+    //set turn to be next player after dealer
+    final dealerIndex = players.indexOf(players.firstWhere((p) => p.isDealer));
 
-      final previousPlayerIndex = players.indexOf(currentPlayer!);
-      players[previousPlayerIndex].myTurn = false;
-      final nextPlayerIndex = (dealerIndex + 1) % players.length;
-      players[nextPlayerIndex].myTurn = true;
-      currentPlayer = players.firstWhere((p) => p.id == currentPlayer!.id);
-      if (currentPlayer!.onTeamA) {
-        teamA.madeIt = true;
-      } else {
-        teamB.madeIt = true;
+    final previousPlayerIndex = players.indexOf(currentPlayer!);
+    players[previousPlayerIndex].myTurn = false;
+    int nextPlayerIndex = (dealerIndex + 1) % players.length;
+    if (goingAlone) {
+      int indexToSkip = players.indexWhere((p) => p.id == playerToSkip);
+      if (nextPlayerIndex == indexToSkip) {
+        nextPlayerIndex = (nextPlayerIndex + 1) % players.length;
       }
-    });
+    }
+    players[nextPlayerIndex].myTurn = true;
+    currentPlayer = players.firstWhere((p) => p.id == currentPlayer!.id);
+    if (currentPlayer!.onTeamA) {
+      teamA.madeIt = true;
+    } else {
+      teamB.madeIt = true;
+    }
+    setState(() {});
     handCards = sortHand(currentPlayer!.hand, suit);
 
     // handCards.clear();
@@ -2045,8 +2876,93 @@ class _EuchreState extends State<Euchre> {
     connectionService.broadcastMessage({
       'type': 'chose_trump_suit',
       'suit': suit.toString(),
+      'goingAlone': goingAlone,
+      'playerToSkip': playerToSkip,
       'playerId': currentPlayer!.id,
     }, currentPlayer!.id);
+    if (players[nextPlayerIndex].isBot) {
+      final bot = bots.firstWhere((b) => b.id == players[nextPlayerIndex].id);
+      Future.delayed(Duration(seconds: 1), () {
+        bot.playCard([], null, players);
+      });
+    }
+  }
+
+  Future<bool> askIfGoingAlone() async {
+    bool? result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+
+          child: Container(
+            width: 400,
+            height: 200,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [styling.primary, styling.secondary],
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Container(
+              margin: EdgeInsets.all(2), // Creates the border thickness
+              decoration: BoxDecoration(
+                color: styling.background,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    "Do you want to go alone?",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ActionButton(
+                        height: 40,
+                        width: 100,
+                        onTap: () {
+                          Navigator.of(context).pop(false);
+                        },
+                        text: Text(
+                          "No",
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                        ),
+                      ),
+                      ActionButton(
+                        height: 40,
+                        width: 100,
+                        onTap: () {
+                          Navigator.of(context).pop(true);
+                        },
+                        text: Text(
+                          "Yes",
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    return result ?? false;
   }
 
   Widget buildPlayingScreen(
@@ -2079,16 +2995,17 @@ class _EuchreState extends State<Euchre> {
                         fontSize: 16 * calculatedScale,
                       ),
                     ),
-                    Hand(
-                      handCards: players[1].hand,
-                      currentDragData: currentDragData,
-                      onDragCompleted: () {},
-                      onDragStarted: (d) {},
-                      onDragEnd: () {},
-                      scale: 0.2,
-                      onTapBlitz: () {},
-                      myHand: false,
-                    ),
+                    if (!someonesGoneAlone || players[1].id != playerToSkip)
+                      Hand(
+                        handCards: players[1].hand,
+                        currentDragData: currentDragData,
+                        onDragCompleted: () {},
+                        onDragStarted: (d) {},
+                        onDragEnd: () {},
+                        scale: 0.2,
+                        onTapBlitz: () {},
+                        myHand: false,
+                      ),
                     if (players[1].isDealer &&
                         gamePhase != EuchreGamePhase.playing)
                       EuchreDeck(
@@ -2122,16 +3039,17 @@ class _EuchreState extends State<Euchre> {
                         fontSize: 16 * calculatedScale,
                       ),
                     ),
-                    Hand(
-                      handCards: players[2].hand,
-                      currentDragData: currentDragData,
-                      onDragCompleted: () {},
-                      onDragStarted: (d) {},
-                      onDragEnd: () {},
-                      scale: 0.2,
-                      onTapBlitz: () {},
-                      myHand: false,
-                    ),
+                    if (!someonesGoneAlone || players[2].id != playerToSkip)
+                      Hand(
+                        handCards: players[2].hand,
+                        currentDragData: currentDragData,
+                        onDragCompleted: () {},
+                        onDragStarted: (d) {},
+                        onDragEnd: () {},
+                        scale: 0.2,
+                        onTapBlitz: () {},
+                        myHand: false,
+                      ),
                     if (players[2].isDealer &&
                         gamePhase != EuchreGamePhase.playing)
                       EuchreDeck(
@@ -2163,16 +3081,17 @@ class _EuchreState extends State<Euchre> {
                         fontSize: 16 * calculatedScale,
                       ),
                     ),
-                    Hand(
-                      handCards: players[3].hand,
-                      currentDragData: currentDragData,
-                      onDragCompleted: () {},
-                      onDragStarted: (d) {},
-                      onDragEnd: () {},
-                      scale: 0.2,
-                      onTapBlitz: () {},
-                      myHand: false,
-                    ),
+                    if (!someonesGoneAlone || players[3].id != playerToSkip)
+                      Hand(
+                        handCards: players[3].hand,
+                        currentDragData: currentDragData,
+                        onDragCompleted: () {},
+                        onDragStarted: (d) {},
+                        onDragEnd: () {},
+                        scale: 0.2,
+                        onTapBlitz: () {},
+                        myHand: false,
+                      ),
                     if (players[3].isDealer &&
                         gamePhase != EuchreGamePhase.playing)
                       EuchreDeck(
@@ -2282,6 +3201,7 @@ class _EuchreState extends State<Euchre> {
                     () => customDropZoneValidator(currentDragData.cards.first),
               ),
             ),
+
           Positioned(
             bottom: 0,
 
@@ -2518,31 +3438,53 @@ class _EuchreState extends State<Euchre> {
                       style: TextStyle(fontSize: 14, color: Colors.white),
                       textAlign: TextAlign.center,
                     ),
-                    onTap: () {
-                      setState(() {
-                        trumpSuit = upCardSuit;
-                        //set turn to be next player after dealer
-                        currentPlayer!.myTurn = false;
-                        players[0].myTurn = false;
-                        final dealerIndex = players.indexOf(
-                          players.firstWhere((p) => p.isDealer),
+                    onTap: () async {
+                      bool goingAlone = await askIfGoingAlone();
+                      if (goingAlone) {
+                        someonesGoneAlone = true;
+                        playerToSkip =
+                            players
+                                .firstWhere(
+                                  (p) =>
+                                      p.id != currentPlayer!.id &&
+                                      p.onTeamA == currentPlayer!.onTeamA,
+                                )
+                                .id;
+                      }
+                      trumpSuit = upCardSuit;
+                      for (var bot in bots) {
+                        bot.trumpSuit = upCardSuit;
+                      }
+                      //set turn to be next player after dealer
+                      currentPlayer!.myTurn = false;
+                      players[0].myTurn = false;
+                      final dealerIndex = players.indexOf(
+                        players.firstWhere((p) => p.isDealer),
+                      );
+                      players[dealerIndex].hand.add(deckCards.last);
+                      int nextPlayerIndex = (dealerIndex + 1) % players.length;
+                      if (goingAlone) {
+                        int indexToSkip = players.indexWhere(
+                          (p) => p.id == playerToSkip,
                         );
-                        players[dealerIndex].hand.add(deckCards.last);
-                        final nextPlayerIndex =
-                            (dealerIndex + 1) % players.length;
-                        players[nextPlayerIndex].myTurn = true;
-                        currentPlayer = players.firstWhere(
-                          (p) => p.id == currentPlayer!.id,
-                        );
-                        upCardTurnedDown = true;
-                        gamePhase = EuchreGamePhase.discardingCard;
-                        if (currentPlayer!.onTeamA) {
-                          teamA.madeIt = true;
-                        } else {
-                          teamB.madeIt = true;
+                        if (nextPlayerIndex == indexToSkip) {
+                          nextPlayerIndex =
+                              (nextPlayerIndex + 1) % players.length;
                         }
-                        handCards = sortHand(currentPlayer!.hand, upCardSuit);
-                      });
+                      }
+                      players[nextPlayerIndex].myTurn = true;
+                      currentPlayer = players.firstWhere(
+                        (p) => p.id == currentPlayer!.id,
+                      );
+                      upCardTurnedDown = true;
+                      gamePhase = EuchreGamePhase.discardingCard;
+                      if (currentPlayer!.onTeamA) {
+                        teamA.madeIt = true;
+                      } else {
+                        teamB.madeIt = true;
+                      }
+                      handCards = sortHand(currentPlayer!.hand, upCardSuit);
+                      setState(() {});
 
                       // handCards.clear();
                       // handCards.addAll(currentPlayer!.hand);
@@ -2550,9 +3492,18 @@ class _EuchreState extends State<Euchre> {
 
                       connectionService.broadcastMessage({
                         'type': 'up_card_picked',
-
+                        'goingAlone': goingAlone,
+                        'playerToSkip': playerToSkip,
                         'playerId': currentPlayer!.id,
                       }, currentPlayer!.id);
+                      if (players[dealerIndex].isBot) {
+                        final bot = bots.firstWhere(
+                          (b) => b.id == players[dealerIndex].id,
+                        );
+                        Future.delayed(Duration(seconds: 1), () {
+                          bot.discardCard();
+                        });
+                      }
                     },
                   ),
                 ),
@@ -2654,6 +3605,23 @@ class _EuchreState extends State<Euchre> {
                         'type': 'player_passed',
                         'playerId': currentPlayer!.id,
                       }, currentPlayer!.id);
+                      if (players[1].isBot) {
+                        final bot = bots.firstWhere(
+                          (b) => b.id == players[1].id,
+                        );
+                        Future.delayed(Duration(seconds: 1), () {
+                          bot.decideTrump(
+                            upCardTurnedDown
+                                ? CardSuit.values
+                                    .where((s) => s != upCardSuit)
+                                    .toList()
+                                : [upCardSuit],
+                            upCardTurnedDown ? players[1].isDealer : false,
+                            upCardTurnedDown ? null : deckCards.last,
+                            players,
+                          );
+                        });
+                      }
                     },
                   ),
                 ),
@@ -2698,251 +3666,642 @@ class _EuchreState extends State<Euchre> {
       height: MediaQuery.of(context).size.height,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(height: 32),
-          FancyBorder(
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                "Select Your Team",
-                style: TextStyle(color: Colors.white, fontSize: 24),
-              ),
-            ),
-          ),
-          SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              FancyBorder(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(width: 140),
-                    Padding(
+        children:
+            currentPlayer == null
+                ? [
+                  SizedBox(height: 32),
+                  FancyBorder(
+                    child: Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: Text(
-                        "Team A",
-                        style: TextStyle(color: Colors.white, fontSize: 18),
+                        "Loading...",
+                        style: TextStyle(color: Colors.white, fontSize: 24),
                       ),
                     ),
-                    Container(
-                      width: 140,
-                      height: 3,
-
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [styling.primary, styling.secondary],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    ...teamA.players.map(
-                      (player) => Padding(
-                        padding: const EdgeInsets.all(4.0),
-                        child: Text(
-                          player.name,
-                          style: TextStyle(color: Colors.white, fontSize: 16),
-                        ),
-                      ),
-                    ),
-                    if (teamA.players.length < 2 &&
-                        teamA.players.every((p) => p.id != currentPlayer!.id))
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: ActionButton(
-                          width: 120,
-
-                          text: Text(
-                            teamB.players.any((p) => p.id == currentPlayer!.id)
-                                ? "Switch to Team A"
-                                : "Join Team A",
-                            style: TextStyle(color: Colors.white, fontSize: 12),
-                            textAlign: TextAlign.center,
-                          ),
-                          onTap: () {
-                            setState(() {
-                              currentPlayer!.onTeamA = true;
-                              teamA.players.add(currentPlayer!);
-                              teamB.players.removeWhere(
-                                (p) => p.id == currentPlayer!.id,
-                              );
-                              connectionService.broadcastMessage({
-                                'type': 'team_selection',
-                                'team': currentPlayer!.onTeamA ? 'A' : 'B',
-                                'playerId': currentPlayer!.id,
-                              }, currentPlayer!.id);
-                            });
-                          },
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              SizedBox(width: 32),
-              FancyBorder(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(width: 140),
-                    Padding(
+                  ),
+                ]
+                : [
+                  SizedBox(height: 32),
+                  FancyBorder(
+                    child: Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: Text(
-                        "Team B",
-                        style: TextStyle(color: Colors.white, fontSize: 18),
+                        "Select Your Team",
+                        style: TextStyle(color: Colors.white, fontSize: 24),
                       ),
                     ),
-                    Container(
-                      width: 140,
-                      height: 3,
+                  ),
+                  SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      FancyBorder(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(width: 140),
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text(
+                                "Team A",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              width: 140,
+                              height: 3,
 
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [styling.primary, styling.secondary],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    ...teamB.players.map(
-                      (player) => Padding(
-                        padding: const EdgeInsets.all(4.0),
-                        child: Text(
-                          player.name,
-                          style: TextStyle(color: Colors.white, fontSize: 16),
-                        ),
-                      ),
-                    ),
-                    if (teamB.players.length < 2 &&
-                        teamB.players.every((p) => p.id != currentPlayer!.id))
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: ActionButton(
-                          width: 120,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [styling.primary, styling.secondary],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            ...teamA.players.map(
+                              (player) => Padding(
+                                padding: const EdgeInsets.all(4.0),
+                                child: Text(
+                                  player.name,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            if (teamA.players.length < 2 &&
+                                teamA.players.every(
+                                  (p) => p.id != currentPlayer!.id,
+                                ))
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: ActionButton(
+                                  width: 120,
 
-                          text: Text(
-                            teamA.players.any((p) => p.id == currentPlayer!.id)
-                                ? "Switch to Team B"
-                                : "Join Team B",
-                            style: TextStyle(color: Colors.white, fontSize: 12),
-                            textAlign: TextAlign.center,
+                                  text: Text(
+                                    teamB.players.any(
+                                          (p) => p.id == currentPlayer!.id,
+                                        )
+                                        ? "Switch to Team A"
+                                        : "Join Team A",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  onTap: () {
+                                    setState(() {
+                                      currentPlayer!.onTeamA = true;
+                                      teamA.players.add(currentPlayer!);
+                                      teamB.players.removeWhere(
+                                        (p) => p.id == currentPlayer!.id,
+                                      );
+                                      connectionService.broadcastMessage({
+                                        'type': 'team_selection',
+                                        'team':
+                                            currentPlayer!.onTeamA ? 'A' : 'B',
+                                        'playerId': currentPlayer!.id,
+                                      }, currentPlayer!.id);
+                                    });
+                                  },
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: 32),
+                      FancyBorder(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(width: 140),
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text(
+                                "Team B",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              width: 140,
+                              height: 3,
+
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [styling.primary, styling.secondary],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            ...teamB.players.map(
+                              (player) => Padding(
+                                padding: const EdgeInsets.all(4.0),
+                                child: Text(
+                                  player.name,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            if (teamB.players.length < 2 &&
+                                teamB.players.every(
+                                  (p) => p.id != currentPlayer!.id,
+                                ))
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: ActionButton(
+                                  width: 120,
+
+                                  text: Text(
+                                    teamA.players.any(
+                                          (p) => p.id == currentPlayer!.id,
+                                        )
+                                        ? "Switch to Team B"
+                                        : "Join Team B",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  onTap: () {
+                                    setState(() {
+                                      currentPlayer!.onTeamA = false;
+                                      teamB.players.add(currentPlayer!);
+                                      teamA.players.removeWhere(
+                                        (p) => p.id == currentPlayer!.id,
+                                      );
+                                      connectionService.broadcastMessage({
+                                        'type': 'team_selection',
+                                        'team':
+                                            currentPlayer!.onTeamA ? 'A' : 'B',
+                                        'playerId': currentPlayer!.id,
+                                      }, currentPlayer!.id);
+                                    });
+                                  },
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 32),
+                  if (bots.isNotEmpty && currentPlayer!.getIsHost())
+                    FancyBorder(
+                      child: SizedBox(
+                        width: 200,
+
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(4.0),
+                              child: Text(
+                                "Choose Bot Teams",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              height: 2.0,
+
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [styling.primary, styling.secondary],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(4.0),
+                              ),
+                            ),
+                            for (var bot in bots)
+                              Padding(
+                                padding: const EdgeInsets.all(4.0),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Text(
+                                        "${bot.name}",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+
+                                    if (currentPlayer!.getIsHost())
+                                      SizedBox(
+                                        width: 110,
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            if (teamA.players.every(
+                                                  (p) => p.id != bot.id,
+                                                ) &&
+                                                teamA.players.length < 2 &&
+                                                teamB.players.any(
+                                                  (p) => p.id == bot.id,
+                                                ))
+                                              ActionButton(
+                                                width: 60,
+                                                height: 40,
+                                                text: Text(
+                                                  "Switch to Team A",
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 10,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                                onTap: () {
+                                                  setState(() {
+                                                    bot.onTeamA = true;
+                                                    teamA.players.add(
+                                                      players.firstWhere(
+                                                        (p) => p.id == bot.id,
+                                                      ),
+                                                    );
+                                                    teamB.players.removeWhere(
+                                                      (p) => p.id == bot.id,
+                                                    );
+                                                    players[players.indexWhere(
+                                                          (p) => p.id == bot.id,
+                                                        )]
+                                                        .onTeamA = true;
+                                                    bots
+                                                        .firstWhere(
+                                                          (p) => p.id == bot.id,
+                                                        )
+                                                        .onTeamA = true;
+
+                                                    connectionService
+                                                        .broadcastMessage({
+                                                          'type':
+                                                              'team_selection',
+                                                          'team': 'A',
+                                                          'playerId': bot.id,
+                                                        }, currentPlayer!.id);
+                                                  });
+                                                },
+                                              ),
+                                            if (teamB.players.every(
+                                                  (p) => p.id != bot.id,
+                                                ) &&
+                                                teamB.players.length < 2 &&
+                                                teamA.players.any(
+                                                  (p) => p.id == bot.id,
+                                                ))
+                                              ActionButton(
+                                                width: 60,
+                                                height: 40,
+                                                text: Text(
+                                                  "Switch to Team B",
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 10,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                                onTap: () {
+                                                  setState(() {
+                                                    bot.onTeamA = false;
+                                                    teamB.players.add(
+                                                      players.firstWhere(
+                                                        (p) => p.id == bot.id,
+                                                      ),
+                                                    );
+                                                    teamA.players.removeWhere(
+                                                      (p) => p.id == bot.id,
+                                                    );
+                                                    players[players.indexWhere(
+                                                          (p) => p.id == bot.id,
+                                                        )]
+                                                        .onTeamA = false;
+                                                    bots
+                                                        .firstWhere(
+                                                          (p) => p.id == bot.id,
+                                                        )
+                                                        .onTeamA = false;
+
+                                                    connectionService
+                                                        .broadcastMessage({
+                                                          'type':
+                                                              'team_selection',
+                                                          'team': 'B',
+                                                          'playerId': bot.id,
+                                                        }, currentPlayer!.id);
+                                                  });
+                                                },
+                                              ),
+                                            if (teamA.players.length < 2 &&
+                                                teamA.players.every(
+                                                  (p) => p.id != bot.id,
+                                                ) &&
+                                                teamB.players.every(
+                                                  (p) => p.id != bot.id,
+                                                ))
+                                              ActionButton(
+                                                width: 50,
+                                                height: 30,
+                                                text: Text(
+                                                  "Team A",
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 10,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                                onTap: () {
+                                                  setState(() {
+                                                    bot.onTeamA = true;
+                                                    teamA.players.add(
+                                                      players.firstWhere(
+                                                        (p) => p.id == bot.id,
+                                                      ),
+                                                    );
+                                                    players[players.indexWhere(
+                                                          (p) => p.id == bot.id,
+                                                        )]
+                                                        .onTeamA = true;
+                                                    bots
+                                                        .firstWhere(
+                                                          (p) => p.id == bot.id,
+                                                        )
+                                                        .onTeamA = true;
+
+                                                    connectionService
+                                                        .broadcastMessage({
+                                                          'type':
+                                                              'team_selection',
+                                                          'team': 'A',
+                                                          'playerId': bot.id,
+                                                        }, currentPlayer!.id);
+                                                  });
+                                                },
+                                              ),
+                                            SizedBox(width: 8),
+                                            if (teamB.players.length < 2 &&
+                                                teamB.players.every(
+                                                  (p) => p.id != bot.id,
+                                                ) &&
+                                                teamA.players.every(
+                                                  (p) => p.id != bot.id,
+                                                ))
+                                              ActionButton(
+                                                width: 50,
+                                                height: 30,
+                                                text: Text(
+                                                  "Team B",
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 10,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                                onTap: () {
+                                                  setState(() {
+                                                    bot.onTeamA = false;
+                                                    teamB.players.add(
+                                                      players.firstWhere(
+                                                        (p) => p.id == bot.id,
+                                                      ),
+                                                    );
+                                                    players[players.indexWhere(
+                                                          (p) => p.id == bot.id,
+                                                        )]
+                                                        .onTeamA = false;
+                                                    bots
+                                                        .firstWhere(
+                                                          (p) => p.id == bot.id,
+                                                        )
+                                                        .onTeamA = false;
+
+                                                    connectionService
+                                                        .broadcastMessage({
+                                                          'type':
+                                                              'team_selection',
+                                                          'team': 'B',
+                                                          'playerId': bot.id,
+                                                        }, currentPlayer!.id);
+                                                  });
+                                                },
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (currentPlayer!.getIsHost()) SizedBox(height: 32),
+                  if (currentPlayer!.getIsHost() &&
+                      teamA.players.length >= 2 &&
+                      teamB.players.length >= 2)
+                    ActionButton(
+                      text: Text(
+                        "Start Game",
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+                      onTap: () {
+                        //random int from 0 to 3
+                        int dealerPlayerIndex = math.Random().nextInt(
+                          players.length,
+                        );
+                        int startingPlayerIndex = dealerPlayerIndex + 1;
+                        if (startingPlayerIndex >= players.length) {
+                          startingPlayerIndex = 0;
+                        }
+                        playOrder = generatePlayOrder();
+                        print("Play order: $playOrder");
+                        //sort players based on play order but keep the current player at the start
+                        players.sort((a, b) {
+                          return playOrder
+                              .indexOf(a.id)
+                              .compareTo(playOrder.indexOf(b.id));
+                        });
+                        //rotate the players so that the current player is first
+                        players = [
+                          ...players.skipWhile(
+                            (p) => p.id != currentPlayer!.id,
                           ),
-                          onTap: () {
-                            setState(() {
-                              currentPlayer!.onTeamA = false;
-                              teamB.players.add(currentPlayer!);
-                              teamA.players.removeWhere(
-                                (p) => p.id == currentPlayer!.id,
-                              );
-                              connectionService.broadcastMessage({
-                                'type': 'team_selection',
-                                'team': currentPlayer!.onTeamA ? 'A' : 'B',
-                                'playerId': currentPlayer!.id,
-                              }, currentPlayer!.id);
-                            });
-                          },
-                        ),
+                          ...players.takeWhile(
+                            (p) => p.id != currentPlayer!.id,
+                          ),
+                        ];
+                        dropZones.sort((a, b) {
+                          final aIndex = players.indexWhere(
+                            (p) => p.id == a.id,
+                          );
+                          final bIndex = players.indexWhere(
+                            (p) => p.id == b.id,
+                          );
+                          return aIndex.compareTo(bIndex);
+                        });
+                        players[dealerPlayerIndex].isDealer = true;
+
+                        players[startingPlayerIndex].myTurn = true;
+                        print(
+                          "Players after sorting: ${players.map((p) => p.name)}",
+                        );
+
+                        gameState = EuchreGameState.playing;
+                        setState(() {});
+                        List<CardData> shuffledDeck = [...fullEuchreDeck];
+                        print("Shuffled deck: ${shuffledDeck.length}");
+                        shuffledDeck.shuffle();
+
+                        handCards = shuffledDeck.sublist(0, 5);
+                        shuffledDeck.removeRange(0, 5);
+                        currentPlayer!.hand = [...handCards];
+                        players.forEach((player) {
+                          if (player.id != currentPlayer!.id) {
+                            player.hand = shuffledDeck.sublist(0, 5);
+                            shuffledDeck.removeRange(0, 5);
+                          } else {
+                            player.hand = [...handCards];
+                          }
+                        });
+
+                        // Initialize deck cards
+                        deckCards = [...shuffledDeck];
+                        handCards = sortHand(currentPlayer!.hand, null);
+                        setState(() {});
+
+                        connectionService.broadcastMessage({
+                          'type': 'game_started',
+                          'teamA': teamA.toMap(),
+                          'teamB': teamB.toMap(),
+                          'deckCards': deckCards.map((c) => c.toMap()).toList(),
+                          'players': players.map((p) => p.toMap()).toList(),
+                          'playOrder': playOrder.join(','),
+                          'dealerId': players[dealerPlayerIndex].id,
+                          'startingPlayerId': players[startingPlayerIndex].id,
+                        }, currentPlayer!.id);
+
+                        if (players[startingPlayerIndex].isBot) {
+                          Future.delayed(const Duration(seconds: 1), () {
+                            bots
+                                .firstWhere(
+                                  (b) =>
+                                      b.id == players[startingPlayerIndex].id,
+                                )
+                                .decideTrump(
+                                  [deckCards.last.suit],
+                                  false,
+                                  deckCards.last,
+                                  players,
+                                );
+                          });
+                        }
+                        // Notify all players that the game has started
+                      },
+                    )
+                  else if (currentPlayer!.getIsHost())
+                    FancyWidget(
+                      child: Text(
+                        "Waiting for teams to be selected...",
+                        style: TextStyle(color: Colors.white, fontSize: 16),
                       ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 32),
-          if (currentPlayer!.getIsHost() &&
-              teamA.players.length >= 2 &&
-              teamB.players.length >= 2)
-            ActionButton(
-              text: Text(
-                "Start Game",
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-              onTap: () {
-                //random int from 0 to 3
-                int dealerPlayerIndex = math.Random().nextInt(players.length);
-                int startingPlayerIndex = dealerPlayerIndex + 1;
-                if (startingPlayerIndex >= players.length) {
-                  startingPlayerIndex = 0;
-                }
-                setState(() {
-                  playOrder = generatePlayOrder();
-                  print("Play order: $playOrder");
-                  //sort players based on play order but keep the current player at the start
-                  players.sort((a, b) {
-                    return playOrder
-                        .indexOf(a.id)
-                        .compareTo(playOrder.indexOf(b.id));
-                  });
-                  //rotate the players so that the current player is first
-                  players = [
-                    ...players.skipWhile((p) => p.id != currentPlayer!.id),
-                    ...players.takeWhile((p) => p.id != currentPlayer!.id),
-                  ];
-                  dropZones.sort((a, b) {
-                    final aIndex = players.indexWhere((p) => p.id == a.id);
-                    final bIndex = players.indexWhere((p) => p.id == b.id);
-                    return aIndex.compareTo(bIndex);
-                  });
-                  players[dealerPlayerIndex].isDealer = true;
-
-                  players[startingPlayerIndex].myTurn = true;
-                  print("Players after sorting: ${players.map((p) => p.name)}");
-
-                  gameState = EuchreGameState.playing;
-                });
-                List<CardData> shuffledDeck = [...fullEuchreDeck];
-                print("Shuffled deck: ${shuffledDeck.length}");
-                shuffledDeck.shuffle();
-
-                handCards = shuffledDeck.sublist(0, 5);
-                shuffledDeck.removeRange(0, 5);
-                currentPlayer!.hand = [...handCards];
-                players.forEach((player) {
-                  if (player.id != currentPlayer!.id) {
-                    player.hand = shuffledDeck.sublist(0, 5);
-                    shuffledDeck.removeRange(0, 5);
-                  } else {
-                    player.hand = [...handCards];
-                  }
-                });
-                // Initialize deck cards
-                deckCards = [...shuffledDeck];
-                handCards = sortHand(currentPlayer!.hand, null);
-                setState(() {});
-
-                connectionService.broadcastMessage({
-                  'type': 'game_started',
-                  'teamA': teamA.toMap(),
-                  'teamB': teamB.toMap(),
-                  'deckCards': deckCards.map((c) => c.toMap()).toList(),
-                  'players': players.map((p) => p.toMap()).toList(),
-                  'playOrder': playOrder.join(','),
-                  'dealerId': players[dealerPlayerIndex].id,
-                  'startingPlayerId': players[startingPlayerIndex].id,
-                }, currentPlayer!.id);
-                // Notify all players that the game has started
-              },
-            )
-          else if (currentPlayer!.getIsHost())
-            FancyWidget(
-              child: Text(
-                "Waiting for teams to be selected...",
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            )
-          else
-            FancyWidget(
-              child: Text(
-                "Waiting for host to start the game...",
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            ),
-        ],
+                    )
+                  else
+                    FancyWidget(
+                      child: Text(
+                        "Waiting for host to start the game...",
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+                    ),
+                ],
       ),
+    );
+  }
+
+  Widget buildGameOverScreen() {
+    // Sort players by score
+    List<EuchrePlayer> winners =
+        teamA.score >= 10 ? teamA.players : teamB.players;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FancyWidget(
+          child: Text(
+            'Game Over',
+            style: TextStyle(
+              fontSize: 24.0,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16.0),
+        Text(
+          "Winners: ${winners[0].name} and ${winners[1].name}",
+          style: TextStyle(fontSize: 20.0, color: Colors.white),
+        ),
+        const SizedBox(height: 16.0),
+        FancyBorder(
+          child: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.5,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(height: 16.0),
+                SizedBox(
+                  width: double.infinity,
+                  child: Text(
+                    "Final Scores",
+                    style: TextStyle(
+                      fontSize: 24.0,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  "Team A: ${teamA.score}",
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  "Team B: ${teamB.score}",
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

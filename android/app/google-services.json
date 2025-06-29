@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "254542560195",
+    "project_id": "kazoom-deckly",
+    "storage_bucket": "kazoom-deckly.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:254542560195:android:ba9dddb5a2413a5b02db76",
+        "android_client_info": {
+          "package_name": "com.example.deckly"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZ1DnrbLjXnoW-14xCMPSmXvzYv9QIPyI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

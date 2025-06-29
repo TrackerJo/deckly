@@ -71,12 +71,11 @@ class ConnectionService {
     _game = game;
 
     _players = [
-      BlitzPlayer(
+      GamePlayer(
         id: 'Deckly-$userName-$_roomCode-host',
         name: userName,
         isHost: true,
-        score: 0,
-        blitzDeckSize: 13, // Set to 0 or appropriate default
+        // Set to 0 or appropriate default
       ),
     ];
 
