@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:deckly/api/analytics.dart';
 import 'package:deckly/api/connection_service.dart';
 import 'package:deckly/api/remote_config.dart';
 import 'package:deckly/api/shared_prefs.dart';
@@ -15,6 +16,7 @@ import 'package:deckly/styling.dart';
 import 'package:deckly/widgets/action_button.dart';
 import 'package:deckly/widgets/fancy_widget.dart';
 import 'package:deckly/widgets/solid_action_button.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 
 import 'package:flutter/material.dart';
 import 'package:has_dynamic_island/has_dynamic_island.dart';
@@ -22,14 +24,17 @@ import 'package:has_dynamic_island/has_dynamic_island.dart';
 import 'package:nearby_connections/nearby_connections.dart';
 import 'package:overlay_support/overlay_support.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'firebase_options.dart';
 
 final Styling styling = Styling();
 final ConnectionService connectionService = ConnectionService();
+final Analytics analytics = Analytics();
 
 final bluetoothDataStream = StreamController<Payload>.broadcast();
 final bluetoothStateStream = StreamController.broadcast();
+final RateAppHelper rateAppHelper = RateAppHelper();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,7 +55,6 @@ class _MyAppState extends State<MyApp> {
   bool requiresUpdate = false;
 
   void checkForUpdates() async {
-    // Check for updates every 6 hours
     UpdateStatus updateStatus = await RemoteConfig().checkUpdates();
     HasDynamicIsland dynamicIsland = HasDynamicIsland();
     bool hasDynamicIsland = await dynamicIsland.hasDynamicIsland();
@@ -220,13 +224,420 @@ class _MyAppState extends State<MyApp> {
         requiresUpdate = true;
       });
     }
+
+    bool hasRatedApp = await SharedPrefs.getSeenRateApp();
+    if (!hasRatedApp) {
+      print("HAS DYNAMIC ISLAND: $hasDynamicIsland");
+      await rateAppHelper.initialize();
+      showOverlayNotification((context) {
+        return Column(
+          children: [
+            if (hasDynamicIsland) const SizedBox(height: 48),
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              padding: const EdgeInsets.all(0),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [styling.primary, styling.secondary],
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Container(
+                margin: EdgeInsets.all(2), // Creates the border thickness
+                decoration: BoxDecoration(
+                  color: styling.background,
+                  borderRadius: BorderRadius.circular(
+                    6,
+                  ), // Slightly smaller radius
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    splashColor: styling.secondary.withOpacity(0.3),
+                    onTap: () {
+                      OverlaySupportEntry.of(context)!.dismiss();
+                      SharedPrefs.setSeenRateApp(true);
+                    },
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        children: [
+                          // Leading icon
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            clipBehavior: Clip.hardEdge,
+                            child: Image.asset("assets/icon.png"),
+                          ),
+                          const SizedBox(width: 16),
+                          // Title and subtitle
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  "Rate Deckly!",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "If you enjoy using Deckly, please take a moment to rate us on the app store.\nTap to dismiss.",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          // Trailing close button
+                          SolidActionButton(
+                            width: 100,
+                            height: 36,
+
+                            text: Text(
+                              "Rate",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            onTap: () async {
+                              OverlaySupportEntry.of(context)!.dismiss();
+                              await SharedPrefs.setSeenRateApp(true);
+                              rateAppHelper.launchStore();
+                              // Uri sms = Uri.parse(
+                              //   'https://apps.apple.com/us/app/deckly-cards-with-friends/id6746527909',
+                              // );
+                              // if (Platform.isAndroid) {
+                              //   sms = Uri.parse(
+                              //     'https://play.google.com/store/apps/details?id=com.kazoom.deckly',
+                              //   );
+                              // }
+
+                              // try {
+                              //   if (await launchUrl(sms)) {
+                              //   } else {
+                              //     showDialog(
+                              //       context: context,
+                              //       builder: (BuildContext context) {
+                              //         return AlertDialog(
+                              //           title: const Text(
+                              //             "Unable to open app store",
+                              //           ),
+                              //           content: const Text(
+                              //             "Please try again later.",
+                              //           ),
+                              //           actions: [
+                              //             TextButton(
+                              //               onPressed: () async {
+                              //                 await SharedPrefs.hapticButtonPress();
+
+                              //                 Navigator.of(context).pop();
+                              //               },
+                              //               child: const Text("Okay"),
+                              //             ),
+                              //           ],
+                              //         );
+                              //       },
+                              //     );
+                              //   }
+                              // } catch (e) {
+                              //   print("Error launching URL: $e");
+                              // }
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      }, duration: const Duration(milliseconds: 0));
+    }
+  }
+
+  void checkIfRateOrShare() async {
+    await SharedPrefs.incrementAppLaunchCount();
+    int launchCount = await SharedPrefs.getAppLaunchCount();
+    DateTime dateOpened = await SharedPrefs.getFirstOpenDate();
+    DateTime now = DateTime.now();
+    Duration difference = now.difference(dateOpened);
+
+    HasDynamicIsland dynamicIsland = HasDynamicIsland();
+    bool hasDynamicIsland = await dynamicIsland.hasDynamicIsland();
+
+    bool hasRatedApp = await SharedPrefs.getSeenRateApp();
+    if (!hasRatedApp && launchCount >= 5 && difference.inDays >= 2) {
+      await rateAppHelper.initialize();
+      showOverlayNotification((context) {
+        return Column(
+          children: [
+            if (hasDynamicIsland) const SizedBox(height: 48),
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              padding: const EdgeInsets.all(0),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [styling.primary, styling.secondary],
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Container(
+                margin: EdgeInsets.all(2), // Creates the border thickness
+                decoration: BoxDecoration(
+                  color: styling.background,
+                  borderRadius: BorderRadius.circular(
+                    6,
+                  ), // Slightly smaller radius
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    splashColor: styling.secondary.withOpacity(0.3),
+                    onTap: () {
+                      OverlaySupportEntry.of(context)!.dismiss();
+                      SharedPrefs.setSeenRateApp(true);
+                    },
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        children: [
+                          // Leading icon
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            clipBehavior: Clip.hardEdge,
+                            child: Image.asset("assets/icon.png"),
+                          ),
+                          const SizedBox(width: 16),
+                          // Title and subtitle
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  "Rate Deckly!",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "If you enjoy using Deckly, please take a moment to rate us on the app store.\nTap to dismiss.",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          // Trailing close button
+                          SolidActionButton(
+                            width: 100,
+                            height: 36,
+
+                            text: Text(
+                              "Rate",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            onTap: () async {
+                              OverlaySupportEntry.of(context)!.dismiss();
+                              analytics.logRateAppEvent();
+                              await SharedPrefs.setSeenRateApp(true);
+                              rateAppHelper.launchStore();
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      }, duration: const Duration(milliseconds: 0));
+    }
+
+    bool hasSeenShareApp = await SharedPrefs.getSeenShareApp();
+    if (hasRatedApp &&
+        launchCount >= 7 &&
+        difference.inDays >= 3 &&
+        !hasSeenShareApp) {
+      showOverlayNotification((context) {
+        bool isRatingApp = false;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Column(
+              children: [
+                if (hasDynamicIsland) const SizedBox(height: 48),
+                Container(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
+                  padding: const EdgeInsets.all(0),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [styling.primary, styling.secondary],
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Container(
+                    margin: EdgeInsets.all(2), // Creates the border thickness
+                    decoration: BoxDecoration(
+                      color: styling.background,
+                      borderRadius: BorderRadius.circular(
+                        6,
+                      ), // Slightly smaller radius
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        splashColor: styling.secondary.withOpacity(0.3),
+                        onTap: () {
+                          OverlaySupportEntry.of(context)!.dismiss();
+                          SharedPrefs.setSeenShareApp(true);
+                        },
+                        borderRadius: BorderRadius.circular(6),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Row(
+                            children: [
+                              // Leading icon
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                clipBehavior: Clip.hardEdge,
+                                child: Image.asset("assets/icon.png"),
+                              ),
+                              const SizedBox(width: 16),
+                              // Title and subtitle
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      "Share Deckly with a Friend!",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      "If you enjoy using Deckly, please share it with a friend.\nTap to dismiss.",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              // Trailing close button
+                              if (isRatingApp)
+                                //Loading indicator
+                                const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
+                              else
+                                SolidActionButton(
+                                  width: 100,
+                                  height: 36,
+
+                                  text: Text(
+                                    "Share",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  onTap: () async {
+                                    setState(() {
+                                      isRatingApp = true;
+                                    });
+                                    analytics.logShareAppEvent();
+                                    Uri sms = Uri.parse(
+                                      'https://apps.apple.com/us/app/deckly-cards-with-friends/id6746527909',
+                                    );
+                                    final SharePlus sharePlus =
+                                        SharePlus.instance;
+                                    await sharePlus.share(
+                                      ShareParams(
+                                        text:
+                                            "Check out Deckly, a fun card game app! Download it here: $sms",
+                                        subject: "Deckly - Cards with Friends",
+                                      ),
+                                    );
+                                    await SharedPrefs.setSeenShareApp(true);
+
+                                    OverlaySupportEntry.of(context)!.dismiss();
+                                  },
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      }, duration: const Duration(milliseconds: 0));
+    }
   }
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
+
     checkForUpdates();
+    checkIfRateOrShare();
   }
 
   @override
@@ -244,6 +655,8 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    //Run Fucntion after the build is complete
+
     return OverlaySupport(
       child: MediaQuery(
         data: MediaQuery.of(context).copyWith(textScaleFactor: 1.0),
@@ -251,6 +664,7 @@ class _MyAppState extends State<MyApp> {
           title: 'Deckly',
           theme: ThemeData(primarySwatch: Colors.purple),
           debugShowCheckedModeBanner: false,
+          navigatorObservers: [analytics.observer],
           home: requiresUpdate ? UpdatePage(onUpdate: onUpdate) : HomeScreen(),
           // home: NertzWithBot(
           //   player: GamePlayer(

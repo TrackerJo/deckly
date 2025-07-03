@@ -4,8 +4,8 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   firebase_core
-  flutter_ble_peripheral
   permission_handler_windows
+  share_plus
   url_launcher_windows
 )
 

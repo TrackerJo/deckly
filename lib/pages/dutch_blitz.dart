@@ -13,6 +13,7 @@ import 'package:deckly/widgets/deck_anim.dart';
 import 'package:deckly/widgets/drop_zone.dart';
 import 'package:deckly/widgets/fancy_widget.dart';
 import 'package:deckly/widgets/fancy_border.dart';
+import 'package:deckly/widgets/orientation_checker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 
@@ -183,7 +184,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Text(
-                          player.name + " has Blitzed!",
+                          player.name + " has Dashed!",
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 24,
@@ -433,7 +434,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
-                    botPlayer.name + " has Blitzed!",
+                    botPlayer.name + " has Dashed!",
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 24,
@@ -505,7 +506,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
-                    "You Blitzed!",
+                    "You Dashed!",
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 24,
@@ -1029,216 +1030,223 @@ class _DutchBlitzState extends State<DutchBlitz> {
 
     return PopScope(
       canPop: false,
-      child: Scaffold(
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(kToolbarHeight),
-          child: CustomAppBar(
-            title: "Dutch Blitz",
-            showBackButton: true,
-            onBackButtonPressed: (context) {
-              connectionService.dispose();
-              Navigator.pop(context);
-            },
-            actions: [
-              IconButton(
-                icon: SFIcon(
-                  SFIcons.sf_pencil_and_list_clipboard, // 'heart.fill'
-                  // fontSize instead of size
-                  fontWeight: FontWeight.bold, // fontWeight instead of weight
-                  color: styling.primary,
-                ),
-                onPressed: () {
-                  SharedPrefs.hapticButtonPress();
-                  showModalBottomSheet<void>(
-                    context: context,
-                    backgroundColor: styling.background,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(23),
-                        topRight: Radius.circular(23),
+      child: OrientationChecker(
+        allowedOrientations: [
+          Orientation.portrait,
+          if (isTablet(context)) Orientation.landscape,
+        ],
+        child: Scaffold(
+          appBar: PreferredSize(
+            preferredSize: const Size.fromHeight(kToolbarHeight),
+            child: CustomAppBar(
+              title: "Nordic Dash",
+              showBackButton: true,
+              onBackButtonPressed: (context) {
+                connectionService.dispose();
+                Navigator.pop(context);
+              },
+              actions: [
+                IconButton(
+                  icon: SFIcon(
+                    SFIcons.sf_pencil_and_list_clipboard, // 'heart.fill'
+                    // fontSize instead of size
+                    fontWeight: FontWeight.bold, // fontWeight instead of weight
+                    color: styling.primary,
+                  ),
+                  onPressed: () {
+                    SharedPrefs.hapticButtonPress();
+                    showModalBottomSheet<void>(
+                      context: context,
+                      backgroundColor: styling.background,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(23),
+                          topRight: Radius.circular(23),
+                        ),
                       ),
-                    ),
-                    isScrollControlled: true,
-                    builder: (BuildContext context) {
-                      return StatefulBuilder(
-                        builder: (context, setState) {
-                          return Container(
-                            height: MediaQuery.of(context).size.height * 0.8,
-                            width: double.infinity,
-                            child: SingleChildScrollView(
-                              padding: EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: dutchBlitzRules,
+                      isScrollControlled: true,
+                      builder: (BuildContext context) {
+                        return StatefulBuilder(
+                          builder: (context, setState) {
+                            return Container(
+                              height: MediaQuery.of(context).size.height * 0.8,
+                              width: double.infinity,
+                              child: SingleChildScrollView(
+                                padding: EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: dutchBlitzRules,
+                                ),
                               ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
+                if (currentPlayer!.getIsHost() &&
+                    gameState == NertzGameState.playing)
+                  IconButton(
+                    icon: Icon(Icons.pause, color: styling.primary),
+                    onPressed: () {
+                      SharedPrefs.hapticButtonPress();
+                      for (var bot in bots) {
+                        bot.pauseGame();
+                      }
+                      stopwatch.stop();
+                      connectionService.broadcastMessage({
+                        'type': 'pause_game',
+                      }, currentPlayer!.id);
+                      scrollController.jumpTo(0);
+                      setState(() {
+                        gameState = NertzGameState.paused;
+                      });
+                    },
+                  ),
+              ],
+              customBackButton: IconButton(
+                splashColor: Colors.transparent,
+                splashRadius: 25,
+                icon: Transform.flip(
+                  flipX: true,
+                  child: SFIcon(
+                    SFIcons
+                        .sf_rectangle_portrait_and_arrow_right, // 'heart.fill'
+                    // fontSize instead of size
+                    fontWeight: FontWeight.bold, // fontWeight instead of weight
+                    color: styling.primary,
+                  ),
+                ),
+                onPressed: () async {
+                  SharedPrefs.hapticButtonPress();
+                  //Confirm with user before leaving
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (BuildContext context) {
+                      return Dialog(
+                        backgroundColor: Colors.transparent,
+
+                        child: Container(
+                          width: 400,
+                          height: 200,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [styling.primary, styling.secondary],
                             ),
-                          );
-                        },
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Container(
+                            margin: EdgeInsets.all(
+                              2,
+                            ), // Creates the border thickness
+                            decoration: BoxDecoration(
+                              color: styling.background,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Text(
+                                  "Are you sure you want to leave the game?",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                SizedBox(height: 16),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    ActionButton(
+                                      height: 40,
+                                      width: 100,
+                                      onTap: () {
+                                        Navigator.of(context).pop();
+                                      },
+                                      text: Text(
+                                        "Cancel",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                    ActionButton(
+                                      height: 40,
+                                      width: 100,
+                                      onTap: () async {
+                                        setState(() {
+                                          gameState = NertzGameState.gameOver;
+                                        });
+                                        if (currentPlayer!.getIsHost()) {
+                                          for (var bot in bots) {
+                                            bot.dispose();
+                                          }
+                                          await connectionService
+                                              .broadcastMessage({
+                                                'type': 'host_left',
+                                              }, currentPlayer!.id);
+                                        }
+                                        connectionService.dispose();
+
+                                        Navigator.of(context).pop();
+                                        Navigator.of(context).pop();
+                                      },
+                                      text: Text(
+                                        "Leave",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       );
                     },
                   );
                 },
+                color: Colors.white,
               ),
-              if (currentPlayer!.getIsHost() &&
-                  gameState == NertzGameState.playing)
-                IconButton(
-                  icon: Icon(Icons.pause, color: styling.primary),
-                  onPressed: () {
-                    SharedPrefs.hapticButtonPress();
-                    for (var bot in bots) {
-                      bot.pauseGame();
-                    }
-                    stopwatch.stop();
-                    connectionService.broadcastMessage({
-                      'type': 'pause_game',
-                    }, currentPlayer!.id);
-                    scrollController.jumpTo(0);
-                    setState(() {
-                      gameState = NertzGameState.paused;
-                    });
-                  },
-                ),
-            ],
-            customBackButton: IconButton(
-              splashColor: Colors.transparent,
-              splashRadius: 25,
-              icon: Transform.flip(
-                flipX: true,
-                child: SFIcon(
-                  SFIcons.sf_rectangle_portrait_and_arrow_right, // 'heart.fill'
-                  // fontSize instead of size
-                  fontWeight: FontWeight.bold, // fontWeight instead of weight
-                  color: styling.primary,
-                ),
-              ),
-              onPressed: () async {
-                SharedPrefs.hapticButtonPress();
-                //Confirm with user before leaving
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (BuildContext context) {
-                    return Dialog(
-                      backgroundColor: Colors.transparent,
-
-                      child: Container(
-                        width: 400,
-                        height: 200,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [styling.primary, styling.secondary],
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Container(
-                          margin: EdgeInsets.all(
-                            2,
-                          ), // Creates the border thickness
-                          decoration: BoxDecoration(
-                            color: styling.background,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Text(
-                                "Are you sure you want to leave the game?",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  ActionButton(
-                                    height: 40,
-                                    width: 100,
-                                    onTap: () {
-                                      Navigator.of(context).pop();
-                                    },
-                                    text: Text(
-                                      "Cancel",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
-                                  ActionButton(
-                                    height: 40,
-                                    width: 100,
-                                    onTap: () async {
-                                      setState(() {
-                                        gameState = NertzGameState.gameOver;
-                                      });
-                                      if (currentPlayer!.getIsHost()) {
-                                        for (var bot in bots) {
-                                          bot.dispose();
-                                        }
-                                        await connectionService
-                                            .broadcastMessage({
-                                              'type': 'host_left',
-                                            }, currentPlayer!.id);
-                                      }
-                                      connectionService.dispose();
-
-                                      Navigator.of(context).pop();
-                                      Navigator.of(context).pop();
-                                    },
-                                    text: Text(
-                                      "Leave",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-              color: Colors.white,
             ),
           ),
-        ),
-        backgroundColor: styling.background,
-        body: Container(
-          height: double.infinity,
-          padding: EdgeInsets.all(16.0),
-          child: SingleChildScrollView(
-            controller: scrollController,
-            physics:
-                gameState == NertzGameState.paused
-                    ? NeverScrollableScrollPhysics()
-                    : null,
-            child:
-                gameState == NertzGameState.playing ||
-                        gameState == NertzGameState.paused
-                    ? Stack(
-                      children: [
-                        buildPlayingScreen(calculatedScale),
-                        if (gameState == NertzGameState.paused)
-                          buildPausedScreen(context),
-                      ],
-                    )
-                    : gameState == NertzGameState.leaderboard
-                    ? buildLeaderboardScreen()
-                    : buildGameOverScreen(),
+          backgroundColor: styling.background,
+          body: Container(
+            height: double.infinity,
+            padding: EdgeInsets.all(16.0),
+            child: SingleChildScrollView(
+              controller: scrollController,
+              physics:
+                  gameState == NertzGameState.paused
+                      ? NeverScrollableScrollPhysics()
+                      : null,
+              child:
+                  gameState == NertzGameState.playing ||
+                          gameState == NertzGameState.paused
+                      ? Stack(
+                        children: [
+                          buildPlayingScreen(calculatedScale),
+                          if (gameState == NertzGameState.paused)
+                            buildPausedScreen(context),
+                        ],
+                      )
+                      : gameState == NertzGameState.leaderboard
+                      ? buildLeaderboardScreen()
+                      : buildGameOverScreen(),
+            ),
           ),
         ),
       ),
@@ -1278,7 +1286,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
                             ),
                             SizedBox(height: 4.0),
                             Text(
-                              '${player.blitzDeckSize} blitz cards left',
+                              '${player.blitzDeckSize} dash cards left',
                               style: TextStyle(
                                 fontSize: 14.0,
                                 color: Colors.white,

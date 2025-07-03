@@ -1,7 +1,7 @@
 name: deckly
 description: "A new Flutter project."
 publish_to: 'none'
-version: 1.0.2+48
+version: 1.0.3+63
 
 environment:
   sdk: ^3.7.2
@@ -15,17 +15,18 @@ dependencies:
   tuple: ^2.0.0
   path_provider: ^2.0.0
   path: ^1.8.3
-  go_router: ^14.2.1
+
   shared_preferences: ^2.2.0
-  drift: ^2.23.1
+  share_plus: ^11.0.0
   # flutter_dynamic_icon: ^2.1.0
-  flutter_blue_plus: ^1.32.4
-  permission_handler: ^12.0.0+1
-  flutter_ble_peripheral: ^1.2.6
+
+  permission_handler: ^11.3.1
+
   nearby_connections: ^4.3.0
   # new_version: ^0.3.1
   overlay_support: ^2.1.0
   package_info_plus: ^8.3.0
+  rate_my_app: ^2.3.2
 
   flutter_nearby_connections:
     path: ./plugins/flutter_nearby_connections
@@ -39,6 +40,7 @@ dependencies:
   flutter_sficon: ^1.2.0
   firebase_core: ^3.8.0
   firebase_remote_config: ^5.2.0
+  firebase_analytics: ^11.5.2
 
 
 

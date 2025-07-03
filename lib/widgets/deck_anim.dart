@@ -22,7 +22,12 @@ class CardDeckAnimController {
   }
 
   void unstuck() {
+    print("Unstuck called, resetting deck and pile" + _state.toString());
     _state?.unstuck();
+  }
+
+  void clearDeck() {
+    _state?.clearDeck();
   }
 }
 
@@ -36,6 +41,8 @@ class CardDeckAnim extends StatefulWidget {
   final double scale;
   final bool isDutchBlitz;
   final Function() onReachEndOfDeck;
+  final List<CardData>? pileCards;
+  final bool isSolitaire;
 
   const CardDeckAnim({
     Key? key,
@@ -48,6 +55,8 @@ class CardDeckAnim extends StatefulWidget {
     this.controller,
     this.scale = 1.0,
     this.isDutchBlitz = false,
+    this.isSolitaire = false,
+    this.pileCards,
   }) : super(key: key);
 
   @override
@@ -63,14 +72,29 @@ class _CardDeckAnimState extends State<CardDeckAnim> {
   @override
   void initState() {
     super.initState();
-    deckCards = List.from(widget.cards);
+    // deckCards = List.from(widget.cards);
+    if (widget.isSolitaire) {
+      deckCards = widget.cards;
+    } else {
+      deckCards = List.from(widget.cards);
+    }
+    pileCards = widget.pileCards ?? [];
     widget.controller?._attach(this);
   }
 
   @override
   void dispose() {
-    widget.controller?._detach();
+    print("CardDeckAnim dispose called");
+    // widget.controller?._detach();
     super.dispose();
+  }
+
+  void clearDeck() {
+    setState(() {
+      deckCards.clear();
+      pileCards.clear();
+      flipCards.clear();
+    });
   }
 
   @override
@@ -80,6 +104,7 @@ class _CardDeckAnimState extends State<CardDeckAnim> {
       deckCards = List.from(widget.cards);
     }
     if (widget.controller != oldWidget.controller) {
+      print("CardDeckAnim didUpdateWidget called");
       oldWidget.controller?._detach();
       widget.controller?._attach(this);
     }
@@ -173,7 +198,7 @@ class _CardDeckAnimState extends State<CardDeckAnim> {
   void unstuck() {
     // Reset the drag state
 
-    List<CardData> dealtCards = deckCards.toList();
+    List<CardData> dealtCards = [...deckCards.toList()];
     deckCards.clear();
     pileCards.removeWhere((card) => card.id == "nil");
     pileCards.addAll(
@@ -186,7 +211,11 @@ class _CardDeckAnimState extends State<CardDeckAnim> {
         ),
       ),
     );
-    deckCards = List.from(pileCards);
+    if (widget.isSolitaire) {
+      deckCards.addAll(pileCards);
+    } else {
+      deckCards = List.from(pileCards);
+    }
     pileCards.clear();
     CardData topCard = deckCards.first;
     flipAnimation([topCard]);

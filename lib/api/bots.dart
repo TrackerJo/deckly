@@ -1223,7 +1223,7 @@ class EuchreBot {
     }
   }
 
-  CardData highestCardInSuit(CardSuit suit) {
+  CardData? highestCardInSuit(CardSuit suit) {
     List<CardData> allPossibleCards = [
       for (var value = 9; value <= 14; value++)
         CardData(
@@ -1254,12 +1254,16 @@ class EuchreBot {
     allPossibleCards.removeWhere(
       (card) => playedCards.any((playedCard) => playedCard.id == card.id),
     );
+    if (allPossibleCards.isEmpty) {
+      return null; // No cards available in this suit
+    }
     //Sort by sorting value
     allPossibleCards.sort(
       (a, b) => b
           .toSortingValue(trumpSuit: trumpSuit)
           .compareTo(a.toSortingValue(trumpSuit: trumpSuit)),
     );
+
     return allPossibleCards.first;
   }
 
@@ -1270,8 +1274,12 @@ class EuchreBot {
   ) {
     if (leadSuit == null) {
       //Check if bot has highest card in trump suit
-      CardData highestTrumpCard = highestCardInSuit(trumpSuit!);
-      if (botPlayer.hand.any((card) => card.id == highestTrumpCard.id)) {
+      CardData? highestTrumpCard = highestCardInSuit(trumpSuit!);
+      if (highestTrumpCard != null &&
+          botPlayer.hand.any((card) => card.id == highestTrumpCard.id)) {
+        print(
+          "Playing highest trump card: ${highestTrumpCard.value} of ${highestTrumpCard.suit}",
+        );
         botPlayer.hand.removeWhere((card) => card.id == highestTrumpCard.id);
         return highestTrumpCard;
       }
@@ -1279,8 +1287,12 @@ class EuchreBot {
       List<CardSuit> nonTrumpSuits =
           CardSuit.values.where((suit) => suit != trumpSuit).toList();
       for (var suit in nonTrumpSuits) {
-        CardData highestCard = highestCardInSuit(suit);
-        if (botPlayer.hand.any((card) => card.id == highestCard.id)) {
+        CardData? highestCard = highestCardInSuit(suit);
+        if (highestCard != null &&
+            botPlayer.hand.any((card) => card.id == highestCard.id)) {
+          print(
+            "Playing highest card in $suit: ${highestCard.value} of ${highestCard.suit}",
+          );
           botPlayer.hand.removeWhere((card) => card.id == highestCard.id);
           return highestCard;
         }
@@ -1319,6 +1331,9 @@ class EuchreBot {
               .toSortingValue(trumpSuit: trumpSuit)
               .compareTo(a.toSortingValue(trumpSuit: trumpSuit)),
         );
+        print(
+          "Playing highest card from single suit: ${singleSuitCards.first.value} of ${singleSuitCards.first.suit}",
+        );
         CardData cardToPlay = singleSuitCards.first;
         botPlayer.hand.removeWhere((card) => card.id == cardToPlay.id);
         return cardToPlay;
@@ -1339,6 +1354,9 @@ class EuchreBot {
               .toSortingValue(trumpSuit: trumpSuit)
               .compareTo(a.toSortingValue(trumpSuit: trumpSuit)),
         );
+        print(
+          "Playing highest non trump card: ${nonTrumpCards.first.value} of ${nonTrumpCards.first.suit}",
+        );
         CardData cardToPlay = nonTrumpCards.first;
         botPlayer.hand.removeWhere((card) => card.id == cardToPlay.id);
         return cardToPlay;
@@ -1349,6 +1367,9 @@ class EuchreBot {
           (a, b) => a
               .toSortingValue(trumpSuit: trumpSuit)
               .compareTo(b.toSortingValue(trumpSuit: trumpSuit)),
+        );
+        print(
+          "Playing highest trump card: ${botPlayer.hand.last.value} of ${botPlayer.hand.last.suit}",
         );
         CardData cardToPlay = botPlayer.hand.last;
         botPlayer.hand.removeWhere((card) => card.id == cardToPlay.id);
@@ -1465,7 +1486,8 @@ class EuchreBot {
           );
           CardData cardToPlay = playableCards.last;
           if (cardToPlay.toSortingValue(trumpSuit: trumpSuit) <=
-              winningCard.toSortingValue(trumpSuit: trumpSuit)) {
+                  winningCard.toSortingValue(trumpSuit: trumpSuit) ||
+              cardToPlay.suit != winningCard.suit) {
             //Play lowest playable card if can't win
             CardData cardToPlay = playableCards.first;
             botPlayer.hand.removeWhere((card) => card.id == cardToPlay.id);

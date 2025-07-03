@@ -16,6 +16,7 @@ import 'package:deckly/widgets/custom_app_bar.dart';
 import 'package:deckly/widgets/fancy_border.dart';
 import 'package:deckly/widgets/fancy_widget.dart';
 import 'package:deckly/widgets/gradient_input_field.dart';
+import 'package:deckly/widgets/orientation_checker.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
@@ -60,6 +61,17 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
         _connectionState = blue.ConnectionState.disconnected;
       });
     };
+    connectionService.onRoomFull = () {
+      if (!mounted) return;
+      showSnackBar(
+        context,
+        Colors.red,
+        "The room is full. You cannot join this game.",
+      );
+      setState(() {
+        _connectionState = blue.ConnectionState.disconnected;
+      });
+    };
   }
 
   @override
@@ -96,7 +108,7 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
     _gameDataSubscription = connectionService.gameDataStream.listen((data) {
       if (data['type'] == 'startGame') {
         switch (game) {
-          case Game.blitz:
+          case Game.dash:
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
@@ -364,209 +376,218 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
           connectionService.dispose();
         }
       },
-      child: Scaffold(
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(kToolbarHeight),
-          child: CustomAppBar(
-            title: game == null ? "Join Game" : game!.toString(),
-            showBackButton: true,
-            onBackButtonPressed: (context) {
-              Navigator.pop(context);
-              connectionService.dispose();
-            },
-            actions: [
-              if (game != null)
-                IconButton(
-                  icon: SFIcon(
-                    SFIcons.sf_pencil_and_list_clipboard, // 'heart.fill'
-                    // fontSize instead of size
-                    fontWeight: FontWeight.bold, // fontWeight instead of weight
-                    color: styling.primary,
-                  ),
-                  onPressed: () {
-                    SharedPrefs.hapticButtonPress();
-                    showModalBottomSheet<void>(
-                      context: context,
-                      backgroundColor: styling.background,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(23),
-                          topRight: Radius.circular(23),
-                        ),
-                      ),
-                      isScrollControlled: true,
-                      builder: (BuildContext context) {
-                        return StatefulBuilder(
-                          builder: (context, setState) {
-                            return Container(
-                              height: MediaQuery.of(context).size.height * 0.8,
-                              width: double.infinity,
-                              child: SingleChildScrollView(
-                                padding: EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children:
-                                      game == Game.nertz
-                                          ? nertzRules
-                                          : game == Game.blitz
-                                          ? dutchBlitzRules
-                                          : game == Game.euchre
-                                          ? euchreRules
-                                          : [
-                                            Text(
-                                              'No rules available for this game.',
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ],
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
-                ),
-            ],
-          ),
-        ),
-        backgroundColor: styling.background,
-        body: Padding(
-          padding: const EdgeInsets.all(24),
-          child:
-              isConnected
-                  ? Column(
-                    children: [
-                      Text(
-                        'You have joined the game!',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        'Players:',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Expanded(
-                        child: FancyBorder(
-                          child: ListView(
-                            children:
-                                _players
-                                    .map(
-                                      (p) => ListTile(
-                                        leading: Icon(
-                                          p.isHost
-                                              ? Icons.star
-                                              : p.isBot
-                                              ? Icons.computer
-                                              : Icons.person,
-                                          color:
-                                              p.isHost
-                                                  ? Colors.yellow
-                                                  : Colors.white,
-                                        ),
-                                        title: Text(
-                                          p.name,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 18,
-                                          ),
-                                        ),
-                                        subtitle:
-                                            p.isBot && p is BotPlayer
-                                                ? Text(
-                                                  'Bot Difficulty: ${p.difficulty.toString()}',
-                                                  style: const TextStyle(
-                                                    color: Colors.white70,
-                                                    fontSize: 14,
-                                                  ),
-                                                )
-                                                : null,
-                                      ),
-                                    )
-                                    .toList(),
+      child: OrientationChecker(
+        allowedOrientations: [
+          Orientation.portrait,
+          if (isTablet(context)) Orientation.landscape,
+        ],
+        child: Scaffold(
+          appBar: PreferredSize(
+            preferredSize: const Size.fromHeight(kToolbarHeight),
+            child: CustomAppBar(
+              title: game == null ? "Join Game" : game!.toString(),
+              showBackButton: true,
+              onBackButtonPressed: (context) {
+                Navigator.pop(context);
+                connectionService.dispose();
+              },
+              actions: [
+                if (game != null)
+                  IconButton(
+                    icon: SFIcon(
+                      SFIcons.sf_pencil_and_list_clipboard, // 'heart.fill'
+                      // fontSize instead of size
+                      fontWeight:
+                          FontWeight.bold, // fontWeight instead of weight
+                      color: styling.primary,
+                    ),
+                    onPressed: () {
+                      SharedPrefs.hapticButtonPress();
+                      showModalBottomSheet<void>(
+                        context: context,
+                        backgroundColor: styling.background,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(23),
+                            topRight: Radius.circular(23),
                           ),
                         ),
-                      ),
-                    ],
-                  )
-                  : Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      GradientInputField(
-                        textField: TextField(
-                          controller: _codeCtrl,
-                          decoration: styling
-                              .gradientInputDecoration()
-                              .copyWith(hintText: 'Enter 4-digit code'),
-                          keyboardType: TextInputType.number,
-                          cursorColor: Colors.white,
-                          style: const TextStyle(color: Colors.white),
-                          maxLength: 4,
-                          onTap: () {
-                            SharedPrefs.hapticInputSelect();
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      GradientInputField(
-                        textField: TextField(
-                          controller: _nameCtrl,
-                          decoration: styling
-                              .gradientInputDecoration()
-                              .copyWith(hintText: 'Enter your name'),
-                          cursorColor: Colors.white,
-                          style: const TextStyle(color: Colors.white),
-                          onTap: () {
-                            SharedPrefs.hapticInputSelect();
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Spacer(),
-                      SizedBox(
-                        width: double.infinity,
-                        child:
-                            _connectionState ==
-                                    blue.ConnectionState.disconnected
-                                ? ActionButton(
-                                  onTap: _handleJoinButton,
-                                  text: Text(
-                                    _getButtonText(),
-                                    style: TextStyle(
-                                      color:
-                                          Colors
-                                              .white, // This will be masked by the gradient
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                )
-                                : FancyWidget(
-                                  child: Text(
-                                    _getButtonText(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
+                        isScrollControlled: true,
+                        builder: (BuildContext context) {
+                          return StatefulBuilder(
+                            builder: (context, setState) {
+                              return Container(
+                                height:
+                                    MediaQuery.of(context).size.height * 0.8,
+                                width: double.infinity,
+                                child: SingleChildScrollView(
+                                  padding: EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children:
+                                        game == Game.nertz
+                                            ? nertzRules
+                                            : game == Game.dash
+                                            ? dutchBlitzRules
+                                            : game == Game.euchre
+                                            ? euchreRules
+                                            : [
+                                              Text(
+                                                'No rules available for this game.',
+                                                style: TextStyle(
+                                                  fontSize: 18,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ],
                                   ),
                                 ),
-                      ),
-                    ],
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
                   ),
+              ],
+            ),
+          ),
+          backgroundColor: styling.background,
+          body: Padding(
+            padding: const EdgeInsets.all(24),
+            child:
+                isConnected
+                    ? Column(
+                      children: [
+                        Text(
+                          'You have joined the game!',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Players:',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Expanded(
+                          child: FancyBorder(
+                            child: ListView(
+                              children:
+                                  _players
+                                      .map(
+                                        (p) => ListTile(
+                                          leading: Icon(
+                                            p.isHost
+                                                ? Icons.star
+                                                : p.isBot
+                                                ? Icons.computer
+                                                : Icons.person,
+                                            color:
+                                                p.isHost
+                                                    ? Colors.yellow
+                                                    : Colors.white,
+                                          ),
+                                          title: Text(
+                                            p.name,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 18,
+                                            ),
+                                          ),
+                                          subtitle:
+                                              p.isBot && p is BotPlayer
+                                                  ? Text(
+                                                    'Bot Difficulty: ${p.difficulty.toString()}',
+                                                    style: const TextStyle(
+                                                      color: Colors.white70,
+                                                      fontSize: 14,
+                                                    ),
+                                                  )
+                                                  : null,
+                                        ),
+                                      )
+                                      .toList(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                    : Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        GradientInputField(
+                          textField: TextField(
+                            controller: _codeCtrl,
+                            decoration: styling
+                                .gradientInputDecoration()
+                                .copyWith(hintText: 'Enter 4-digit code'),
+                            keyboardType: TextInputType.number,
+                            cursorColor: Colors.white,
+                            style: const TextStyle(color: Colors.white),
+                            maxLength: 4,
+                            onTap: () {
+                              SharedPrefs.hapticInputSelect();
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        GradientInputField(
+                          textField: TextField(
+                            controller: _nameCtrl,
+                            decoration: styling
+                                .gradientInputDecoration()
+                                .copyWith(hintText: 'Enter your name'),
+                            cursorColor: Colors.white,
+                            style: const TextStyle(color: Colors.white),
+                            onTap: () {
+                              SharedPrefs.hapticInputSelect();
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Spacer(),
+                        SizedBox(
+                          width: double.infinity,
+                          child:
+                              _connectionState ==
+                                      blue.ConnectionState.disconnected
+                                  ? ActionButton(
+                                    onTap: _handleJoinButton,
+                                    text: Text(
+                                      _getButtonText(),
+                                      style: TextStyle(
+                                        color:
+                                            Colors
+                                                .white, // This will be masked by the gradient
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  )
+                                  : FancyWidget(
+                                    child: Text(
+                                      _getButtonText(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                        ),
+                      ],
+                    ),
+          ),
         ),
       ),
     );

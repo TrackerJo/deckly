@@ -24,6 +24,10 @@ class CardDeckController {
   void unstuck() {
     _state?.unstuck();
   }
+
+  void clearDeck() {
+    _state?.clearDeck();
+  }
 }
 
 class CardDeck extends StatefulWidget {
@@ -81,6 +85,13 @@ class _CardDeckState extends State<CardDeck> {
       oldWidget.controller?._detach();
       widget.controller?._attach(this);
     }
+  }
+
+  void clearDeck() {
+    setState(() {
+      deckCards.clear();
+      pileCards.clear();
+    });
   }
 
   void _dealCards() {

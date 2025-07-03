@@ -14,6 +14,7 @@ import 'package:deckly/widgets/euchre_deck.dart';
 import 'package:deckly/widgets/fancy_widget.dart';
 import 'package:deckly/widgets/fancy_border.dart';
 import 'package:deckly/widgets/hand.dart';
+import 'package:deckly/widgets/orientation_checker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 
@@ -2535,6 +2536,23 @@ class _EuchreState extends State<Euchre> {
   }
 
   void scoreGame() {
+    //Check who won the game
+    bool teamAWon = teamA.score >= 10;
+    bool teamBWon = teamB.score >= 10;
+    if (teamAWon) {
+      //Check if current player is on team A
+      if (players.any((p) => p.id == currentPlayer!.id && p.onTeamA)) {
+        //Current player is on team A
+        SharedPrefs.addEuchreGamesWon(1);
+      }
+    } else if (teamBWon) {
+      //Check if current player is on team B
+      if (players.any((p) => p.id == currentPlayer!.id && !p.onTeamA)) {
+        //Current player is on team B
+        SharedPrefs.addEuchreGamesWon(1);
+      }
+    }
+    SharedPrefs.addEuchreGamesPlayed(1);
     setState(() {
       gameState = EuchreGameState.gameOver;
     });
@@ -2618,183 +2636,190 @@ class _EuchreState extends State<Euchre> {
 
     return PopScope(
       canPop: false,
-      child: Scaffold(
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(kToolbarHeight),
-          child: CustomAppBar(
-            title: "Euchre",
-            showBackButton: true,
-            onBackButtonPressed: (context) {
-              connectionService.dispose();
-              Navigator.pop(context);
-            },
-            actions: [
-              IconButton(
-                icon: SFIcon(
-                  SFIcons.sf_pencil_and_list_clipboard, // 'heart.fill'
-                  // fontSize instead of size
-                  fontWeight: FontWeight.bold, // fontWeight instead of weight
-                  color: styling.primary,
-                ),
-                onPressed: () {
-                  SharedPrefs.hapticButtonPress();
-                  showModalBottomSheet<void>(
-                    context: context,
-                    backgroundColor: styling.background,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(23),
-                        topRight: Radius.circular(23),
-                      ),
-                    ),
-                    isScrollControlled: true,
-                    builder: (BuildContext context) {
-                      return StatefulBuilder(
-                        builder: (context, setState) {
-                          return Container(
-                            height: MediaQuery.of(context).size.height * 0.8,
-                            width: double.infinity,
-                            child: SingleChildScrollView(
-                              padding: EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: euchreRules,
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
-              ),
-            ],
-            customBackButton: FancyWidget(
-              child: IconButton(
-                splashColor: Colors.transparent,
-                splashRadius: 25,
-                icon: Transform.flip(
-                  flipX: true,
-                  child: const SFIcon(
-                    SFIcons
-                        .sf_rectangle_portrait_and_arrow_right, // 'heart.fill'
+      child: OrientationChecker(
+        allowedOrientations: [
+          Orientation.portrait,
+          if (isTablet(context)) Orientation.landscape,
+        ],
+        child: Scaffold(
+          appBar: PreferredSize(
+            preferredSize: const Size.fromHeight(kToolbarHeight),
+            child: CustomAppBar(
+              title: "Euchre",
+              showBackButton: true,
+              onBackButtonPressed: (context) {
+                connectionService.dispose();
+                Navigator.pop(context);
+              },
+              actions: [
+                IconButton(
+                  icon: SFIcon(
+                    SFIcons.sf_pencil_and_list_clipboard, // 'heart.fill'
                     // fontSize instead of size
                     fontWeight: FontWeight.bold, // fontWeight instead of weight
-                    color: Colors.white,
+                    color: styling.primary,
                   ),
-                ),
-                onPressed: () async {
-                  SharedPrefs.hapticButtonPress();
-                  //Confirm with user before leaving
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (BuildContext context) {
-                      return Dialog(
-                        backgroundColor: Colors.transparent,
-
-                        child: Container(
-                          width: 400,
-                          height: 200,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [styling.primary, styling.secondary],
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Container(
-                            margin: EdgeInsets.all(
-                              2,
-                            ), // Creates the border thickness
-                            decoration: BoxDecoration(
-                              color: styling.background,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Text(
-                                  "Are you sure you want to leave the game?",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                SizedBox(height: 16),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    ActionButton(
-                                      height: 40,
-                                      width: 100,
-                                      onTap: () {
-                                        Navigator.of(context).pop();
-                                      },
-                                      text: Text(
-                                        "Cancel",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    ),
-                                    ActionButton(
-                                      height: 40,
-                                      width: 100,
-                                      onTap: () async {
-                                        await connectionService
-                                            .broadcastMessage({
-                                              'type': 'host_left',
-                                            }, currentPlayer!.id);
-                                        connectionService.dispose();
-
-                                        Navigator.of(context).pop();
-                                        Navigator.of(context).pop();
-                                      },
-                                      text: Text(
-                                        "Leave",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
+                  onPressed: () {
+                    SharedPrefs.hapticButtonPress();
+                    showModalBottomSheet<void>(
+                      context: context,
+                      backgroundColor: styling.background,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(23),
+                          topRight: Radius.circular(23),
                         ),
-                      );
-                    },
-                  );
-                },
-                color: Colors.white,
+                      ),
+                      isScrollControlled: true,
+                      builder: (BuildContext context) {
+                        return StatefulBuilder(
+                          builder: (context, setState) {
+                            return Container(
+                              height: MediaQuery.of(context).size.height * 0.8,
+                              width: double.infinity,
+                              child: SingleChildScrollView(
+                                padding: EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: euchreRules,
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
+              ],
+              customBackButton: FancyWidget(
+                child: IconButton(
+                  splashColor: Colors.transparent,
+                  splashRadius: 25,
+                  icon: Transform.flip(
+                    flipX: true,
+                    child: const SFIcon(
+                      SFIcons
+                          .sf_rectangle_portrait_and_arrow_right, // 'heart.fill'
+                      // fontSize instead of size
+                      fontWeight:
+                          FontWeight.bold, // fontWeight instead of weight
+                      color: Colors.white,
+                    ),
+                  ),
+                  onPressed: () async {
+                    SharedPrefs.hapticButtonPress();
+                    //Confirm with user before leaving
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (BuildContext context) {
+                        return Dialog(
+                          backgroundColor: Colors.transparent,
+
+                          child: Container(
+                            width: 400,
+                            height: 200,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [styling.primary, styling.secondary],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Container(
+                              margin: EdgeInsets.all(
+                                2,
+                              ), // Creates the border thickness
+                              decoration: BoxDecoration(
+                                color: styling.background,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    "Are you sure you want to leave the game?",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  SizedBox(height: 16),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      ActionButton(
+                                        height: 40,
+                                        width: 100,
+                                        onTap: () {
+                                          Navigator.of(context).pop();
+                                        },
+                                        text: Text(
+                                          "Cancel",
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                      ),
+                                      ActionButton(
+                                        height: 40,
+                                        width: 100,
+                                        onTap: () async {
+                                          await connectionService
+                                              .broadcastMessage({
+                                                'type': 'host_left',
+                                              }, currentPlayer!.id);
+                                          connectionService.dispose();
+
+                                          Navigator.of(context).pop();
+                                          Navigator.of(context).pop();
+                                        },
+                                        text: Text(
+                                          "Leave",
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                  color: Colors.white,
+                ),
               ),
             ),
           ),
-        ),
-        backgroundColor: styling.background,
-        body: Container(
-          height: MediaQuery.of(context).size.height,
-          width: MediaQuery.of(context).size.width,
-          padding: EdgeInsets.only(left: 8.0, right: 8.0),
+          backgroundColor: styling.background,
+          body: Container(
+            height: MediaQuery.of(context).size.height,
+            width: MediaQuery.of(context).size.width,
+            padding: EdgeInsets.only(left: 8.0, right: 8.0),
 
-          child:
-              gameState == EuchreGameState.playing
-                  ? buildPlayingScreen(calculatedScale, context, handScale)
-                  : gameState == EuchreGameState.teamSelection
-                  ? buildTeamSelectionScreen(calculatedScale, context)
-                  : gameState == EuchreGameState.gameOver
-                  ? buildGameOverScreen()
-                  : Container(),
+            child:
+                gameState == EuchreGameState.playing
+                    ? buildPlayingScreen(calculatedScale, context, handScale)
+                    : gameState == EuchreGameState.teamSelection
+                    ? buildTeamSelectionScreen(calculatedScale, context)
+                    : gameState == EuchreGameState.gameOver
+                    ? buildGameOverScreen()
+                    : Container(),
+          ),
         ),
       ),
     );

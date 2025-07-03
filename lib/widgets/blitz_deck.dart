@@ -103,7 +103,7 @@ class _BlitzDeckState extends State<BlitzDeck> {
                     },
 
                     text: Text(
-                      widget.isDutchBlitz ? 'Blitz!' : 'Nertz!',
+                      widget.isDutchBlitz ? 'Dash!' : 'Nertz!',
                       style: TextStyle(
                         fontSize: 24 * widget.scale,
                         color: Colors.white,

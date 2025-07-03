@@ -420,7 +420,13 @@ class _DropZoneWidgetState extends State<DropZoneWidget> {
             widget.zone.cards.asMap().entries.map((entry) {
               final index = entry.key;
               final card = entry.value;
-
+              //remove the top card from solitaire starting cards
+              final isTopCard = index == widget.zone.cards.length - 1;
+              if (isTopCard && widget.zone.isSolitaire) {
+                widget.zone.solitaireStartingCards.removeWhere(
+                  (c) => c.id == card.id,
+                );
+              }
               return Positioned(
                 top:
                     index *
@@ -429,19 +435,48 @@ class _DropZoneWidgetState extends State<DropZoneWidget> {
                             .zone
                             .scale), // Position from bottom up - each card 40px higher
                 left: 0,
-                child: DraggableCardWidget(
-                  card: card,
-                  zoneId: widget.zone.id,
-                  index: index,
-                  totalCards: widget.zone.cards.length,
-                  currentDragData: widget.currentDragData,
-                  getCardsFromIndex: widget.getCardsFromIndex,
-                  onDragStarted: widget.onDragStarted,
-                  onDragEnd: widget.onDragEnd,
-                  stackMode: widget.zone.stackMode,
-                  scale: widget.zone.scale,
-                  isDutchBlitz: widget.isDutchBlitz,
-                ),
+                child:
+                    widget.zone.isSolitaire
+                        ? (widget.zone.solitaireStartingCards.any(
+                                  (c) => c.id == card.id,
+                                ) &&
+                                !isTopCard)
+                            ? CardContent(
+                              card: CardData(
+                                id: 'deck_back',
+                                value: 1,
+                                suit: CardSuit.hearts, // Placeholder suit
+                                isFaceUp: false,
+                              ),
+                              scale: widget.zone.scale,
+                              isDutchBlitz: widget.isDutchBlitz,
+                            )
+                            : DraggableCardWidget(
+                              card: card,
+                              zoneId: widget.zone.id,
+                              index: index,
+                              totalCards: widget.zone.cards.length,
+                              currentDragData: widget.currentDragData,
+                              getCardsFromIndex: widget.getCardsFromIndex,
+                              onDragStarted: widget.onDragStarted,
+                              onDragEnd: widget.onDragEnd,
+                              stackMode: widget.zone.stackMode,
+                              scale: widget.zone.scale,
+                              isDutchBlitz: widget.isDutchBlitz,
+                            )
+                        : DraggableCardWidget(
+                          card: card,
+                          zoneId: widget.zone.id,
+                          index: index,
+                          totalCards: widget.zone.cards.length,
+                          currentDragData: widget.currentDragData,
+                          getCardsFromIndex: widget.getCardsFromIndex,
+                          onDragStarted: widget.onDragStarted,
+                          onDragEnd: widget.onDragEnd,
+                          stackMode: widget.zone.stackMode,
+                          scale: widget.zone.scale,
+                          isDutchBlitz: widget.isDutchBlitz,
+                        ),
               );
             }).toList(),
       ),

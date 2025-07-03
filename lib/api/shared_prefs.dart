@@ -10,14 +10,129 @@ class SharedPrefs {
   static String hapticSettingsKey = "HAPTICSETTINGSKEY";
   static String lastUsedNameKey = "LASTUSEDNAMEKEY";
   static String firstUseKey = "FIRSTUSEKEY";
+
   static String nertzRoundsPlayedKey = "NERTZROUNDSPLAYEDKEY";
   static String nertzRoundsNertzedKey = "NERTZROUNDSNERTZEDKEY";
   static String nertzGamesWonKey = "NERTZGAMESWONKEY";
   static String nertzPlaySpeedKey = "NERTZPLAYSPEEDKEY";
+
   static String blitzRoundsPlayedKey = "BLITZROUNDSPLAYEDKEY";
   static String blitzRoundsBlitzedKey = "BLITZROUNDSBLITZEDKEY";
   static String blitzGamesWonKey = "BLITZGAMESWONKEY";
   static String blitzPlaySpeedKey = "BLITZPLAYSPEEDKEY";
+
+  static String euchreGamesPlayedKey = "EUCHREGAMESPLAYEDKEY";
+  static String euchreGamesWonKey = "EUCHREGAMESWONKEY";
+
+  static String seenSolitaireKey = "SEENSOLITAIREKEY";
+  static String solitaireGamesWon = "SOLITAIREGAMESWONKEY";
+
+  static String newestSeenVersionKey = "NEWESTSEENVERSIONKEY";
+
+  static String seenRateAppKey = "SEENRATEAPPKEY";
+  static String seenShareAppKey = "SEENSHAREAPPKEY";
+
+  static String firstOpenDateKey = "FIRSTOPENDATEKEY";
+  static String appLaunchCountKey = "APPLAUNCHCOUNTKEY";
+
+  static String analyticsEnabledKey = "ANALYTICSENABLEDKEY";
+
+  static Future<bool> setAnalyticsEnabled(bool val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return await sf.setBool(analyticsEnabledKey, val);
+  }
+
+  static Future<bool> getAnalyticsEnabled() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return sf.getBool(analyticsEnabledKey) ?? true; // Default to true
+  }
+
+  static Future<bool> setFirstOpenDate(DateTime date) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return await sf.setString(firstOpenDateKey, date.toIso8601String());
+  }
+
+  static Future<DateTime> getFirstOpenDate() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    String? dateString = sf.getString(firstOpenDateKey);
+    if (dateString == null) {
+      await setFirstOpenDate(DateTime.now());
+      return DateTime.now();
+    }
+    return DateTime.parse(dateString);
+  }
+
+  static Future<bool> setAppLaunchCount(int count) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return await sf.setInt(appLaunchCountKey, count);
+  }
+
+  static Future<int> getAppLaunchCount() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return sf.getInt(appLaunchCountKey) ?? 0;
+  }
+
+  static Future<bool> incrementAppLaunchCount() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    int currentCount = sf.getInt(appLaunchCountKey) ?? 0;
+    return await sf.setInt(appLaunchCountKey, currentCount + 1);
+  }
+
+  static Future<bool> setSeenRateApp(bool val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return await sf.setBool(seenRateAppKey, val);
+  }
+
+  static Future<bool> getSeenRateApp() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return sf.getBool(seenRateAppKey) ?? false;
+  }
+
+  static Future<bool> setSeenShareApp(bool val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return await sf.setBool(seenShareAppKey, val);
+  }
+
+  static Future<bool> getSeenShareApp() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return sf.getBool(seenShareAppKey) ?? false;
+  }
+
+  static Future<bool> setSolitaireGamesWon(int val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return await sf.setInt(solitaireGamesWon, val);
+  }
+
+  static Future<int> getSolitaireGamesWon() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return sf.getInt(solitaireGamesWon) ?? 0;
+  }
+
+  static Future<bool> addSolitaireGamesWon(int val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    int currentGamesWon = sf.getInt(solitaireGamesWon) ?? 0;
+    return await sf.setInt(solitaireGamesWon, currentGamesWon + val);
+  }
+
+  static Future<bool> setSeenSolitaire(bool val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return await sf.setBool(seenSolitaireKey, val);
+  }
+
+  static Future<bool> getSeenSolitaire() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return sf.getBool(seenSolitaireKey) ?? false;
+  }
+
+  static Future<bool> setNewestSeenVersion(String version) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return await sf.setString(newestSeenVersionKey, version);
+  }
+
+  static Future<String> getNewestSeenVersion() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return sf.getString(newestSeenVersionKey) ?? "0.0.0";
+  }
 
   static Future<bool> setNertzRoundsPlayed(int val) async {
     SharedPreferences sf = await SharedPreferences.getInstance();
@@ -185,6 +300,38 @@ class SharedPrefs {
     double avg = (total / 1000) / speeds.length;
     //return average rounded to 2 decimal places
     return double.parse(avg.toStringAsFixed(2));
+  }
+
+  static Future<bool> setEuchreGamesPlayed(int val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return await sf.setInt(euchreGamesPlayedKey, val);
+  }
+
+  static Future<bool> addEuchreGamesPlayed(int val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    int currentRounds = sf.getInt(euchreGamesPlayedKey) ?? 0;
+    return await sf.setInt(euchreGamesPlayedKey, currentRounds + val);
+  }
+
+  static Future<int> getEuchreGamesPlayed() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return sf.getInt(euchreGamesPlayedKey) ?? 0;
+  }
+
+  static Future<bool> setEuchreGamesWon(int val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return await sf.setInt(euchreGamesWonKey, val);
+  }
+
+  static Future<bool> addEuchreGamesWon(int val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    int currentRounds = sf.getInt(euchreGamesWonKey) ?? 0;
+    return await sf.setInt(euchreGamesWonKey, currentRounds + val);
+  }
+
+  static Future<int> getEuchreGamesWon() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return sf.getInt(euchreGamesWonKey) ?? 0;
   }
 
   static Future<bool> setFirstUse(bool val) async {

@@ -48,6 +48,10 @@ class ConnectionService {
   // Current state
   List<GamePlayer> _players = [];
   List<BotPlayer> _bots = [];
+
+  int? maxPlayerCount;
+  Function? onRoomFull;
+
   ConnectionState _connectionState = ConnectionState.disconnected;
 
   Function? onCantFindRoom;
@@ -82,11 +86,11 @@ class ConnectionService {
     _updateConnectionState(ConnectionState.hosting);
     playersController.add(_players);
 
-    if (Platform.isIOS) {
-      await _initIOSHost();
-    } else {
-      await _initAndroidHost();
-    }
+    // if (Platform.isIOS) {
+    await _initIOSHost();
+    // } else {
+    //   await _initAndroidHost();
+    // }
 
     _isInitialized = true;
   }
@@ -102,11 +106,11 @@ class ConnectionService {
 
     _updateConnectionState(ConnectionState.searching);
 
-    if (Platform.isIOS) {
-      await _initIOSClient();
-    } else {
-      await _initAndroidClient();
-    }
+    // if (Platform.isIOS) {
+    await _initIOSClient();
+    // } else {
+    //   await _initAndroidClient();
+    // }
 
     _isInitialized = true;
   }
@@ -272,6 +276,26 @@ class ConnectionService {
   // iOS Event Handlers
   void _handleIOSStateChange(List<Device> devicesList) {
     if (isHost) {
+      //New Players
+      List<Device> devices =
+          devicesList
+              .where(
+                (d) =>
+                    d.state == SessionState.connected &&
+                    d.deviceName.contains("-$_roomCode") &&
+                    !d.deviceName.contains("-host"),
+              )
+              .toList();
+
+      List<Device> newDevices = [];
+      if (devices.isNotEmpty) {
+        for (final device in devices) {
+          if (!_players.any((p) => p.id == device.deviceId)) {
+            newDevices.add(device);
+          }
+        }
+      }
+
       _players = [
         GamePlayer(
           id: 'Deckly-$_userName-$_roomCode-host',
@@ -299,6 +323,23 @@ class ConnectionService {
       _players.addAll(_bots);
 
       playersController.add(_players);
+      if (newDevices.isNotEmpty) {
+        if (maxPlayerCount != null && _players.length > maxPlayerCount!) {
+          int excessCount = _players.length - maxPlayerCount!;
+          for (int i = 0; i < excessCount; i++) {
+            final excessDevice = newDevices.first;
+            print(
+              "Room is full, removing excess player: ${excessDevice.deviceName}",
+            );
+            sendMessage(
+              excessDevice.deviceId,
+              jsonEncode({'type': 'room_full'}),
+            );
+            _players.removeWhere((p) => p.id == excessDevice.deviceId);
+            newDevices.remove(excessDevice);
+          }
+        }
+      }
       _broadcastPlayerList();
     } else {
       // Client: look for host
@@ -385,16 +426,16 @@ class ConnectionService {
   }
 
   Future<void> requestAndroidPermissions() async {
+    print("Requesting Android permissions...");
     bool locationIsGranted = await Permission.location.isGranted;
     // Check Permission
     if (!locationIsGranted) {
       await Permission.location.request();
     } // Ask
-    bool locationWhenInUseIsGranted =
-        await Permission.locationWhenInUse.isGranted;
-    if (!locationWhenInUseIsGranted) {
-      await [Permission.locationWhenInUse].request();
-    } // Ask
+    if (!await Permission.locationWhenInUse.isGranted) {
+      // If location when in use is granted, request it
+      await Permission.locationWhenInUse.request();
+    }
 
     // Check Location Status
     bool locationSeriveEnabled =
@@ -410,29 +451,27 @@ class ConnectionService {
       await Permission.storage.request(); // Ask
     }
     // Bluetooth permissions
-    bool granted =
-        !(await Future.wait([
-          // Check Permissions
-          Permission.bluetooth.isGranted,
-          Permission.bluetoothAdvertise.isGranted,
-          Permission.bluetoothConnect.isGranted,
-          Permission.bluetoothScan.isGranted,
-        ])).any((element) => false);
-    [
-      // Ask Permissions
-      Permission.bluetooth,
-      Permission.bluetoothAdvertise,
-      Permission.bluetoothConnect,
-      Permission.bluetoothScan,
-    ].request();
+    if (!(await Future.wait([
+      Permission.bluetooth.isGranted,
+      Permission.bluetoothAdvertise.isGranted,
+      Permission.bluetoothConnect.isGranted,
+      Permission.bluetoothScan.isGranted,
+    ])).any((element) => false)) {
+      await [
+        Permission.bluetooth,
+        Permission.bluetoothAdvertise,
+        Permission.bluetoothConnect,
+        Permission.bluetoothScan,
+      ].request();
+    }
 
-    // Check Bluetooth Status
-    bool nearbyWifiDevicesIsGranted =
-        await Permission.nearbyWifiDevices.isGranted;
-    if (!nearbyWifiDevicesIsGranted) {
-      // Android 12+
+    if (!await Permission.nearbyWifiDevices.isGranted) {
       await Permission.nearbyWifiDevices.request();
     }
+
+    // if (!await Permission.notification.isGranted) {
+    //   await Permission.notification.request();
+    // }
   }
 
   Future<void> requestPermissions() async {
@@ -461,6 +500,14 @@ class ConnectionService {
           await Permission.bluetoothScan.isGranted;
       bool nearbyWifiDevicesIsGranted =
           await Permission.nearbyWifiDevices.isGranted;
+      print(
+        "Permissions - Location: $hasLocationPermission, "
+        "Location Service: $locationSeriveEnabled, "
+        "Storage: $stoargeIsGranted, "
+        "Location When In Use: $locationWhenInUseIsGranted, "
+        "Bluetooth: $hasBluetoothPermission, "
+        "Nearby Wifi Devices: $nearbyWifiDevicesIsGranted",
+      );
 
       return hasLocationPermission &&
           locationSeriveEnabled &&
@@ -501,6 +548,19 @@ class ConnectionService {
         break;
       case 'startGame':
         gameDataController.add(dataMap);
+        break;
+      case 'room_full':
+        // Handle room full message
+        if (!isHost) {
+          print("Room is full, cannot join.");
+          _updateConnectionState(ConnectionState.disconnected);
+          _connectionTimeout?.cancel();
+          nearbyService.stopBrowsingForPeers();
+          dispose();
+          if (onRoomFull != null) {
+            onRoomFull!();
+          }
+        }
         break;
 
       default:

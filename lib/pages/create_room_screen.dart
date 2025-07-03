@@ -17,6 +17,7 @@ import 'package:deckly/main.dart';
 import 'package:deckly/widgets/custom_app_bar.dart';
 import 'package:deckly/widgets/fancy_widget.dart';
 import 'package:deckly/widgets/fancy_border.dart';
+import 'package:deckly/widgets/orientation_checker.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
@@ -48,6 +49,13 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
   List<GamePlayer> _players = [];
 
   void initConnection() async {
+    connectionService.maxPlayerCount =
+        widget.maxPlayers ?? widget.requiredPlayers;
+    print("TEST");
+    print(
+      "Has allowed permissions: ${await connectionService.allowedAllPermissions()}",
+    );
+
     bool firstUse = await SharedPrefs.getFirstUse();
     if (firstUse) {
       if (Platform.isIOS) {
@@ -105,7 +113,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                             onTap: () async {
                               Navigator.of(context).pop();
                               await SharedPrefs.setFirstUse(false);
-                              connectionService.requestPermissions();
+                              await connectionService.requestPermissions();
 
                               _initSubscriptions();
 
@@ -131,8 +139,16 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
             );
           },
         );
+      } else {
+        await SharedPrefs.setFirstUse(false);
+        await connectionService.requestPermissions();
+
+        _initSubscriptions();
+
+        _initService();
       }
     } else {
+      await connectionService.requestPermissions();
       _initSubscriptions();
 
       _initService();
@@ -169,9 +185,15 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
   }
 
   void _startGame() async {
+    for (var bot in _players.where((p) => p.isBot)) {
+      analytics.logPlayWithBotEvent(
+        widget.game.toString(),
+        (bot as BotPlayer).difficulty.toString(),
+      );
+    }
     await connectionService.startGame();
     switch (widget.game) {
-      case Game.blitz:
+      case Game.dash:
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -307,273 +329,285 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
           connectionService.dispose();
         }
       },
-      child: Scaffold(
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(kToolbarHeight),
-          child: CustomAppBar(
-            title: widget.game.toString(),
-            showBackButton: true,
-            onBackButtonPressed: (context) {
-              Navigator.pop(context);
-              connectionService.dispose();
-            },
-            actions: [
-              IconButton(
-                icon: SFIcon(
-                  SFIcons.sf_pencil_and_list_clipboard, // 'heart.fill'
-                  // fontSize instead of size
-                  fontWeight: FontWeight.bold, // fontWeight instead of weight
-                  color: styling.primary,
-                ),
-
-                onPressed: () {
-                  SharedPrefs.hapticButtonPress();
-                  showModalBottomSheet<void>(
-                    context: context,
-                    backgroundColor: styling.background,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(23),
-                        topRight: Radius.circular(23),
-                      ),
-                    ),
-                    isScrollControlled: true,
-                    builder: (BuildContext context) {
-                      return StatefulBuilder(
-                        builder: (context, setState) {
-                          return Container(
-                            height: MediaQuery.of(context).size.height * 0.8,
-                            width: double.infinity,
-                            child: SingleChildScrollView(
-                              padding: EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children:
-                                    widget.game == Game.nertz
-                                        ? nertzRules
-                                        : widget.game == Game.blitz
-                                        ? dutchBlitzRules
-                                        : widget.game == Game.euchre
-                                        ? euchreRules
-                                        : [
-                                          Text(
-                                            'No rules available for this game.',
-                                            style: TextStyle(
-                                              fontSize: 18,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ],
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-        backgroundColor: styling.background,
-        body: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              FancyBorder(
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text(
-                    'Game Code: ${connectionService.roomCode}',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      letterSpacing: 8,
-                      color: Colors.white,
-                    ),
+      child: OrientationChecker(
+        allowedOrientations: [
+          Orientation.portrait,
+          if (isTablet(context)) Orientation.landscape,
+        ],
+        child: Scaffold(
+          appBar: PreferredSize(
+            preferredSize: const Size.fromHeight(kToolbarHeight),
+            child: CustomAppBar(
+              title: widget.game.toString(),
+              showBackButton: true,
+              onBackButtonPressed: (context) {
+                Navigator.pop(context);
+                connectionService.dispose();
+              },
+              actions: [
+                IconButton(
+                  icon: SFIcon(
+                    SFIcons.sf_pencil_and_list_clipboard, // 'heart.fill'
+                    // fontSize instead of size
+                    fontWeight: FontWeight.bold, // fontWeight instead of weight
+                    color: styling.primary,
                   ),
-                ),
-              ),
 
-              const SizedBox(height: 12),
-              Text(
-                'Players${widget.requiredPlayers != null
-                    ? " (${_players.length}/${widget.requiredPlayers})"
-                    : widget.maxPlayers != null
-                    ? " (Max: ${widget.maxPlayers})"
-                    : ""}:',
-                style: const TextStyle(fontSize: 24, color: Colors.white),
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: FancyBorder(
-                  child: ListView(
-                    children:
-                        _players
-                            .map(
-                              (p) => Padding(
-                                padding: const EdgeInsets.only(bottom: 8.0),
-                                child: ListTile(
-                                  leading: Icon(
-                                    p.isHost
-                                        ? Icons.star
-                                        : p.isBot
-                                        ? Icons.computer
-                                        : Icons.person,
-                                    color:
-                                        p.isHost ? Colors.yellow : Colors.white,
-                                  ),
-                                  title: Text(
-                                    p.name,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 18,
-                                    ),
-                                  ),
-                                  trailing:
-                                      p is BotPlayer
-                                          ? Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.end,
-                                            children: [
-                                              SizedBox(
-                                                width: 110,
-                                                child: DropdownButtonFormField(
-                                                  value:
-                                                      p.difficulty.toString(),
-                                                  decoration: styling
-                                                      .textInputDecoration()
-                                                      .copyWith(
-                                                        fillColor:
-                                                            styling.primary,
-                                                      ),
-                                                  dropdownColor:
-                                                      styling.background,
-                                                  iconEnabledColor:
-                                                      styling.primary,
-                                                  borderRadius:
-                                                      BorderRadius.circular(10),
-                                                  items:
-                                                      [
-                                                        "Easy",
-                                                        "Medium",
-                                                        "Hard",
-                                                      ].map((String value) {
-                                                        return DropdownMenuItem<
-                                                          String
-                                                        >(
-                                                          value: value,
-                                                          child: Text(
-                                                            value,
-                                                            style:
-                                                                const TextStyle(
-                                                                  color:
-                                                                      Colors
-                                                                          .white,
-                                                                  fontSize: 14,
-                                                                ),
-                                                          ),
-                                                        );
-                                                      }).toList(),
-                                                  onTap: () async {
-                                                    await SharedPrefs.hapticInputSelect();
-                                                  },
-                                                  onChanged: (
-                                                    String? value,
-                                                  ) async {
-                                                    if (value == null) return;
-                                                    await SharedPrefs.hapticButtonPress();
-                                                    BotDifficulty difficulty =
-                                                        BotDifficulty.fromString(
-                                                          value,
-                                                        );
-                                                    connectionService
-                                                        .updateBotDifficulty(
-                                                          p.id,
-                                                          difficulty,
-                                                        );
-                                                  },
-                                                ),
+                  onPressed: () {
+                    SharedPrefs.hapticButtonPress();
+                    showModalBottomSheet<void>(
+                      context: context,
+                      backgroundColor: styling.background,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(23),
+                          topRight: Radius.circular(23),
+                        ),
+                      ),
+                      isScrollControlled: true,
+                      builder: (BuildContext context) {
+                        return StatefulBuilder(
+                          builder: (context, setState) {
+                            return Container(
+                              height: MediaQuery.of(context).size.height * 0.8,
+                              width: double.infinity,
+                              child: SingleChildScrollView(
+                                padding: EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children:
+                                      widget.game == Game.nertz
+                                          ? nertzRules
+                                          : widget.game == Game.dash
+                                          ? dutchBlitzRules
+                                          : widget.game == Game.euchre
+                                          ? euchreRules
+                                          : [
+                                            Text(
+                                              'No rules available for this game.',
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                color: Colors.white,
                                               ),
-                                              const SizedBox(width: 8),
-                                              IconButton(
-                                                onPressed: () {
-                                                  SharedPrefs.hapticButtonPress();
-                                                  connectionService.removeBot(
-                                                    p.id,
-                                                  );
-                                                },
-                                                icon: Icon(Icons.remove_circle),
-                                                color: Colors.redAccent,
-                                              ),
-                                            ],
-                                          )
-                                          : null,
+                                            ),
+                                          ],
                                 ),
                               ),
-                            )
-                            .toList(),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              if ((widget.maxPlayers == null ||
-                      _players.length < widget.maxPlayers!) &&
-                  (widget.requiredPlayers != null
-                      ? _players.length < widget.requiredPlayers!
-                      : true))
-                ActionButton(
-                  text: Text(
-                    "Add Bot",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  onTap: () {
-                    final botName =
-                        'Bot ${(_players.where((p) => p.isBot)).length + 1}';
-                    final botPlayer = BotPlayer(
-                      id: 'bot-${Random().nextInt(10000)}',
-                      name: botName,
-                      difficulty: BotDifficulty.hard,
+                            );
+                          },
+                        );
+                      },
                     );
-                    connectionService.addBot(botPlayer);
                   },
                 ),
-              const SizedBox(height: 16),
-              if (_players.length < 2 ||
-                  (widget.requiredPlayers != null
-                      ? (_players.length < widget.requiredPlayers!)
-                      : false))
-                FancyWidget(
-                  child: const Text(
-                    'Waiting for more players to join...',
-                    style: TextStyle(fontSize: 18, color: Colors.white),
+              ],
+            ),
+          ),
+          backgroundColor: styling.background,
+          body: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                FancyBorder(
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(
+                      'Game Code: ${connectionService.roomCode}',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        letterSpacing: 8,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
-                )
-              else
-                SizedBox(
-                  width: double.infinity,
-                  child: ActionButton(
-                    onTap: _players.length >= 2 ? _startGame : null,
+                ),
+
+                const SizedBox(height: 12),
+                Text(
+                  'Players${widget.requiredPlayers != null
+                      ? " (${_players.length}/${widget.requiredPlayers})"
+                      : widget.maxPlayers != null
+                      ? " (Max: ${widget.maxPlayers})"
+                      : ""}:',
+                  style: const TextStyle(fontSize: 24, color: Colors.white),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: FancyBorder(
+                    child: ListView(
+                      children:
+                          _players
+                              .map(
+                                (p) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 8.0),
+                                  child: ListTile(
+                                    leading: Icon(
+                                      p.isHost
+                                          ? Icons.star
+                                          : p.isBot
+                                          ? Icons.computer
+                                          : Icons.person,
+                                      color:
+                                          p.isHost
+                                              ? Colors.yellow
+                                              : Colors.white,
+                                    ),
+                                    title: Text(
+                                      p.name,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                      ),
+                                    ),
+                                    trailing:
+                                        p is BotPlayer
+                                            ? Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.end,
+                                              children: [
+                                                SizedBox(
+                                                  width: 110,
+                                                  child: DropdownButtonFormField(
+                                                    value:
+                                                        p.difficulty.toString(),
+                                                    decoration: styling
+                                                        .textInputDecoration()
+                                                        .copyWith(
+                                                          fillColor:
+                                                              styling.primary,
+                                                        ),
+                                                    dropdownColor:
+                                                        styling.background,
+                                                    iconEnabledColor:
+                                                        styling.primary,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          10,
+                                                        ),
+                                                    items:
+                                                        [
+                                                          "Easy",
+                                                          "Medium",
+                                                          "Hard",
+                                                        ].map((String value) {
+                                                          return DropdownMenuItem<
+                                                            String
+                                                          >(
+                                                            value: value,
+                                                            child: Text(
+                                                              value,
+                                                              style: const TextStyle(
+                                                                color:
+                                                                    Colors
+                                                                        .white,
+                                                                fontSize: 14,
+                                                              ),
+                                                            ),
+                                                          );
+                                                        }).toList(),
+                                                    onTap: () async {
+                                                      await SharedPrefs.hapticInputSelect();
+                                                    },
+                                                    onChanged: (
+                                                      String? value,
+                                                    ) async {
+                                                      if (value == null) return;
+                                                      await SharedPrefs.hapticButtonPress();
+                                                      BotDifficulty difficulty =
+                                                          BotDifficulty.fromString(
+                                                            value,
+                                                          );
+                                                      connectionService
+                                                          .updateBotDifficulty(
+                                                            p.id,
+                                                            difficulty,
+                                                          );
+                                                    },
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                IconButton(
+                                                  onPressed: () {
+                                                    SharedPrefs.hapticButtonPress();
+                                                    connectionService.removeBot(
+                                                      p.id,
+                                                    );
+                                                  },
+                                                  icon: Icon(
+                                                    Icons.remove_circle,
+                                                  ),
+                                                  color: Colors.redAccent,
+                                                ),
+                                              ],
+                                            )
+                                            : null,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if ((widget.maxPlayers == null ||
+                        _players.length < widget.maxPlayers!) &&
+                    (widget.requiredPlayers != null
+                        ? _players.length < widget.requiredPlayers!
+                        : true))
+                  ActionButton(
                     text: Text(
-                      _players.length >= 2
-                          ? 'Start Game'
-                          : 'Waiting for players',
+                      "Add Bot",
                       style: TextStyle(
-                        color:
-                            Colors.white, // This will be masked by the gradient
+                        color: Colors.white,
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
-                      textAlign: TextAlign.center,
+                    ),
+                    onTap: () {
+                      final botName =
+                          'Bot ${(_players.where((p) => p.isBot)).length + 1}';
+                      final botPlayer = BotPlayer(
+                        id: 'bot-${Random().nextInt(10000)}',
+                        name: botName,
+                        difficulty: BotDifficulty.hard,
+                      );
+                      connectionService.addBot(botPlayer);
+                    },
+                  ),
+                const SizedBox(height: 16),
+                if (_players.length < 2 ||
+                    (widget.requiredPlayers != null
+                        ? (_players.length < widget.requiredPlayers!)
+                        : false))
+                  FancyWidget(
+                    child: const Text(
+                      'Waiting for more players to join...',
+                      style: TextStyle(fontSize: 18, color: Colors.white),
+                    ),
+                  )
+                else
+                  SizedBox(
+                    width: double.infinity,
+                    child: ActionButton(
+                      onTap: _players.length >= 2 ? _startGame : null,
+                      text: Text(
+                        _players.length >= 2
+                            ? 'Start Game'
+                            : 'Waiting for players',
+                        style: TextStyle(
+                          color:
+                              Colors
+                                  .white, // This will be masked by the gradient
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:deckly/main.dart';
 import 'package:deckly/styling.dart';
 import 'package:deckly/widgets/drop_zone.dart';
 import 'package:deckly/widgets/playing_card.dart';
 import 'package:flutter/material.dart';
+import 'package:rate_my_app/rate_my_app.dart';
 
 void nextScreen(context, page) {
   Navigator.push(context, MaterialPageRoute(builder: (context) => page));
@@ -109,6 +112,8 @@ class DropZoneData {
   bool isPublic;
   bool playable;
   DropZoneController? controller;
+  bool isSolitaire;
+  List<CardData> solitaireStartingCards;
 
   DropZoneData({
     required this.id,
@@ -120,6 +125,8 @@ class DropZoneData {
     this.isPublic = false,
     List<CardData> cards = const [],
     this.playable = true,
+    this.isSolitaire = false,
+    this.solitaireStartingCards = const [],
     this.controller,
   }) : cards = List.from(cards);
 
@@ -580,15 +587,15 @@ enum EuchreGamePhase { decidingTrump, discardingCard, playing }
 enum Game {
   nertz,
   euchre,
-  blitz;
+  dash;
 
   @override
   String toString() {
     switch (this) {
       case Game.nertz:
         return 'Nertz';
-      case Game.blitz:
-        return 'Dutch Blitz';
+      case Game.dash:
+        return 'Nordic Dash';
       case Game.euchre:
         return 'Euchre';
     }
@@ -727,7 +734,7 @@ List<Widget> dutchBlitzRules = [
   Padding(
     padding: const EdgeInsets.all(8.0),
     child: Text(
-      "How to Play Dutch Blitz",
+      "How to Play Nordic Dash",
       style: TextStyle(
         fontSize: 24,
         fontWeight: FontWeight.bold,
@@ -738,33 +745,33 @@ List<Widget> dutchBlitzRules = [
   Divider(color: styling.primary, thickness: 1.5),
   sectionTitle('🎯 Goal'),
   sectionText(
-    'The goal of Dutch Blitz is to be the first player to get rid of all the cards '
-    'in your Blitz pile. Everyone plays at the same time and tries to move cards as fast as possible.',
+    'The goal of Nordic Dash is to be the first player to get rid of all the cards '
+    'in your Dash pile. Everyone plays at the same time and tries to move cards as fast as possible.',
   ),
   sectionTitle('🧰 Setup'),
   sectionText(
     'Each player has:\n'
-    '- A Blitz pile with 10 cards. Only the top card is face up and can be played.\n'
+    '- A Dash pile with 10 cards. Only the top card is face up and can be played.\n'
     '- A draw pile made from the rest of your cards. You flip through it three cards at a time.\n'
     '- Four work piles where you build cards from high to low, switching guys and girls.\n'
-    '- Shared center piles where everyone builds piles starting with 1s, going up to 10s, in the same suit.',
+    '- Shared center piles where everyone builds piles starting with 1s, going up to 10s, in the same color.',
   ),
   sectionTitle('🃏 Gameplay'),
   sectionText(
     'You can:\n'
-    '- Move the top card of your Blitz pile to your work piles or the center piles.\n'
+    '- Move the top card of your Dash pile to your work piles or the center piles.\n'
     '- Move cards between your work piles to make space.\n'
     '- Use the top card from your draw pile if it can be played.\n'
     '- Flip through your draw pile again and again.\n\n'
-    'Everyone plays at the same time. When a player uses all the cards in their Blitz pile, '
-    'they press Blitz!” and the round ends.',
+    'Everyone plays at the same time. When a player uses all the cards in their Dash pile, '
+    'they press Dash!” and the round ends.',
   ),
 
   sectionTitle('🧮 Scoring'),
   sectionText(
     'At the end of the round:\n'
     '- You get 1 point for each card played in the center piles.\n'
-    '- You lose 2 points for each card left in your Blitz pile.',
+    '- You lose 2 points for each card left in your Dash pile.',
   ),
 
   sectionTitle('🏁 Ending the Game'),
@@ -798,7 +805,7 @@ List<Widget> euchreRules = [
     'Deal: Each player gets 5 cards. The rest goes in a pile next to the dealer; top card is turned face up.',
   ),
   sectionTitle('🃏 Gameplay'),
-  secitonHeader('1. Deciding Trump'),
+  sectionHeader('1. Deciding Trump'),
   sectionText(
     '- The suit of the face-up card in the pile next to the dealer can be called trump (the strongest suit).\n'
     '- Going clockwise, each player decides whether to "order up" (make that suit trump) or pass.\n'
@@ -811,7 +818,7 @@ List<Widget> euchreRules = [
     '- The second highest is the other Jack of the same color (called the Left Bower).\n'
     '- Then Ace, King, Queen, 10, 9 follow in that suit.',
   ),
-  secitonHeader('2. Playing Tricks'),
+  sectionHeader('2. Playing Tricks'),
   sectionText(
     '- The player to the left of the dealer starts.\n'
     '- Players must follow the suit led if they can.\n'
@@ -837,6 +844,61 @@ List<Widget> euchreRules = [
   sectionText('Play continues until one team reaches 10 points.'),
 ];
 
+List<Widget> solitaireRules = [
+  Padding(
+    padding: const EdgeInsets.all(8.0),
+    child: Text(
+      "How to Play Solitaire",
+      style: TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.bold,
+        color: styling.primary,
+      ),
+    ),
+  ),
+  Divider(color: styling.primary, thickness: 1.5),
+  sectionTitle('🎯 Goal'),
+  sectionText(
+    'Move all cards into the 4 foundation piles, sorted by suit (♠ ♥ ♦ ♣) and in order from Ace to King.',
+  ),
+  sectionTitle('🧰 Setup'),
+  sectionText(
+    'Players: 4 players in 2 teams.\n'
+    'Deck: Standard 52-card deck\n'
+    'Layout:\n'
+    '\t\t- 7 tableau piles: The first pile has 1 card, the second has 2, and so on up to 7 cards in the last pile.\n'
+    '\t\t- 4 foundation piles: These are empty at the start and will hold the sorted cards.\n'
+    '\t\t- 24 cards in the stock pile: These are face down and will be drawn from during the game.',
+  ),
+  sectionTitle('🃏 Gameplay'),
+  sectionHeader('1. Moving Cards'),
+  sectionText(
+    '- You can move cards between the 7 piles by stacking them in descending order, alternating red and black cards.\n'
+    '- Only faceup cards can be moved. When a face-down card is uncovered, it will flip it over.',
+  ),
+  sectionHeader('2. Drawing Cards'),
+  sectionText(
+    '- Tap on the deck to draw three cards\n'
+    '- Only the top drawn card is playable.\n'
+    '- When the draw pile is empty, tap the refresh icon to move the cards back to the draw pile.',
+  ),
+  sectionHeader('3. Foundation Piles'),
+  sectionText(
+    '- Move cards to the foundation piles when they are in order (Ace to King) and in the same suit.\n'
+    '- You can only move cards to the foundation piles if they are in the correct order and suit.',
+  ),
+  sectionHeader('4. Empty Tableau Piles'),
+  sectionText(
+    '- If you empty a tableau pile, you can only place a king there.',
+  ),
+
+  sectionTitle('🏁 Ending the Game'),
+  sectionText(
+    'You win when all 52 cards are placed in the foundation piles.\n'
+    'If you can\'t make any more moves, the game is over.',
+  ),
+];
+
 Widget sectionTitle(String title) {
   return Padding(
     padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
@@ -851,7 +913,7 @@ Widget sectionTitle(String title) {
   );
 }
 
-Widget secitonHeader(String title) {
+Widget sectionHeader(String title) {
   return Padding(
     padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
     child: Text(
@@ -870,4 +932,115 @@ Widget sectionText(String text) {
     padding: const EdgeInsets.only(bottom: 12.0),
     child: Text(text, style: TextStyle(fontSize: 16, color: Colors.white)),
   );
+}
+
+bool isTablet(BuildContext context) {
+  var shortestSide = MediaQuery.sizeOf(context).shortestSide;
+
+  // Determine if we should use mobile layout or not, 600 here is
+  // a common breakpoint for a typical 7-inch tablet.
+  return shortestSide >= 600;
+}
+
+class RateAppHelper {
+  RateAppHelper({RateMyApp? rateMyApp})
+    : _rateMyApp =
+          rateMyApp ??
+          RateMyApp(
+            minDays: 0,
+            minLaunches: 0,
+            remindDays: 2,
+            remindLaunches: 4,
+            googlePlayIdentifier: 'com.kazoom.deckly',
+            appStoreIdentifier: '6746527909',
+          ) {
+    initialize();
+  }
+
+  bool _isNativeReviewDialogSupported = false;
+
+  final RateMyApp _rateMyApp;
+
+  Future<void> initialize() async {
+    await _rateMyApp.init();
+    _isNativeReviewDialogSupported =
+        await _rateMyApp.isNativeReviewDialogSupported ?? false;
+  }
+
+  void launchStore() async {
+    print("RateMyApp: Launching store");
+    await _rateMyApp.launchStore();
+  }
+
+  // Show native review dialog or standard.
+  void showDialog(BuildContext context) {
+    print("RateMyApp: shouldOpenDialog: ${_rateMyApp.shouldOpenDialog}");
+    if (_rateMyApp.shouldOpenDialog || true) {
+      if (Platform.isIOS && _isNativeReviewDialogSupported) {
+        print("RateMyApp: Launching native review dialog");
+        _rateMyApp.launchNativeReviewDialog();
+      } else if (Platform.isAndroid) {
+        _rateMyApp.showStarRateDialog(
+          context,
+          title: 'Rate App',
+          message:
+              "If you're enjoying the app, please leave a rating to support us!",
+          actionsBuilder: (context, stars) {
+            return [
+              TextButton(
+                child: const Text('OK'),
+                onPressed: () async {
+                  // Launch store if user rates 5 stars.
+                  if (stars != null && stars.round().toInt() >= 3) {
+                    await _rateMyApp.launchStore();
+                  }
+                  await _rateMyApp.callEvent(
+                    RateMyAppEventType.rateButtonPressed,
+                  );
+
+                  if (context.mounted) {
+                    Navigator.pop<RateMyAppDialogButton>(
+                      context,
+                      RateMyAppDialogButton.rate,
+                    );
+                  }
+                },
+              ),
+            ];
+          },
+        );
+      } else {
+        _rateMyApp.showStarRateDialog(
+          context,
+          title: 'Rate App',
+
+          message:
+              "If you're enjoying the app, please leave a rating to support us!",
+          // actionsBuilder: (context, stars) {
+          //   return [
+          //     TextButton(
+          //       child: const Text('OK'),
+          //       onPressed: () async {
+          //         // Launch store if user rates 5 stars.
+          //         if (stars != null && stars.round().toInt() >= 3) {
+          //           await _rateMyApp.launchStore();
+          //         }
+          //         await _rateMyApp.callEvent(
+          //           RateMyAppEventType.rateButtonPressed,
+          //         );
+
+          //         if (context.mounted) {
+          //           Navigator.pop<RateMyAppDialogButton>(
+          //             context,
+          //             RateMyAppDialogButton.rate,
+          //           );
+          //         }
+          //       },
+          //     ),
+          //   ];
+          // },
+        );
+      }
+    }
+  }
 }
