@@ -8,7 +8,7 @@ import 'package:deckly/main.dart';
 import 'package:deckly/widgets/action_button.dart';
 import 'package:deckly/widgets/blitz_deck.dart';
 import 'package:deckly/widgets/custom_app_bar.dart';
-import 'package:deckly/widgets/deck.dart';
+
 import 'package:deckly/widgets/drop_zone.dart';
 import 'package:deckly/widgets/euchre_deck.dart';
 import 'package:deckly/widgets/fancy_widget.dart';
@@ -164,6 +164,7 @@ class _EuchreState extends State<Euchre> {
           gamePhase = EuchreGamePhase.decidingTrump;
         });
       } else if (dataMap['type'] == "player_passed") {
+        SharedPrefs.hapticButtonPress();
         final playerId = dataMap['playerId'] as String;
         final player = players.firstWhere((p) => p.id == playerId);
         final playerIndex = players.indexOf(player);
@@ -256,6 +257,7 @@ class _EuchreState extends State<Euchre> {
           });
         }
       } else if (dataMap['type'] == 'up_card_picked') {
+        SharedPrefs.hapticButtonPress();
         final playerCalledBy = players.firstWhere(
           (p) => p.id == dataMap['playerId'],
         );
@@ -458,6 +460,7 @@ class _EuchreState extends State<Euchre> {
           });
         }
       } else if (dataMap['type'] == 'chose_trump_suit') {
+        SharedPrefs.hapticButtonPress();
         final playerId = dataMap['playerId'] as String;
         final suit = CardSuit.values.firstWhere(
           (s) => s.toString() == dataMap['suit'],
@@ -577,6 +580,7 @@ class _EuchreState extends State<Euchre> {
           });
         }
       } else if (dataMap['type'] == 'player_played') {
+        SharedPrefs.hapticButtonPress();
         final playerId = dataMap['playerId'] as String;
         final nextPlayerId = dataMap['nextPlayerId'] as String;
         final player = players.firstWhere((p) => p.id == playerId);
@@ -861,6 +865,14 @@ class _EuchreState extends State<Euchre> {
               ),
             );
           },
+        );
+      } else if (dataMap["type"] == "play_again") {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder:
+                (context) =>
+                    Euchre(player: widget.player, players: widget.players),
+          ),
         );
       }
     });
@@ -1253,6 +1265,7 @@ class _EuchreState extends State<Euchre> {
   }
 
   void onDecideTrumpBot(CardSuit? trump, String botId, bool alone) async {
+    SharedPrefs.hapticButtonPress();
     final indexOfBot = players.indexWhere((p) => p.id == botId);
 
     if (trump == null) {
@@ -1673,6 +1686,7 @@ class _EuchreState extends State<Euchre> {
   }
 
   void onPlayCardBot(CardData card, String botId) {
+    SharedPrefs.hapticButtonPress();
     final indexOfBot = players.indexWhere((p) => p.id == botId);
     final targetZone = dropZones.firstWhere((zone) => zone.id == botId);
     players[indexOfBot].myTurn = false;
@@ -2773,10 +2787,6 @@ class _EuchreState extends State<Euchre> {
                                         height: 40,
                                         width: 100,
                                         onTap: () async {
-                                          await connectionService
-                                              .broadcastMessage({
-                                                'type': 'host_left',
-                                              }, currentPlayer!.id);
                                           connectionService.dispose();
 
                                           Navigator.of(context).pop();
@@ -4326,6 +4336,31 @@ class _EuchreState extends State<Euchre> {
             ),
           ),
         ),
+        const SizedBox(height: 16.0),
+        if (currentPlayer!.getIsHost())
+          ActionButton(
+            text: Text(
+              'Play Again',
+              style: TextStyle(fontSize: 18.0, color: Colors.white),
+            ),
+            onTap: () async {
+              SharedPrefs.hapticButtonPress();
+              await connectionService.broadcastMessage({
+                "type": "play_again",
+              }, currentPlayer!.id);
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder:
+                      (context) => Euchre(
+                        player: widget.player,
+                        players: widget.players,
+                      ),
+                ),
+              );
+            },
+            width: 200.0,
+            height: 50.0,
+          ),
       ],
     );
   }

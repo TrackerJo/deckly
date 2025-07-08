@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:deckly/constants.dart';
 
 import 'package:flutter/services.dart';
@@ -10,6 +12,7 @@ class SharedPrefs {
   static String hapticSettingsKey = "HAPTICSETTINGSKEY";
   static String lastUsedNameKey = "LASTUSEDNAMEKEY";
   static String firstUseKey = "FIRSTUSEKEY";
+  static String newUserKey = "NEWUSERKEY";
 
   static String nertzRoundsPlayedKey = "NERTZROUNDSPLAYEDKEY";
   static String nertzRoundsNertzedKey = "NERTZROUNDSNERTZEDKEY";
@@ -27,6 +30,9 @@ class SharedPrefs {
   static String seenSolitaireKey = "SEENSOLITAIREKEY";
   static String solitaireGamesWon = "SOLITAIREGAMESWONKEY";
 
+  static String crazyEightsGamesPlayedKey = "CRAZYEIGHTSGAMESPLAYEDKEY";
+  static String crazyEightsGamesWonKey = "CRAZYEIGHTSGAMESWONKEY";
+
   static String newestSeenVersionKey = "NEWESTSEENVERSIONKEY";
 
   static String seenRateAppKey = "SEENRATEAPPKEY";
@@ -36,6 +42,112 @@ class SharedPrefs {
   static String appLaunchCountKey = "APPLAUNCHCOUNTKEY";
 
   static String analyticsEnabledKey = "ANALYTICSENABLEDKEY";
+
+  static String seenPrivacyPolicyKey = "SEENPRIVACYPOLICYKEY";
+
+  static String newGamesSeenKey = "NEWGAMESSEENKEY";
+
+  static final StreamController<List<Game>> _newGamesSeenController =
+      StreamController<List<Game>>.broadcast();
+
+  // ✅ Static stream getter
+  static Stream<List<Game>> get newGamesSeenStream =>
+      _newGamesSeenController.stream;
+  static Future<List<Game>> getNewGamesSeenAsEnum() async {
+    List<String> gameStrings = await getNewGamesSeen();
+    return gameStrings
+        .map((gameString) => Game.fromString(gameString))
+        .toList();
+  }
+
+  // ✅ Initialize the stream (call this in main.dart)
+  static Future<void> initializeNewGamesStream() async {
+    // Emit initial value
+    List<Game> currentGames = await getNewGamesSeenAsEnum();
+    _newGamesSeenController.add(currentGames);
+  }
+
+  // ✅ Dispose the stream controller (call this when app closes)
+  static void disposeNewGamesStream() {
+    _newGamesSeenController.close();
+  }
+
+  static Future<bool> setNewUser(bool val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return await sf.setBool(newUserKey, val);
+  }
+
+  static Future<bool> getNewUser() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return sf.getBool(newUserKey) ?? true; // Default to true
+  }
+
+  static Future<bool> setNewGamesSeen(List<String> val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    bool success = await sf.setStringList(newGamesSeenKey, val);
+
+    if (success) {
+      // ✅ Emit updated list to stream
+      List<Game> updatedGames = await getNewGamesSeenAsEnum();
+      _newGamesSeenController.add(updatedGames);
+    }
+
+    return success;
+  }
+
+  static Future<List<String>> getNewGamesSeen() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return sf.getStringList(newGamesSeenKey) ?? []; // Default to empty list
+  }
+
+  static Future<bool> addNewGamesSeen(Game val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    List<String>? currentGamesSeen = sf.getStringList(newGamesSeenKey);
+    currentGamesSeen ??= [];
+
+    if (!currentGamesSeen.contains(val.toString())) {
+      currentGamesSeen.add(val.toString());
+      bool success = await sf.setStringList(newGamesSeenKey, currentGamesSeen);
+
+      if (success) {
+        // ✅ Emit updated list to stream
+        List<Game> updatedGames = await getNewGamesSeenAsEnum();
+        _newGamesSeenController.add(updatedGames);
+      }
+
+      return success;
+    }
+    return false; // No change made
+  }
+
+  static Future<bool> clearNewGamesSeen() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    bool success = await sf.remove(newGamesSeenKey);
+
+    if (success) {
+      // ✅ Emit empty list to stream
+      _newGamesSeenController.add([]);
+    }
+
+    return success;
+  }
+
+  static Future<bool> hasSeenNewGame(Game game) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    List<String>? currentGamesSeen = sf.getStringList(newGamesSeenKey);
+    return currentGamesSeen?.contains(game.toString()) ??
+        false; // Default to false
+  }
+
+  static Future<bool> setSeenPrivacyPolicy(bool val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return await sf.setBool(seenPrivacyPolicyKey, val);
+  }
+
+  static Future<bool> getSeenPrivacyPolicy() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return sf.getBool(seenPrivacyPolicyKey) ?? false; // Default to false
+  }
 
   static Future<bool> setAnalyticsEnabled(bool val) async {
     SharedPreferences sf = await SharedPreferences.getInstance();
@@ -96,6 +208,38 @@ class SharedPrefs {
   static Future<bool> getSeenShareApp() async {
     SharedPreferences sf = await SharedPreferences.getInstance();
     return sf.getBool(seenShareAppKey) ?? false;
+  }
+
+  static Future<bool> setCrazyEightsGamesPlayed(int val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return await sf.setInt(crazyEightsGamesPlayedKey, val);
+  }
+
+  static Future<bool> addCrazyEightsGamesPlayed(int val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    int currentGamesPlayed = sf.getInt(crazyEightsGamesPlayedKey) ?? 0;
+    return await sf.setInt(crazyEightsGamesPlayedKey, currentGamesPlayed + val);
+  }
+
+  static Future<int> getCrazyEightsGamesPlayed() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return sf.getInt(crazyEightsGamesPlayedKey) ?? 0;
+  }
+
+  static Future<bool> setCrazyEightsGamesWon(int val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return await sf.setInt(crazyEightsGamesWonKey, val);
+  }
+
+  static Future<bool> addCrazyEightsGamesWon(int val) async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    int currentGamesWon = sf.getInt(crazyEightsGamesWonKey) ?? 0;
+    return await sf.setInt(crazyEightsGamesWonKey, currentGamesWon + val);
+  }
+
+  static Future<int> getCrazyEightsGamesWon() async {
+    SharedPreferences sf = await SharedPreferences.getInstance();
+    return sf.getInt(crazyEightsGamesWonKey) ?? 0;
   }
 
   static Future<bool> setSolitaireGamesWon(int val) async {

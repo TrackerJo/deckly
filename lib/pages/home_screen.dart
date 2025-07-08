@@ -134,13 +134,13 @@ class _HomeScreenState extends State<HomeScreen> {
           if (isTablet(context)) Orientation.landscape,
         ],
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.only(left: 12, right: 12),
           child: SizedBox(
             width: double.infinity,
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  const SizedBox(height: 25),
+                  const SizedBox(height: 35),
                   FancyWidget(
                     child: Text(
                       "Welcome to Deckly",
@@ -224,6 +224,28 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     },
                   ),
+                  const SizedBox(height: 8),
+                  ActionButton(
+                    text: Text(
+                      'Join Online Game',
+                      style: TextStyle(
+                        color:
+                            Colors.white, // This will be masked by the gradient
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    onTap: () {
+                      analytics.logJoinRoomEvent();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => JoinRoomScreen(isOnline: true),
+                        ),
+                      );
+                    },
+                  ),
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -289,7 +311,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                   child: Container(
                                     width: 400,
-                                    height: 200,
+
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
                                         begin: Alignment.topLeft,
@@ -316,6 +338,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.center,
                                         children: [
+                                          const SizedBox(height: 12),
                                           Text(
                                             "Enter Your Name",
                                             style: TextStyle(
@@ -324,6 +347,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
+                                          const SizedBox(height: 12),
                                           Padding(
                                             padding: const EdgeInsets.all(8.0),
                                             child: GradientInputField(
@@ -359,79 +383,169 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   Navigator.of(context).pop();
                                                 },
                                               ),
-                                              SizedBox(
-                                                width: 128,
+                                              Column(
+                                                children: [
+                                                  SizedBox(
+                                                    width: 128,
 
-                                                child: Padding(
-                                                  padding: const EdgeInsets.all(
-                                                    8.0,
-                                                  ),
-                                                  child: SolidActionButton(
-                                                    text: Padding(
+                                                    child: Padding(
                                                       padding:
                                                           const EdgeInsets.all(
                                                             8.0,
                                                           ),
-                                                      child: Text(
-                                                        "Create Local Game",
-                                                        style: TextStyle(
-                                                          color:
-                                                              Colors
-                                                                  .white, // This will be masked by the gradient
-                                                          fontSize: 14,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
+                                                      child: SolidActionButton(
+                                                        text: Padding(
+                                                          padding:
+                                                              const EdgeInsets.all(
+                                                                8.0,
+                                                              ),
+                                                          child: Text(
+                                                            "Create Local Game",
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors
+                                                                      .white, // This will be masked by the gradient
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
 
-                                                        textAlign:
-                                                            TextAlign.center,
+                                                            textAlign:
+                                                                TextAlign
+                                                                    .center,
+                                                          ),
+                                                        ),
+                                                        onTap: () {
+                                                          if (myController
+                                                              .text
+                                                              .isEmpty) {
+                                                            showSnackBar(
+                                                              context,
+                                                              Colors.red,
+                                                              "Please enter a name",
+                                                            );
+                                                            return;
+                                                          }
+                                                          analytics
+                                                              .logSelectGameEvent(
+                                                                "Nertz Local",
+                                                              );
+                                                          SharedPrefs.setLastUsedName(
+                                                            myController.text,
+                                                          );
+                                                          setState(() {
+                                                            lastUsedName =
+                                                                myController
+                                                                    .text;
+                                                          });
+                                                          Navigator.of(
+                                                            context,
+                                                          ).pop();
+                                                          // Navigate to the browser screen with the room code
+                                                          Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder:
+                                                                  (
+                                                                    _,
+                                                                  ) => CreateRoomScreen(
+                                                                    userName:
+                                                                        myController
+                                                                            .text,
+                                                                    game:
+                                                                        Game.nertz,
+                                                                    maxPlayers:
+                                                                        8,
+                                                                  ),
+                                                            ),
+                                                          );
+                                                        },
                                                       ),
                                                     ),
-                                                    onTap: () {
-                                                      if (myController
-                                                          .text
-                                                          .isEmpty) {
-                                                        showSnackBar(
-                                                          context,
-                                                          Colors.red,
-                                                          "Please enter a name",
-                                                        );
-                                                        return;
-                                                      }
-                                                      analytics
-                                                          .logSelectGameEvent(
-                                                            "Nertz",
-                                                          );
-                                                      SharedPrefs.setLastUsedName(
-                                                        myController.text,
-                                                      );
-                                                      setState(() {
-                                                        lastUsedName =
-                                                            myController.text;
-                                                      });
-                                                      Navigator.of(
-                                                        context,
-                                                      ).pop();
-                                                      // Navigate to the browser screen with the room code
-                                                      Navigator.push(
-                                                        context,
-                                                        MaterialPageRoute(
-                                                          builder:
-                                                              (
-                                                                _,
-                                                              ) => CreateRoomScreen(
-                                                                userName:
-                                                                    myController
-                                                                        .text,
-                                                                game:
-                                                                    Game.nertz,
-                                                                maxPlayers: 8,
-                                                              ),
-                                                        ),
-                                                      );
-                                                    },
                                                   ),
-                                                ),
+                                                  SizedBox(
+                                                    width: 128,
+
+                                                    child: Padding(
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                            8.0,
+                                                          ),
+                                                      child: SolidActionButton(
+                                                        text: Padding(
+                                                          padding:
+                                                              const EdgeInsets.all(
+                                                                8.0,
+                                                              ),
+                                                          child: Text(
+                                                            "Create Online Game",
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors
+                                                                      .white, // This will be masked by the gradient
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+
+                                                            textAlign:
+                                                                TextAlign
+                                                                    .center,
+                                                          ),
+                                                        ),
+                                                        onTap: () {
+                                                          if (myController
+                                                              .text
+                                                              .isEmpty) {
+                                                            showSnackBar(
+                                                              context,
+                                                              Colors.red,
+                                                              "Please enter a name",
+                                                            );
+                                                            return;
+                                                          }
+                                                          analytics
+                                                              .logSelectGameEvent(
+                                                                "Nertz Online",
+                                                              );
+                                                          SharedPrefs.setLastUsedName(
+                                                            myController.text,
+                                                          );
+                                                          setState(() {
+                                                            lastUsedName =
+                                                                myController
+                                                                    .text;
+                                                          });
+                                                          Navigator.of(
+                                                            context,
+                                                          ).pop();
+                                                          // Navigate to the browser screen with the room code
+                                                          Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder:
+                                                                  (
+                                                                    _,
+                                                                  ) => CreateRoomScreen(
+                                                                    userName:
+                                                                        myController
+                                                                            .text,
+                                                                    game:
+                                                                        Game.nertz,
+                                                                    maxPlayers:
+                                                                        8,
+                                                                    isOnline:
+                                                                        true,
+                                                                  ),
+                                                            ),
+                                                          );
+                                                        },
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             ],
                                           ),
@@ -475,7 +589,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                   child: Container(
                                     width: 400,
-                                    height: 200,
+
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
                                         begin: Alignment.topLeft,
@@ -502,6 +616,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.center,
                                         children: [
+                                          const SizedBox(height: 12),
                                           Text(
                                             "Enter Your Name",
                                             style: TextStyle(
@@ -510,6 +625,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
+                                          const SizedBox(height: 12),
                                           Padding(
                                             padding: const EdgeInsets.all(8.0),
                                             child: GradientInputField(
@@ -545,79 +661,169 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   Navigator.of(context).pop();
                                                 },
                                               ),
-                                              SizedBox(
-                                                width: 128,
+                                              Column(
+                                                children: [
+                                                  SizedBox(
+                                                    width: 128,
 
-                                                child: Padding(
-                                                  padding: const EdgeInsets.all(
-                                                    8.0,
-                                                  ),
-                                                  child: SolidActionButton(
-                                                    text: Padding(
+                                                    child: Padding(
                                                       padding:
                                                           const EdgeInsets.all(
                                                             8.0,
                                                           ),
-                                                      child: Text(
-                                                        "Create Local Game",
-                                                        style: TextStyle(
-                                                          color:
-                                                              Colors
-                                                                  .white, // This will be masked by the gradient
-                                                          fontSize: 14,
-                                                          fontWeight:
-                                                              FontWeight.bold,
+                                                      child: SolidActionButton(
+                                                        text: Padding(
+                                                          padding:
+                                                              const EdgeInsets.all(
+                                                                8.0,
+                                                              ),
+                                                          child: Text(
+                                                            "Create Local Game",
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors
+                                                                      .white, // This will be masked by the gradient
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+
+                                                            textAlign:
+                                                                TextAlign
+                                                                    .center,
+                                                          ),
                                                         ),
-                                                        textAlign:
-                                                            TextAlign.center,
+                                                        onTap: () {
+                                                          if (myController
+                                                              .text
+                                                              .isEmpty) {
+                                                            showSnackBar(
+                                                              context,
+                                                              Colors.red,
+                                                              "Please enter a name",
+                                                            );
+                                                            return;
+                                                          }
+                                                          analytics
+                                                              .logSelectGameEvent(
+                                                                "Nordic Dash Local",
+                                                              );
+                                                          SharedPrefs.setLastUsedName(
+                                                            myController.text,
+                                                          );
+                                                          setState(() {
+                                                            lastUsedName =
+                                                                myController
+                                                                    .text;
+                                                          });
+                                                          Navigator.of(
+                                                            context,
+                                                          ).pop();
+                                                          // Navigate to the browser screen with the room code
+                                                          Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder:
+                                                                  (
+                                                                    _,
+                                                                  ) => CreateRoomScreen(
+                                                                    userName:
+                                                                        myController
+                                                                            .text,
+                                                                    game:
+                                                                        Game.dash,
+                                                                    maxPlayers:
+                                                                        8,
+                                                                  ),
+                                                            ),
+                                                          );
+                                                        },
                                                       ),
                                                     ),
-                                                    onTap: () {
-                                                      if (myController
-                                                          .text
-                                                          .isEmpty) {
-                                                        showSnackBar(
-                                                          context,
-                                                          Colors.red,
-
-                                                          "Please enter a name",
-                                                        );
-                                                        return;
-                                                      }
-                                                      analytics
-                                                          .logSelectGameEvent(
-                                                            "Nordic Dash",
-                                                          );
-                                                      SharedPrefs.setLastUsedName(
-                                                        myController.text,
-                                                      );
-                                                      setState(() {
-                                                        lastUsedName =
-                                                            myController.text;
-                                                      });
-                                                      SharedPrefs.hapticButtonPress();
-                                                      Navigator.of(
-                                                        context,
-                                                      ).pop();
-                                                      // Navigate to the browser screen with the room code
-                                                      Navigator.push(
-                                                        context,
-                                                        MaterialPageRoute(
-                                                          builder:
-                                                              (
-                                                                _,
-                                                              ) => CreateRoomScreen(
-                                                                userName:
-                                                                    myController
-                                                                        .text,
-                                                                game: Game.dash,
-                                                                maxPlayers: 8,
-                                                              ),
-                                                        ),
-                                                      );
-                                                    },
                                                   ),
-                                                ),
+                                                  SizedBox(
+                                                    width: 128,
+
+                                                    child: Padding(
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                            8.0,
+                                                          ),
+                                                      child: SolidActionButton(
+                                                        text: Padding(
+                                                          padding:
+                                                              const EdgeInsets.all(
+                                                                8.0,
+                                                              ),
+                                                          child: Text(
+                                                            "Create Online Game",
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors
+                                                                      .white, // This will be masked by the gradient
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+
+                                                            textAlign:
+                                                                TextAlign
+                                                                    .center,
+                                                          ),
+                                                        ),
+                                                        onTap: () {
+                                                          if (myController
+                                                              .text
+                                                              .isEmpty) {
+                                                            showSnackBar(
+                                                              context,
+                                                              Colors.red,
+                                                              "Please enter a name",
+                                                            );
+                                                            return;
+                                                          }
+                                                          analytics
+                                                              .logSelectGameEvent(
+                                                                "Nordic Dash Online",
+                                                              );
+                                                          SharedPrefs.setLastUsedName(
+                                                            myController.text,
+                                                          );
+                                                          setState(() {
+                                                            lastUsedName =
+                                                                myController
+                                                                    .text;
+                                                          });
+                                                          Navigator.of(
+                                                            context,
+                                                          ).pop();
+                                                          // Navigate to the browser screen with the room code
+                                                          Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder:
+                                                                  (
+                                                                    _,
+                                                                  ) => CreateRoomScreen(
+                                                                    userName:
+                                                                        myController
+                                                                            .text,
+                                                                    game:
+                                                                        Game.dash,
+                                                                    maxPlayers:
+                                                                        8,
+                                                                    isOnline:
+                                                                        true,
+                                                                  ),
+                                                            ),
+                                                          );
+                                                        },
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             ],
                                           ),
@@ -658,7 +864,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                   child: Container(
                                     width: 400,
-                                    height: 200,
+
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
                                         begin: Alignment.topLeft,
@@ -685,6 +891,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.center,
                                         children: [
+                                          const SizedBox(height: 12),
                                           Text(
                                             "Enter Your Name",
                                             style: TextStyle(
@@ -693,6 +900,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
+                                          const SizedBox(height: 12),
                                           Padding(
                                             padding: const EdgeInsets.all(8.0),
                                             child: GradientInputField(
@@ -728,80 +936,169 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   Navigator.of(context).pop();
                                                 },
                                               ),
-                                              SizedBox(
-                                                width: 128,
+                                              Column(
+                                                children: [
+                                                  SizedBox(
+                                                    width: 128,
 
-                                                child: Padding(
-                                                  padding: const EdgeInsets.all(
-                                                    8.0,
-                                                  ),
-                                                  child: SolidActionButton(
-                                                    text: Padding(
+                                                    child: Padding(
                                                       padding:
                                                           const EdgeInsets.all(
                                                             8.0,
                                                           ),
-                                                      child: Text(
-                                                        "Create Local Game",
-                                                        style: TextStyle(
-                                                          color:
-                                                              Colors
-                                                                  .white, // This will be masked by the gradient
-                                                          fontSize: 14,
-                                                          fontWeight:
-                                                              FontWeight.bold,
+                                                      child: SolidActionButton(
+                                                        text: Padding(
+                                                          padding:
+                                                              const EdgeInsets.all(
+                                                                8.0,
+                                                              ),
+                                                          child: Text(
+                                                            "Create Local Game",
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors
+                                                                      .white, // This will be masked by the gradient
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+
+                                                            textAlign:
+                                                                TextAlign
+                                                                    .center,
+                                                          ),
                                                         ),
-                                                        textAlign:
-                                                            TextAlign.center,
+                                                        onTap: () {
+                                                          if (myController
+                                                              .text
+                                                              .isEmpty) {
+                                                            showSnackBar(
+                                                              context,
+                                                              Colors.red,
+                                                              "Please enter a name",
+                                                            );
+                                                            return;
+                                                          }
+                                                          analytics
+                                                              .logSelectGameEvent(
+                                                                "Euchre Local",
+                                                              );
+                                                          SharedPrefs.setLastUsedName(
+                                                            myController.text,
+                                                          );
+                                                          setState(() {
+                                                            lastUsedName =
+                                                                myController
+                                                                    .text;
+                                                          });
+                                                          Navigator.of(
+                                                            context,
+                                                          ).pop();
+                                                          // Navigate to the browser screen with the room code
+                                                          Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder:
+                                                                  (
+                                                                    _,
+                                                                  ) => CreateRoomScreen(
+                                                                    userName:
+                                                                        myController
+                                                                            .text,
+                                                                    game:
+                                                                        Game.euchre,
+                                                                    requiredPlayers:
+                                                                        4,
+                                                                  ),
+                                                            ),
+                                                          );
+                                                        },
                                                       ),
                                                     ),
-                                                    onTap: () {
-                                                      if (myController
-                                                          .text
-                                                          .isEmpty) {
-                                                        showSnackBar(
-                                                          context,
-                                                          Colors.red,
-                                                          "Please enter a name",
-                                                        );
-                                                        return;
-                                                      }
-                                                      analytics
-                                                          .logSelectGameEvent(
-                                                            "Euchre",
-                                                          );
-                                                      SharedPrefs.setLastUsedName(
-                                                        myController.text,
-                                                      );
-                                                      setState(() {
-                                                        lastUsedName =
-                                                            myController.text;
-                                                      });
-                                                      SharedPrefs.hapticButtonPress();
-                                                      Navigator.of(
-                                                        context,
-                                                      ).pop();
-                                                      // Navigate to the browser screen with the room code
-                                                      Navigator.push(
-                                                        context,
-                                                        MaterialPageRoute(
-                                                          builder:
-                                                              (
-                                                                _,
-                                                              ) => CreateRoomScreen(
-                                                                userName:
-                                                                    myController
-                                                                        .text,
-                                                                game:
-                                                                    Game.euchre,
-                                                                requiredPlayers:
-                                                                    4,
-                                                              ),
-                                                        ),
-                                                      );
-                                                    },
                                                   ),
-                                                ),
+                                                  SizedBox(
+                                                    width: 128,
+
+                                                    child: Padding(
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                            8.0,
+                                                          ),
+                                                      child: SolidActionButton(
+                                                        text: Padding(
+                                                          padding:
+                                                              const EdgeInsets.all(
+                                                                8.0,
+                                                              ),
+                                                          child: Text(
+                                                            "Create Online Game",
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors
+                                                                      .white, // This will be masked by the gradient
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+
+                                                            textAlign:
+                                                                TextAlign
+                                                                    .center,
+                                                          ),
+                                                        ),
+                                                        onTap: () {
+                                                          if (myController
+                                                              .text
+                                                              .isEmpty) {
+                                                            showSnackBar(
+                                                              context,
+                                                              Colors.red,
+                                                              "Please enter a name",
+                                                            );
+                                                            return;
+                                                          }
+                                                          analytics
+                                                              .logSelectGameEvent(
+                                                                "Euchre Online",
+                                                              );
+                                                          SharedPrefs.setLastUsedName(
+                                                            myController.text,
+                                                          );
+                                                          setState(() {
+                                                            lastUsedName =
+                                                                myController
+                                                                    .text;
+                                                          });
+                                                          Navigator.of(
+                                                            context,
+                                                          ).pop();
+                                                          // Navigate to the browser screen with the room code
+                                                          Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder:
+                                                                  (
+                                                                    _,
+                                                                  ) => CreateRoomScreen(
+                                                                    userName:
+                                                                        myController
+                                                                            .text,
+                                                                    game:
+                                                                        Game.euchre,
+                                                                    requiredPlayers:
+                                                                        4,
+                                                                    isOnline:
+                                                                        true,
+                                                                  ),
+                                                            ),
+                                                          );
+                                                        },
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             ],
                                           ),
@@ -814,7 +1111,570 @@ class _HomeScreenState extends State<HomeScreen> {
                             );
                           },
                         ),
+                        ActionButton(
+                          height: 60,
+                          width: buttonWidth,
+                          showNewIndicator: true,
+                          game: Game.crazyEights,
+                          text: Text(
+                            'Crazy Eights',
+                            style: TextStyle(
+                              color:
+                                  Colors
+                                      .white, // This will be masked by the gradient
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                final myController = TextEditingController();
+                                if (lastUsedName.isNotEmpty) {
+                                  myController.text = lastUsedName;
+                                }
+                                return Dialog(
+                                  backgroundColor: Colors.transparent,
 
+                                  child: Container(
+                                    width: 400,
+
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          styling.primary,
+                                          styling.secondary,
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Container(
+                                      margin: EdgeInsets.all(
+                                        2,
+                                      ), // Creates the border thickness
+                                      decoration: BoxDecoration(
+                                        color: styling.background,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: [
+                                          const SizedBox(height: 12),
+                                          Text(
+                                            "Enter Your Name",
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Padding(
+                                            padding: const EdgeInsets.all(8.0),
+                                            child: GradientInputField(
+                                              textField: TextField(
+                                                controller: myController,
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                ),
+                                                decoration: styling
+                                                    .gradientInputDecoration()
+                                                    .copyWith(
+                                                      hintText: "Your Name",
+                                                    ),
+                                                onTap: () {
+                                                  SharedPrefs.hapticInputSelect();
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.end,
+                                            children: [
+                                              TextButton(
+                                                child: Text(
+                                                  "Cancel",
+                                                  style: TextStyle(
+                                                    color: styling.secondary,
+                                                  ),
+                                                ),
+                                                onPressed: () {
+                                                  SharedPrefs.hapticButtonPress();
+                                                  Navigator.of(context).pop();
+                                                },
+                                              ),
+                                              Column(
+                                                children: [
+                                                  SizedBox(
+                                                    width: 128,
+
+                                                    child: Padding(
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                            8.0,
+                                                          ),
+                                                      child: SolidActionButton(
+                                                        text: Padding(
+                                                          padding:
+                                                              const EdgeInsets.all(
+                                                                8.0,
+                                                              ),
+                                                          child: Text(
+                                                            "Create Local Game",
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors
+                                                                      .white, // This will be masked by the gradient
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+
+                                                            textAlign:
+                                                                TextAlign
+                                                                    .center,
+                                                          ),
+                                                        ),
+                                                        onTap: () {
+                                                          if (myController
+                                                              .text
+                                                              .isEmpty) {
+                                                            showSnackBar(
+                                                              context,
+                                                              Colors.red,
+                                                              "Please enter a name",
+                                                            );
+                                                            return;
+                                                          }
+                                                          analytics
+                                                              .logSelectGameEvent(
+                                                                "Crazy Eights Local",
+                                                              );
+                                                          SharedPrefs.setLastUsedName(
+                                                            myController.text,
+                                                          );
+                                                          SharedPrefs.addNewGamesSeen(
+                                                            Game.crazyEights,
+                                                          );
+                                                          setState(() {
+                                                            lastUsedName =
+                                                                myController
+                                                                    .text;
+                                                          });
+                                                          Navigator.of(
+                                                            context,
+                                                          ).pop();
+                                                          // Navigate to the browser screen with the room code
+                                                          Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder:
+                                                                  (
+                                                                    _,
+                                                                  ) => CreateRoomScreen(
+                                                                    userName:
+                                                                        myController
+                                                                            .text,
+                                                                    game:
+                                                                        Game.crazyEights,
+                                                                    maxPlayers:
+                                                                        5,
+                                                                  ),
+                                                            ),
+                                                          );
+                                                        },
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  SizedBox(
+                                                    width: 128,
+
+                                                    child: Padding(
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                            8.0,
+                                                          ),
+                                                      child: SolidActionButton(
+                                                        text: Padding(
+                                                          padding:
+                                                              const EdgeInsets.all(
+                                                                8.0,
+                                                              ),
+                                                          child: Text(
+                                                            "Create Online Game",
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors
+                                                                      .white, // This will be masked by the gradient
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+
+                                                            textAlign:
+                                                                TextAlign
+                                                                    .center,
+                                                          ),
+                                                        ),
+                                                        onTap: () {
+                                                          if (myController
+                                                              .text
+                                                              .isEmpty) {
+                                                            showSnackBar(
+                                                              context,
+                                                              Colors.red,
+                                                              "Please enter a name",
+                                                            );
+                                                            return;
+                                                          }
+                                                          analytics
+                                                              .logSelectGameEvent(
+                                                                "Crazy Eights Online",
+                                                              );
+                                                          SharedPrefs.setLastUsedName(
+                                                            myController.text,
+                                                          );
+                                                          setState(() {
+                                                            lastUsedName =
+                                                                myController
+                                                                    .text;
+                                                          });
+                                                          SharedPrefs.addNewGamesSeen(
+                                                            Game.crazyEights,
+                                                          );
+                                                          Navigator.of(
+                                                            context,
+                                                          ).pop();
+                                                          // Navigate to the browser screen with the room code
+                                                          Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder:
+                                                                  (
+                                                                    _,
+                                                                  ) => CreateRoomScreen(
+                                                                    userName:
+                                                                        myController
+                                                                            .text,
+                                                                    game:
+                                                                        Game.crazyEights,
+                                                                    maxPlayers:
+                                                                        5,
+                                                                    isOnline:
+                                                                        true,
+                                                                  ),
+                                                            ),
+                                                          );
+                                                        },
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                        ActionButton(
+                          height: 60,
+                          width: buttonWidth,
+                          showNewIndicator: true,
+                          game: Game.kalamattack,
+                          text: Text(
+                            'Kalamattack',
+                            style: TextStyle(
+                              color:
+                                  Colors
+                                      .white, // This will be masked by the gradient
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                final myController = TextEditingController();
+                                if (lastUsedName.isNotEmpty) {
+                                  myController.text = lastUsedName;
+                                }
+                                return Dialog(
+                                  backgroundColor: Colors.transparent,
+
+                                  child: Container(
+                                    width: 400,
+
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          styling.primary,
+                                          styling.secondary,
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Container(
+                                      margin: EdgeInsets.all(
+                                        2,
+                                      ), // Creates the border thickness
+                                      decoration: BoxDecoration(
+                                        color: styling.background,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: [
+                                          const SizedBox(height: 12),
+                                          Text(
+                                            "Enter Your Name",
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Padding(
+                                            padding: const EdgeInsets.all(8.0),
+                                            child: GradientInputField(
+                                              textField: TextField(
+                                                controller: myController,
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                ),
+                                                decoration: styling
+                                                    .gradientInputDecoration()
+                                                    .copyWith(
+                                                      hintText: "Your Name",
+                                                    ),
+                                                onTap: () {
+                                                  SharedPrefs.hapticInputSelect();
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.end,
+                                            children: [
+                                              TextButton(
+                                                child: Text(
+                                                  "Cancel",
+                                                  style: TextStyle(
+                                                    color: styling.secondary,
+                                                  ),
+                                                ),
+                                                onPressed: () {
+                                                  SharedPrefs.hapticButtonPress();
+                                                  Navigator.of(context).pop();
+                                                },
+                                              ),
+                                              Column(
+                                                children: [
+                                                  SizedBox(
+                                                    width: 128,
+
+                                                    child: Padding(
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                            8.0,
+                                                          ),
+                                                      child: SolidActionButton(
+                                                        text: Padding(
+                                                          padding:
+                                                              const EdgeInsets.all(
+                                                                8.0,
+                                                              ),
+                                                          child: Text(
+                                                            "Create Local Game",
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors
+                                                                      .white, // This will be masked by the gradient
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+
+                                                            textAlign:
+                                                                TextAlign
+                                                                    .center,
+                                                          ),
+                                                        ),
+                                                        onTap: () {
+                                                          if (myController
+                                                              .text
+                                                              .isEmpty) {
+                                                            showSnackBar(
+                                                              context,
+                                                              Colors.red,
+                                                              "Please enter a name",
+                                                            );
+                                                            return;
+                                                          }
+                                                          analytics
+                                                              .logSelectGameEvent(
+                                                                "Kalamatack Local",
+                                                              );
+                                                          SharedPrefs.setLastUsedName(
+                                                            myController.text,
+                                                          );
+                                                          SharedPrefs.addNewGamesSeen(
+                                                            Game.kalamattack,
+                                                          );
+                                                          setState(() {
+                                                            lastUsedName =
+                                                                myController
+                                                                    .text;
+                                                          });
+                                                          Navigator.of(
+                                                            context,
+                                                          ).pop();
+                                                          // Navigate to the browser screen with the room code
+                                                          Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder:
+                                                                  (
+                                                                    _,
+                                                                  ) => CreateRoomScreen(
+                                                                    userName:
+                                                                        myController
+                                                                            .text,
+                                                                    game:
+                                                                        Game.kalamattack,
+                                                                    maxPlayers:
+                                                                        5,
+                                                                  ),
+                                                            ),
+                                                          );
+                                                        },
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  SizedBox(
+                                                    width: 128,
+
+                                                    child: Padding(
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                            8.0,
+                                                          ),
+                                                      child: SolidActionButton(
+                                                        text: Padding(
+                                                          padding:
+                                                              const EdgeInsets.all(
+                                                                8.0,
+                                                              ),
+                                                          child: Text(
+                                                            "Create Online Game",
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors
+                                                                      .white, // This will be masked by the gradient
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+
+                                                            textAlign:
+                                                                TextAlign
+                                                                    .center,
+                                                          ),
+                                                        ),
+                                                        onTap: () {
+                                                          if (myController
+                                                              .text
+                                                              .isEmpty) {
+                                                            showSnackBar(
+                                                              context,
+                                                              Colors.red,
+                                                              "Please enter a name",
+                                                            );
+                                                            return;
+                                                          }
+                                                          analytics
+                                                              .logSelectGameEvent(
+                                                                "Kalamatack Online",
+                                                              );
+                                                          SharedPrefs.setLastUsedName(
+                                                            myController.text,
+                                                          );
+                                                          setState(() {
+                                                            lastUsedName =
+                                                                myController
+                                                                    .text;
+                                                          });
+                                                          SharedPrefs.addNewGamesSeen(
+                                                            Game.kalamattack,
+                                                          );
+                                                          Navigator.of(
+                                                            context,
+                                                          ).pop();
+                                                          // Navigate to the browser screen with the room code
+                                                          Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder:
+                                                                  (
+                                                                    _,
+                                                                  ) => CreateRoomScreen(
+                                                                    userName:
+                                                                        myController
+                                                                            .text,
+                                                                    game:
+                                                                        Game.kalamattack,
+                                                                    maxPlayers:
+                                                                        5,
+                                                                    isOnline:
+                                                                        true,
+                                                                  ),
+                                                            ),
+                                                          );
+                                                        },
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
                         ActionButton(
                           height: 60,
                           width: buttonWidth,

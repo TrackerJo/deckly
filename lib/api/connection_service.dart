@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:deckly/api/database.dart';
 import 'package:deckly/constants.dart';
 
 import 'package:flutter_nearby_connections/flutter_nearby_connections.dart';
@@ -12,6 +13,7 @@ import 'package:permission_handler/permission_handler.dart';
 enum ConnectionRole { host, client }
 
 class ConnectionService {
+  final Database database = Database();
   static final ConnectionService _instance = ConnectionService._internal();
   factory ConnectionService() => _instance;
   ConnectionService._internal();
@@ -44,6 +46,7 @@ class ConnectionService {
   // Subscriptions for cleanup
   StreamSubscription<dynamic>? _stateSub;
   StreamSubscription<dynamic>? _dataSub;
+  StreamSubscription<dynamic>? _onlineSub;
 
   // Current state
   List<GamePlayer> _players = [];
@@ -51,6 +54,9 @@ class ConnectionService {
 
   int? maxPlayerCount;
   Function? onRoomFull;
+
+  bool isBrowsing = false;
+  bool isOnline = false;
 
   ConnectionState _connectionState = ConnectionState.disconnected;
 
@@ -87,7 +93,19 @@ class ConnectionService {
     playersController.add(_players);
 
     // if (Platform.isIOS) {
-    await _initIOSHost();
+    if (isOnline) {
+      await _initIOSHostOnline(
+        GamePlayer(
+          id: 'Deckly-$userName-$_roomCode-host',
+          name: userName,
+          isHost: true,
+          // Set to 0 or appropriate default
+        ),
+        game,
+      );
+    } else {
+      await _initIOSHost();
+    }
     // } else {
     //   await _initAndroidHost();
     // }
@@ -107,12 +125,32 @@ class ConnectionService {
     _updateConnectionState(ConnectionState.searching);
 
     // if (Platform.isIOS) {
+    if (isOnline) {
+      await _initIOSClientOnline(
+        GamePlayer(
+          id: "Deckly-$userName-$_roomCode",
+          name: userName,
+          isHost: false,
+        ),
+      );
+    }
     await _initIOSClient();
     // } else {
     //   await _initAndroidClient();
     // }
 
     _isInitialized = true;
+  }
+
+  Future<void> _initIOSHostOnline(GamePlayer player, Game game) async {
+    await database.createRoom(player, _roomCode!, game);
+    await database.listenToRoom(
+      _roomCode!,
+      _processGameData,
+      player.id,
+      _onlineSub,
+      true,
+    );
   }
 
   // iOS Host Implementation
@@ -130,6 +168,7 @@ class ConnectionService {
           // await Future.delayed(Duration(milliseconds: 200));
           await nearbyService.startAdvertisingPeer();
           await nearbyService.startBrowsingForPeers();
+          isBrowsing = true;
         }
       },
     );
@@ -147,6 +186,28 @@ class ConnectionService {
     );
   }
 
+  Future<void> _initIOSClientOnline(GamePlayer player) async {
+    GameJoinResult? result = await database.joinRoom(player, _roomCode!);
+    if (result == null) {
+      onCantFindRoom!();
+      return;
+    }
+    _players = result.players;
+    playersController.add(_players);
+    _processGameData({
+      "type": 'game_type',
+      "game_type": result.game.toString(),
+    });
+    _updateConnectionState(ConnectionState.connected);
+    await database.listenToRoom(
+      _roomCode!,
+      _processGameData,
+      player.id,
+      _onlineSub,
+      false,
+    );
+  }
+
   // iOS Client Implementation
   Future<void> _initIOSClient() async {
     final deviceName = "Deckly-$_userName-$_roomCode";
@@ -160,6 +221,7 @@ class ConnectionService {
           // await nearbyService.stopBrowsingForPeers();
           // await Future.delayed(Duration(milliseconds: 200));
           await nearbyService.startBrowsingForPeers();
+          isBrowsing = true;
           _connectionTimeout?.cancel();
           _connectionTimeout = Timer(Duration(seconds: 15), () async {
             if (_connectionState == ConnectionState.connecting) {
@@ -201,8 +263,10 @@ class ConnectionService {
 
     try {
       await nearbyService.stopBrowsingForPeers();
+      isBrowsing = false;
       await Future.delayed(Duration(seconds: 1));
       await nearbyService.startBrowsingForPeers();
+      isBrowsing = true;
     } catch (e) {
       print("Error during retry: $e");
     }
@@ -477,6 +541,13 @@ class ConnectionService {
   Future<void> requestPermissions() async {
     if (Platform.isAndroid) {
       await requestAndroidPermissions();
+    } else {
+      print("Requesting iOS permissions...");
+      bool hasBluetoothPermission = await Permission.bluetooth.isGranted;
+      if (!hasBluetoothPermission) {
+        print("Requesting Bluetooth permission...");
+        print((await Permission.bluetooth.request()).toString());
+      }
     }
   }
 
@@ -537,14 +608,14 @@ class ConnectionService {
         }
         break;
       case 'playerList':
-        if (!isHost) {
-          final playersData = dataMap['players'] as List;
-          _players =
-              playersData
-                  .map((p) => GamePlayer.fromMap(p as Map<String, dynamic>))
-                  .toList();
-          playersController.add(_players);
-        }
+        // if (!isHost) {
+        final playersData = dataMap['players'] as List;
+        _players =
+            playersData
+                .map((p) => GamePlayer.fromMap(p as Map<String, dynamic>))
+                .toList();
+        playersController.add(_players);
+        // }
         break;
       case 'startGame':
         gameDataController.add(dataMap);
@@ -603,20 +674,32 @@ class ConnectionService {
   Future<void> startGame() async {
     if (!isHost) return;
 
-    final message = jsonEncode({
-      'type': 'startGame',
-      'roomCode': _roomCode,
-      'players': _players.map((p) => p.toMap()).toList(),
-    });
+    if (isOnline) {
+      await database.sendMessage(
+        {
+          'type': 'startGame',
+          'roomCode': _roomCode,
+          'players': _players.map((p) => p.toMap()).toList(),
+        },
+        _players.firstWhere((p) => p.isHost).id,
+        _roomCode!,
+      );
+    } else {
+      final message = jsonEncode({
+        'type': 'startGame',
+        'roomCode': _roomCode,
+        'players': _players.map((p) => p.toMap()).toList(),
+      });
 
-    // Collect all sendMessage futures and wait for all to complete
-    final futures =
-        _players
-            .where((p) => !p.isHost)
-            .map((player) => sendMessage(player.id, message))
-            .toList();
-    if (futures.isNotEmpty) {
-      await Future.wait(futures);
+      // Collect all sendMessage futures and wait for all to complete
+      final futures =
+          _players
+              .where((p) => !p.isHost)
+              .map((player) => sendMessage(player.id, message))
+              .toList();
+      if (futures.isNotEmpty) {
+        await Future.wait(futures);
+      }
     }
   }
 
@@ -624,30 +707,49 @@ class ConnectionService {
     try {
       await _stateSub?.cancel();
       await _dataSub?.cancel();
-      _connectionTimeout?.cancel();
-
-      if (Platform.isAndroid) {
-        if (_connectedEndpointId != null) {
-          await androidNearby.disconnectFromEndpoint(_connectedEndpointId!);
-        }
+      if (isOnline) {
+        await _onlineSub?.cancel();
         if (isHost) {
-          await androidNearby.stopAdvertising();
-        } else {
-          await androidNearby.stopDiscovery();
+          await database.deleteRoom(_roomCode!);
         }
-      } else {
-        await nearbyService.stopAdvertisingPeer();
-        await nearbyService.stopBrowsingForPeers();
+      }
+      if (isHost && !isOnline) {
+        broadcastMessage({
+          'type': 'host_left',
+        }, _players.firstWhere((p) => p.isHost).id);
+      }
+      _connectionTimeout?.cancel();
+      if (!isOnline) {
+        if (Platform.isAndroid) {
+          if (_connectedEndpointId != null) {
+            await androidNearby.disconnectFromEndpoint(_connectedEndpointId!);
+          }
+          if (isHost) {
+            await androidNearby.stopAdvertising();
+          } else {
+            await androidNearby.stopDiscovery();
+          }
+        } else {
+          if (isHost) {
+            await nearbyService.stopAdvertisingPeer();
+            await nearbyService.stopBrowsingForPeers();
+          } else if (isBrowsing) {
+            await nearbyService.stopBrowsingForPeers();
+          }
+        }
       }
 
       _isInitialized = false;
       _role = null;
-      _roomCode = null;
       _userName = null;
       _connectedEndpointId = null;
       _players.clear();
       _bots.clear();
       _updateConnectionState(ConnectionState.disconnected);
+
+      _roomCode = null;
+
+      isOnline = false;
     } catch (e) {
       print("Error during dispose: $e");
     }
@@ -657,31 +759,35 @@ class ConnectionService {
     Map<String, dynamic> messageData,
     String senderId,
   ) async {
-    final message = jsonEncode(messageData);
-
-    if (isHost) {
-      // Host sends to all clients
-      final futures =
-          _players
-              .where((p) => !p.isHost && !p.isBot)
-              .map((player) => sendMessage(player.id, message))
-              .toList();
-
-      if (futures.isNotEmpty) {
-        await Future.wait(futures);
-      }
+    if (isOnline) {
+      await database.sendMessage(messageData, senderId, _roomCode!);
     } else {
-      // Client sends to host, who will relay to others
-      final hostPlayer = _players.firstWhere((p) => p.isHost);
-      await sendMessage(
-        hostPlayer.id,
-        jsonEncode({
-          'type': 'relay_message',
-          'original_message': messageData,
-          'sender_id': senderId, // Current client's ID
-        }),
-      );
-      await sendMessage(hostPlayer.id, jsonEncode(messageData));
+      final message = jsonEncode(messageData);
+
+      if (isHost) {
+        // Host sends to all clients
+        final futures =
+            _players
+                .where((p) => !p.isHost && !p.isBot)
+                .map((player) => sendMessage(player.id, message))
+                .toList();
+
+        if (futures.isNotEmpty) {
+          await Future.wait(futures);
+        }
+      } else {
+        // Client sends to host, who will relay to others
+        final hostPlayer = _players.firstWhere((p) => p.isHost);
+        await sendMessage(
+          hostPlayer.id,
+          jsonEncode({
+            'type': 'relay_message',
+            'original_message': messageData,
+            'sender_id': senderId, // Current client's ID
+          }),
+        );
+        await sendMessage(hostPlayer.id, jsonEncode(messageData));
+      }
     }
   }
 
@@ -694,7 +800,11 @@ class ConnectionService {
     playersController.add(_players);
 
     // Broadcast updated player list
-    _broadcastPlayerList();
+    if (isOnline) {
+      await database.addBot(botPlayer, _roomCode!);
+    } else {
+      _broadcastPlayerList();
+    }
   }
 
   Future<void> updateBotDifficulty(
@@ -702,7 +812,10 @@ class ConnectionService {
     BotDifficulty difficulty,
   ) async {
     if (!isHost) return;
-
+    if (isOnline) {
+      await database.updateBotDifficulty(botId, difficulty, _roomCode!);
+      return;
+    }
     // Find the bot player and update its difficulty
     final botPlayer = _players.firstWhere(
       (p) => p.id == botId && p.isBot,
@@ -723,6 +836,10 @@ class ConnectionService {
 
   Future<void> removeBot(String botId) async {
     if (!isHost) return;
+    if (isOnline) {
+      await database.removeBot(botId, _roomCode!);
+      return;
+    }
 
     // Remove bot player from the list
     _players.removeWhere((p) => p.id == botId && p.isBot);

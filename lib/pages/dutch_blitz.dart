@@ -8,8 +8,8 @@ import 'package:deckly/main.dart';
 import 'package:deckly/widgets/action_button.dart';
 import 'package:deckly/widgets/blitz_deck.dart';
 import 'package:deckly/widgets/custom_app_bar.dart';
+
 import 'package:deckly/widgets/deck.dart';
-import 'package:deckly/widgets/deck_anim.dart';
 import 'package:deckly/widgets/drop_zone.dart';
 import 'package:deckly/widgets/fancy_widget.dart';
 import 'package:deckly/widgets/fancy_border.dart';
@@ -40,7 +40,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
   bool couldBeStuck = false;
   bool hasMovedCards = false;
 
-  final CardDeckAnimController deckController = CardDeckAnimController();
+  final CardDeckController deckController = CardDeckController();
   final BlitzDeckController blitzDeckController = BlitzDeckController();
   Map<String, DropZoneController> dropZoneControllers = {};
   NertzGameState gameState = NertzGameState.playing;
@@ -1184,17 +1184,10 @@ class _DutchBlitzState extends State<DutchBlitz> {
                                       height: 40,
                                       width: 100,
                                       onTap: () async {
-                                        setState(() {
-                                          gameState = NertzGameState.gameOver;
-                                        });
                                         if (currentPlayer!.getIsHost()) {
                                           for (var bot in bots) {
                                             bot.dispose();
                                           }
-                                          await connectionService
-                                              .broadcastMessage({
-                                                'type': 'host_left',
-                                              }, currentPlayer!.id);
                                         }
                                         connectionService.dispose();
 
@@ -1445,7 +1438,7 @@ class _DutchBlitzState extends State<DutchBlitz> {
                       onTapBlitz: onBlitz,
                       isDutchBlitz: true,
                     ),
-                    CardDeckAnim(
+                    CardDeck(
                       cards: deckCards,
                       onDragStarted: _onDragStarted,
                       onDragEnd: _onDragEnd,

@@ -468,8 +468,7 @@ class EuchreBot {
   CardSuit? trumpSuit;
 
   bool onTeamA;
-  EuchreGamePhase phase;
-  EuchreGameState gameState;
+
   EuchrePlayer botPlayer;
 
   Function(CardSuit? trump, String botId, bool alone) onDecideTrump;
@@ -483,8 +482,6 @@ class EuchreBot {
     required this.difficulty,
     required this.botPlayer,
     required this.playedCards,
-    this.phase = EuchreGamePhase.decidingTrump,
-    this.gameState = EuchreGameState.waitingForPlayers,
 
     this.onTeamA = false,
 
@@ -1289,7 +1286,13 @@ class EuchreBot {
       for (var suit in nonTrumpSuits) {
         CardData? highestCard = highestCardInSuit(suit);
         if (highestCard != null &&
-            botPlayer.hand.any((card) => card.id == highestCard.id)) {
+            botPlayer.hand.any(
+              (card) =>
+                  card.id == highestCard.id &&
+                  (card.value == 11 && card.suit.alternateSuit == trumpSuit
+                      ? false
+                      : true),
+            )) {
           print(
             "Playing highest card in $suit: ${highestCard.value} of ${highestCard.suit}",
           );
@@ -1577,12 +1580,12 @@ class EuchreBot {
             }
           }
           //If can't play trump, play lowest playable card
-          playableCards.sort(
+          botPlayer.hand.sort(
             (a, b) => a
                 .toSortingValue(trumpSuit: trumpSuit)
                 .compareTo(b.toSortingValue(trumpSuit: trumpSuit)),
           );
-          CardData cardToPlay = playableCards.first;
+          CardData cardToPlay = botPlayer.hand.first;
           botPlayer.hand.removeWhere((card) => card.id == cardToPlay.id);
           return cardToPlay;
         }
@@ -1668,6 +1671,288 @@ class EuchreBot {
         return;
       case BotDifficulty.easy:
         CardData card = playCardEasy(currentTrick, leadSuit);
+        onPlayCard(card, id);
+        return;
+    }
+  }
+}
+
+class CrazyEightsBot {
+  String name;
+  String id;
+  BotDifficulty difficulty;
+  CrazyEightsPlayer botPlayer;
+  List<CardData> deckCards;
+
+  Function(CardData card, String playerId) onPlayCard;
+  Function(VoidCallback) setState;
+
+  CrazyEightsBot({
+    required this.name,
+    required this.id,
+    required this.difficulty,
+    required this.botPlayer,
+    required this.onPlayCard,
+    required this.deckCards,
+    required this.setState,
+  });
+
+  Future<CardData> playCardEasy(List<CardData> pile) async {
+    final CardData upCard = pile.last;
+    // Play the first playable card
+    List<CardData> playableCards =
+        botPlayer.hand.where((card) {
+          return card.suit == upCard.suit ||
+              card.value == upCard.value ||
+              card.value == 8;
+        }).toList();
+    while (playableCards.isEmpty) {
+      // If no playable cards, draw a card
+      if (deckCards.isEmpty) {
+        List<CardData> pileCards = List.from(pile);
+        final CardData upCard = pileCards.removeLast();
+        deckCards.addAll(pile);
+        pile.clear();
+        deckCards.shuffle();
+        pile.add(upCard);
+        // Simulate thinking time
+      }
+      CardData drawnCard = deckCards.removeLast();
+      botPlayer.hand.add(drawnCard);
+      playableCards =
+          botPlayer.hand.where((card) {
+            return card.suit == upCard.suit ||
+                card.value == upCard.value ||
+                card.value == 8;
+          }).toList();
+      setState(() {
+        // Update the UI after reshuffling the deck
+      });
+      await Future.delayed(Duration(milliseconds: 500));
+    }
+    // Play the first playable card
+    CardData cardToPlay = playableCards.first;
+    botPlayer.hand.removeWhere((card) => card.id == cardToPlay.id);
+    return cardToPlay;
+  }
+
+  Future<CardData> playCardMedium(List<CardData> pile) async {
+    final CardData upCard = pile.last;
+    // Play the first playable card
+    List<CardData> playableCards =
+        botPlayer.hand.where((card) {
+          return card.suit == upCard.suit ||
+              card.value == upCard.value ||
+              card.value == 8;
+        }).toList();
+    while (playableCards.isEmpty) {
+      // If no playable cards, draw a card
+      if (deckCards.isEmpty) {
+        List<CardData> pileCards = List.from(pile);
+        final CardData upCard = pileCards.removeLast();
+        deckCards.addAll(pile);
+        pile.clear();
+        deckCards.shuffle();
+        pile.add(upCard);
+      }
+      CardData drawnCard = deckCards.removeLast();
+      botPlayer.hand.add(drawnCard);
+      playableCards =
+          botPlayer.hand.where((card) {
+            return card.suit == upCard.suit ||
+                card.value == upCard.value ||
+                card.value == 8;
+          }).toList();
+      setState(() {
+        // Update the UI after drawing a card
+      });
+      await Future.delayed(
+        Duration(milliseconds: 500),
+      ); // Simulate thinking time
+    }
+    //Check if bot has any single suits
+    Map<CardSuit, int> suitCounts = {
+      CardSuit.hearts: 0,
+      CardSuit.diamonds: 0,
+      CardSuit.clubs: 0,
+      CardSuit.spades: 0,
+    };
+    for (var card in playableCards) {
+      if (card.value == 8) {
+        // Ignore eights
+        continue;
+      }
+
+      suitCounts[card.suit] = (suitCounts[card.suit] ?? 0) + 1;
+    }
+    //choose suit with most cards
+    CardSuit? chosenSuit;
+    int maxCount = 0;
+    suitCounts.forEach((suit, count) {
+      if (count > maxCount) {
+        maxCount = count;
+        chosenSuit = suit;
+      }
+    });
+    if (chosenSuit != null && maxCount >= 1) {
+      // If there is a suit with more than one card, play the random card of that suit
+      List<CardData> suitCards =
+          playableCards.where((card) => card.suit == chosenSuit).toList();
+      if (suitCards.isNotEmpty) {
+        //remove eights from suit cards
+        suitCards.removeWhere((card) => card.value == 8);
+        if (suitCards.isNotEmpty) {
+          // Play a random card from the chosen suit
+          suitCards.shuffle();
+          CardData cardToPlay = suitCards.first;
+          botPlayer.hand.removeWhere((card) => card.id == cardToPlay.id);
+          return cardToPlay;
+        } else {
+          // If no cards of the chosen suit, play the first playable card
+          CardData cardToPlay = playableCards.first;
+          botPlayer.hand.removeWhere((card) => card.id == cardToPlay.id);
+          return cardToPlay;
+        }
+      }
+    }
+    // If no single suits or only one card of a suit, play the first playable card
+    CardData cardToPlay = playableCards.first;
+    botPlayer.hand.removeWhere((card) => card.id == cardToPlay.id);
+    return cardToPlay;
+  }
+
+  Future<CardData> playCardHard(List<CardData> pile) async {
+    final CardData upCard = pile.last;
+    // Play the first playable card
+    List<CardData> playableCards =
+        botPlayer.hand.where((card) {
+          return card.suit == upCard.suit ||
+              card.value == upCard.value ||
+              card.value == 8;
+        }).toList();
+    while (playableCards.isEmpty) {
+      // If no playable cards, draw a card
+      if (deckCards.isEmpty) {
+        List<CardData> pileCards = List.from(pile);
+        final CardData upCard = pileCards.removeLast();
+        deckCards.addAll(pile);
+        pile.clear();
+        deckCards.shuffle();
+        pile.add(upCard);
+      }
+      CardData drawnCard = deckCards.removeLast();
+      print("Drawing card: ${drawnCard.displayValue()}");
+      if (deckCards.isNotEmpty)
+        print("NEXT CARD: ${deckCards.last.displayValue()}");
+      botPlayer.hand.add(drawnCard);
+      playableCards =
+          botPlayer.hand.where((card) {
+            return card.suit == upCard.suit ||
+                card.value == upCard.value ||
+                card.value == 8;
+          }).toList();
+      setState(() {
+        // Update the UI after drawing a card
+      });
+      await Future.delayed(
+        Duration(milliseconds: 500),
+      ); // Simulate thinking time
+    }
+    List<CardData> playableCardsWithoutEights =
+        playableCards.where((card) => card.value != 8).toList();
+    if (playableCardsWithoutEights.isEmpty) {
+      //Check if bot has any single suits
+      Map<CardSuit, int> suitCounts = {
+        CardSuit.hearts: 0,
+        CardSuit.diamonds: 0,
+        CardSuit.clubs: 0,
+        CardSuit.spades: 0,
+      };
+
+      for (var card in botPlayer.hand) {
+        if (card.value == 8) {
+          // Ignore eights
+          continue;
+        }
+
+        suitCounts[card.suit] = (suitCounts[card.suit] ?? 0) + 1;
+      }
+      CardData firstEight = playableCards.firstWhere((card) => card.value == 8);
+      botPlayer.hand.removeWhere((card) => card.id == firstEight.id);
+      CardSuit? chosenSuit;
+      int maxCount = 0;
+      suitCounts.forEach((suit, count) {
+        if (count > maxCount) {
+          maxCount = count;
+          chosenSuit = suit;
+        }
+      });
+      firstEight.suit = chosenSuit ?? firstEight.suit;
+
+      print(
+        "Playing first eight with suit: ${firstEight.suit} and value: ${firstEight.value}",
+      );
+      return firstEight;
+    }
+    //Check if bot has any single suits
+    Map<CardSuit, int> suitCounts = {
+      CardSuit.hearts: 0,
+      CardSuit.diamonds: 0,
+      CardSuit.clubs: 0,
+      CardSuit.spades: 0,
+    };
+
+    for (var card in playableCardsWithoutEights) {
+      if (card.value == 8) {
+        // Ignore eights
+        continue;
+      }
+
+      suitCounts[card.suit] = (suitCounts[card.suit] ?? 0) + 1;
+    }
+
+    //choose suit with most cards
+    CardSuit? chosenSuit;
+    int maxCount = 0;
+    suitCounts.forEach((suit, count) {
+      if (count > maxCount) {
+        maxCount = count;
+        chosenSuit = suit;
+      }
+    });
+    if (chosenSuit != null && maxCount >= 1) {
+      // If there is a suit with more than one card, play the random card of that suit
+      List<CardData> suitCards =
+          playableCards.where((card) => card.suit == chosenSuit).toList();
+      if (suitCards.isNotEmpty) {
+        //remove eights from suit cards
+
+        suitCards.shuffle();
+        CardData cardToPlay = suitCards.first;
+        botPlayer.hand.removeWhere((card) => card.id == cardToPlay.id);
+        return cardToPlay;
+      }
+    }
+    // If no single suits or only one card of a suit, play the first playable card
+    CardData cardToPlay = playableCards.first;
+    botPlayer.hand.removeWhere((card) => card.id == cardToPlay.id);
+    return cardToPlay;
+  }
+
+  void playCard(List<CardData> pile) async {
+    print("Playing card...");
+    print("Difficulty: $difficulty");
+    switch (difficulty) {
+      case BotDifficulty.hard:
+        CardData card = await playCardHard(pile);
+        onPlayCard(card, id);
+        return;
+      case BotDifficulty.medium:
+        CardData card = await playCardMedium(pile);
+        onPlayCard(card, id);
+        return;
+      case BotDifficulty.easy:
+        CardData card = await playCardEasy(pile);
         onPlayCard(card, id);
         return;
     }

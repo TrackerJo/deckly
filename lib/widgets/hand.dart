@@ -70,11 +70,13 @@ class Hand extends StatefulWidget {
 
 class _HandState extends State<Hand> {
   List<CardData> blitzDeck = [];
+  late ScrollController _scrollController;
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
+    _scrollController = ScrollController();
     print('Hand initState called with ${widget.handCards.length} cards');
 
     // If not my hand, we don't allow dragging
@@ -142,7 +144,6 @@ class _HandState extends State<Hand> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 230 * widget.scale,
       height: 175 * widget.scale, // Fixed height to prevent movement
 
       child: _buildOverlayStack(),
@@ -150,91 +151,112 @@ class _HandState extends State<Hand> {
   }
 
   Widget _buildOverlayStack() {
-    return Container(
-      padding: EdgeInsets.all(8 * widget.scale),
-      child: SizedBox(
-        width: MediaQuery.of(context).size.width,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            ...blitzDeck.asMap().entries.map((entry) {
-              final index = entry.key;
-              final card = entry.value;
+    return RawScrollbar(
+      controller: _scrollController,
+      thumbVisibility: true, // ✅ Always show the scrollbar
+      trackVisibility: true, // ✅ Show the track/background of scrollbar
+      thickness: 4.0, // ✅ Customize thickness
+      radius: Radius.circular(4.0),
+      scrollbarOrientation: ScrollbarOrientation.bottom,
+      thumbColor: Colors.blue, // ✅ Customize thumb color
 
-              return Positioned(
-                top: 0, // All cards at same position - fully overlapping
-                left:
-                    widget.myHand
-                        ? (20 * widget.scale) + // Adjusted for scale
-                            (index * 50 * widget.scale)
-                        : (index *
-                            30 *
-                            widget.scale), // Slight offset for visibility
-                child:
-                    widget.myHand &&
-                            widget.draggableCards &&
-                            (widget.isCardPlayable != null
-                                ? widget.isCardPlayable!(card)
-                                : true)
-                        ? DraggableCardWidget(
-                          card: card,
-                          zoneId: 'hand',
-                          index: index,
-                          isCardPlayable:
-                              widget.isCardPlayable != null
-                                  ? widget.isCardPlayable!(card)
-                                  : true, // Default to true if no function provided
-                          totalCards: blitzDeck.length,
-                          currentDragData: widget.currentDragData,
-                          getCardsFromIndex: (zoneId, cardIndex) {
-                            if (zoneId == 'hand' &&
-                                cardIndex < blitzDeck.length) {
-                              return <CardData>[blitzDeck[cardIndex]];
-                            }
-                            return <CardData>[];
-                          },
-                          onDragStarted: (dragData) {
-                            print(
-                              'Hand onDragStarted: ${dragData.cards} ${dragData.sourceIndex}',
-                            );
-                            widget.onDragStarted(dragData);
-                          },
-                          onDragEnd: widget.onDragEnd,
-                          onDragCompleted: () {
-                            widget.onDragCompleted();
-                            // Remove the card from pile when drag is completed successfully
-                            widget.controller?.removeCardFromPile(card.id);
-                          },
-                          stackMode: StackMode.overlay,
-                          scale: widget.scale,
-                          isDutchBlitz: widget.isDutchBlitz,
-                        )
-                        : widget.myHand
-                        ? CardContent(
-                          card: card,
-                          scale: widget.scale,
-                          isDutchBlitz: widget.isDutchBlitz,
-                          isCardPlayable:
-                              widget.isCardPlayable != null
-                                  ? widget.isCardPlayable!(card)
-                                  : true,
-                          onTap:
-                              widget
-                                  .onTapCard, // Only allow tap if onTapCard is provided
-                        )
-                        : CardContent(
-                          scale: widget.scale,
-                          isDutchBlitz: widget.isDutchBlitz,
-                          card: CardData(
-                            id: 'deck_back',
-                            value: 1,
-                            suit: CardSuit.hearts, // Placeholder suit
-                            isFaceUp: false,
-                          ), // Only top card is draggable
-                        ),
-              );
-            }),
-          ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        controller: _scrollController,
+        child: Container(
+          padding: EdgeInsets.all(8 * widget.scale),
+          child: SizedBox(
+            width:
+                widget.myHand
+                    ? (100 * widget.scale) +
+                        (blitzDeck.length * 50 * widget.scale) // Extra space
+                    : (blitzDeck.length * 30 * widget.scale) +
+                        (100 * widget.scale),
+            height: 175 * widget.scale, // ✅
+            // Fixed height to prevent movement
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                ...blitzDeck.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final card = entry.value;
+
+                  return Positioned(
+                    top: 0, // All cards at same position - fully overlapping
+                    left:
+                        widget.myHand
+                            ? (20 * widget.scale) + // Adjusted for scale
+                                (index * 50 * widget.scale)
+                            : (index *
+                                30 *
+                                widget.scale), // Slight offset for visibility
+                    child:
+                        widget.myHand &&
+                                widget.draggableCards &&
+                                (widget.isCardPlayable != null
+                                    ? widget.isCardPlayable!(card)
+                                    : true)
+                            ? DraggableCardWidget(
+                              card: card,
+                              zoneId: 'hand',
+                              index: index,
+                              isCardPlayable:
+                                  widget.isCardPlayable != null
+                                      ? widget.isCardPlayable!(card)
+                                      : true, // Default to true if no function provided
+                              totalCards: blitzDeck.length,
+                              currentDragData: widget.currentDragData,
+                              getCardsFromIndex: (zoneId, cardIndex) {
+                                if (zoneId == 'hand' &&
+                                    cardIndex < blitzDeck.length) {
+                                  return <CardData>[blitzDeck[cardIndex]];
+                                }
+                                return <CardData>[];
+                              },
+                              onDragStarted: (dragData) {
+                                print(
+                                  'Hand onDragStarted: ${dragData.cards} ${dragData.sourceIndex}',
+                                );
+                                widget.onDragStarted(dragData);
+                              },
+                              onDragEnd: widget.onDragEnd,
+                              onDragCompleted: () {
+                                widget.onDragCompleted();
+                                // Remove the card from pile when drag is completed successfully
+                                widget.controller?.removeCardFromPile(card.id);
+                              },
+                              stackMode: StackMode.overlay,
+                              scale: widget.scale,
+                              isDutchBlitz: widget.isDutchBlitz,
+                            )
+                            : widget.myHand
+                            ? CardContent(
+                              card: card,
+                              scale: widget.scale,
+                              isDutchBlitz: widget.isDutchBlitz,
+                              isCardPlayable:
+                                  widget.isCardPlayable != null
+                                      ? widget.isCardPlayable!(card)
+                                      : true,
+                              onTap:
+                                  widget
+                                      .onTapCard, // Only allow tap if onTapCard is provided
+                            )
+                            : CardContent(
+                              scale: widget.scale,
+                              isDutchBlitz: widget.isDutchBlitz,
+                              card: CardData(
+                                id: 'deck_back',
+                                value: 1,
+                                suit: CardSuit.hearts, // Placeholder suit
+                                isFaceUp: false,
+                              ), // Only top card is draggable
+                            ),
+                  );
+                }),
+              ],
+            ),
+          ),
         ),
       ),
     );

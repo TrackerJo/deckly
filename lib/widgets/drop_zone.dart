@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:deckly/api/shared_prefs.dart';
 import 'package:deckly/constants.dart';
 import 'package:deckly/main.dart';
@@ -29,6 +31,9 @@ class DropZoneWidget extends StatefulWidget {
   final Function() onDragEnd;
   final bool isDutchBlitz;
   final bool Function()? customWillAccept;
+  final bool canTap;
+  final Function()? onTap;
+  final bool showDecorations;
 
   const DropZoneWidget({
     Key? key,
@@ -40,6 +45,9 @@ class DropZoneWidget extends StatefulWidget {
     required this.onDragEnd,
     this.isDutchBlitz = false,
     this.customWillAccept,
+    this.canTap = false,
+    this.showDecorations = true,
+    this.onTap,
   }) : super(key: key);
 
   @override
@@ -197,6 +205,9 @@ class _DropZoneWidgetState extends State<DropZoneWidget> {
               card.value == widget.zone.cards.first.value,
         );
         break;
+      case AllowedCards.none:
+        isValidCard = false; // No specific card restrictions
+        break;
     }
     if (!isValidCard) return false;
     bool isValidOrder = false;
@@ -280,61 +291,74 @@ class _DropZoneWidgetState extends State<DropZoneWidget> {
       builder: (context, candidateData, rejectedData) {
         final isHighlighted = candidateData.isNotEmpty;
 
-        return Stack(
-          children: [
-            Container(
-              width: 120 * widget.zone.scale,
-              height:
-                  widget.zone.id == widget.currentDragData.sourceZoneId &&
-                          widget.zone.cards.length ==
-                              widget.currentDragData.cards.length
-                      ? 175 * widget.zone.scale
-                      : widget.zone.stackMode == StackMode.spaced &&
-                          widget.zone.cards.isNotEmpty
-                      ? ((widget.zone.cards.length - 1) * 35 + 175) *
-                          widget.zone.scale
-                      : 175 *
-                          widget.zone.scale, // Fixed height to prevent movement
+        return GestureDetector(
+          onTap: widget.canTap ? widget.onTap : null,
+          child: Stack(
+            children: [
+              Container(
+                width:
+                    widget.zone.isDropArea
+                        ? ((4) * 30 + 110) * widget.zone.scale
+                        : 120 * widget.zone.scale,
+                height:
+                    widget.zone.id == widget.currentDragData.sourceZoneId &&
+                            widget.zone.cards.length ==
+                                widget.currentDragData.cards.length
+                        ? 175 * widget.zone.scale
+                        : widget.zone.stackMode == StackMode.spaced &&
+                            widget.zone.cards.isNotEmpty
+                        ? ((widget.zone.cards.length - 1) * 35 + 175) *
+                            widget.zone.scale
+                        : 175 *
+                            widget
+                                .zone
+                                .scale, // Fixed height to prevent movement
 
-              decoration:
-                  (widget.zone.cards.isEmpty ||
-                              (widget.zone.cards.length -
-                                          widget.currentDragData.cards.length ==
-                                      0 &&
-                                  widget.currentDragData.sourceZoneId ==
-                                      widget.zone.id)) &&
-                          widget.zone.playable
-                      ? BoxDecoration(
-                        borderRadius: BorderRadius.circular(
-                          12 * widget.zone.scale,
-                        ),
-                        border: Border.all(
-                          color:
-                              isHighlighted
-                                  ? styling.primary
-                                  : Colors.transparent,
-                          width: 2,
-                        ),
-
-                        color: styling.backgroundLight,
-
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 4 * widget.zone.scale,
-                            offset: Offset(0, 2 * widget.zone.scale),
+                decoration:
+                    (widget.zone.cards.isEmpty ||
+                                (widget.zone.cards.length -
+                                            widget
+                                                .currentDragData
+                                                .cards
+                                                .length ==
+                                        0 &&
+                                    widget.currentDragData.sourceZoneId ==
+                                        widget.zone.id) ||
+                                widget.zone.isDropArea) &&
+                            widget.zone.playable &&
+                            widget.showDecorations
+                        ? BoxDecoration(
+                          borderRadius: BorderRadius.circular(
+                            12 * widget.zone.scale,
                           ),
-                        ],
-                      )
-                      : null,
-              child:
-                  widget.zone.cards.isEmpty
-                      ? widget.zone.playable
-                          ? Center()
-                          : Container()
-                      : _buildCardStack(),
-            ),
-          ],
+                          border: Border.all(
+                            color:
+                                isHighlighted
+                                    ? styling.primary
+                                    : Colors.transparent,
+                            width: 2,
+                          ),
+
+                          color: styling.backgroundLight,
+
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 4 * widget.zone.scale,
+                              offset: Offset(0, 2 * widget.zone.scale),
+                            ),
+                          ],
+                        )
+                        : null,
+                child:
+                    widget.zone.cards.isEmpty
+                        ? widget.zone.playable
+                            ? Center()
+                            : Container()
+                        : _buildCardStack(),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -343,6 +367,8 @@ class _DropZoneWidgetState extends State<DropZoneWidget> {
   Widget _buildCardStack() {
     if (widget.zone.stackMode == StackMode.overlay) {
       return _buildOverlayStack();
+    } else if (widget.zone.stackMode == StackMode.spacedHorizontal) {
+      return _buildSpacedHorizontalStack();
     } else {
       return _buildSpacedStack();
     }
@@ -476,6 +502,86 @@ class _DropZoneWidgetState extends State<DropZoneWidget> {
                           stackMode: widget.zone.stackMode,
                           scale: widget.zone.scale,
                           isDutchBlitz: widget.isDutchBlitz,
+                        ),
+              );
+            }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildSpacedHorizontalStack() {
+    return Container(
+      padding: EdgeInsets.all(8 * widget.zone.scale),
+      child: Stack(
+        children:
+            widget.zone.cards.asMap().entries.map((entry) {
+              final index = entry.key;
+              final card = entry.value;
+              //remove the top card from solitaire starting cards
+              final isTopCard = index == widget.zone.cards.length - 1;
+              if (isTopCard && widget.zone.isSolitaire) {
+                widget.zone.solitaireStartingCards.removeWhere(
+                  (c) => c.id == card.id,
+                );
+              }
+              return Positioned(
+                top: 0, // Position from bottom up - each card 40px higher
+                left: index * (35.0 * widget.zone.scale),
+                child:
+                    widget.zone.isSolitaire
+                        ? (widget.zone.solitaireStartingCards.any(
+                                  (c) => c.id == card.id,
+                                ) &&
+                                !isTopCard)
+                            ? CardContent(
+                              card: CardData(
+                                id: 'deck_back',
+                                value: 1,
+                                suit: CardSuit.hearts, // Placeholder suit
+                                isFaceUp: false,
+                              ),
+                              scale: widget.zone.scale,
+                              isDutchBlitz: widget.isDutchBlitz,
+                            )
+                            : DraggableCardWidget(
+                              card: card,
+                              zoneId: widget.zone.id,
+                              index: index,
+                              totalCards: widget.zone.cards.length,
+                              currentDragData: widget.currentDragData,
+                              getCardsFromIndex: widget.getCardsFromIndex,
+                              onDragStarted: widget.onDragStarted,
+                              onDragEnd: widget.onDragEnd,
+                              stackMode: widget.zone.stackMode,
+                              scale: widget.zone.scale,
+                              isDutchBlitz: widget.isDutchBlitz,
+                            )
+                        : widget.zone.canDragCardOut
+                        ? DraggableCardWidget(
+                          card: card,
+                          zoneId: widget.zone.id,
+                          index: index,
+                          totalCards: widget.zone.cards.length,
+                          currentDragData: widget.currentDragData,
+                          getCardsFromIndex: widget.getCardsFromIndex,
+                          onDragStarted: widget.onDragStarted,
+                          onDragEnd: widget.onDragEnd,
+                          stackMode: widget.zone.stackMode,
+                          scale: widget.zone.scale,
+                          isDutchBlitz: widget.isDutchBlitz,
+                        )
+                        : CardContent(
+                          card: card,
+                          scale: zoneScale,
+                          isDutchBlitz: widget.isDutchBlitz,
+                          onTap:
+                              widget.zone.isDropArea
+                                  ? (CardData card) {
+                                    if (widget.zone.onCardTapped != null) {
+                                      widget.zone.onCardTapped!(card);
+                                    }
+                                  }
+                                  : null,
                         ),
               );
             }).toList(),

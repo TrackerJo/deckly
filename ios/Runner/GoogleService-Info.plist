@@ -26,5 +26,7 @@
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
 	<string>1:254542560195:ios:59f9741070fe452102db76</string>
+	<key>DATABASE_URL</key>
+	<string>https://kazoom-deckly-default-rtdb.firebaseio.com</string>
 </dict>
 </plist>

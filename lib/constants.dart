@@ -74,6 +74,8 @@ class GamePlayer {
         return EuchrePlayer.fromMap(m);
       case PlayerType.bot:
         return BotPlayer.fromMap(m);
+      case PlayerType.crazyEight:
+        return CrazyEightsPlayer.fromMap(m);
       case PlayerType.game:
         return GamePlayer(
           id: m['id'],
@@ -99,12 +101,13 @@ class GamePlayer {
   }
 }
 
-enum StackMode { overlay, spaced }
+enum StackMode { overlay, spaced, spacedHorizontal }
 
 class DropZoneData {
   final String id;
 
   final StackMode stackMode;
+  final bool isDropArea;
   List<CardData> cards;
   DropZoneRules rules;
   bool canDragCardOut;
@@ -114,6 +117,7 @@ class DropZoneData {
   DropZoneController? controller;
   bool isSolitaire;
   List<CardData> solitaireStartingCards;
+  final Function(CardData)? onCardTapped;
 
   DropZoneData({
     required this.id,
@@ -121,6 +125,7 @@ class DropZoneData {
     required this.stackMode,
     required this.rules,
     this.canDragCardOut = true,
+    this.isDropArea = false,
     this.scale = 1.0,
     this.isPublic = false,
     List<CardData> cards = const [],
@@ -128,6 +133,7 @@ class DropZoneData {
     this.isSolitaire = false,
     this.solitaireStartingCards = const [],
     this.controller,
+    this.onCardTapped,
   }) : cards = List.from(cards);
 
   factory DropZoneData.fromMap(Map<String, dynamic> m) {
@@ -328,7 +334,7 @@ class MiniCard {
 
 enum CardOrder { ascending, descending, none }
 
-enum AllowedCards { all, sameSuit, sameValue, sameColor, alternateColor }
+enum AllowedCards { all, sameSuit, sameValue, sameColor, alternateColor, none }
 
 class DropZoneRules {
   CardOrder cardOrder;
@@ -382,6 +388,7 @@ enum PlayerType {
   blitz,
   euchre,
   bot,
+  crazyEight,
   game;
 
   @override
@@ -395,6 +402,8 @@ enum PlayerType {
         return 'Bot';
       case PlayerType.game:
         return 'Game';
+      case PlayerType.crazyEight:
+        return 'Crazy Eight';
     }
   }
 
@@ -530,6 +539,104 @@ class EuchreTeam {
   }
 }
 
+class CrazyEightsPlayer extends GamePlayer {
+  List<CardData> hand;
+  bool myTurn;
+
+  CrazyEightsPlayer({
+    required super.id,
+    required super.name,
+    this.hand = const [],
+    super.isHost = false,
+    this.myTurn = false,
+    super.isBot = false,
+    super.type = PlayerType.crazyEight,
+  });
+
+  factory CrazyEightsPlayer.fromMap(Map<String, dynamic> m) {
+    return CrazyEightsPlayer(
+      id: m['id'],
+      name: m['name'],
+      hand:
+          (m['hand'] as List<dynamic>)
+              .map((card) => CardData.fromMap(card as Map<String, dynamic>))
+              .toList(),
+      isHost: m['isHost'] == "true" || m['isHost'] == true,
+      myTurn: m['myTurn'] ?? false,
+      isBot: m['isBot'] == "true" || m['isBot'] == true,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'hand': hand.map((c) => c.toMap()).toList(),
+      'isHost': isHost,
+      'myTurn': myTurn,
+      'type': type.toString(),
+      'isBot': isBot,
+    };
+  }
+}
+
+class KalamattackPlayer extends GamePlayer {
+  List<CardData> hand;
+  bool myTurn;
+  int health;
+  bool hasFunctionalKingdom;
+  bool isPoisoned;
+  bool isDefending;
+
+  KalamattackPlayer({
+    required super.id,
+    required super.name,
+    this.hand = const [],
+    super.isHost = false,
+    this.myTurn = false,
+    super.isBot = false,
+    this.health = 20,
+    this.hasFunctionalKingdom = false,
+    this.isPoisoned = false,
+    this.isDefending = false,
+    super.type = PlayerType.crazyEight,
+  });
+
+  factory KalamattackPlayer.fromMap(Map<String, dynamic> m) {
+    return KalamattackPlayer(
+      id: m['id'],
+      name: m['name'],
+      hand:
+          (m['hand'] as List<dynamic>)
+              .map((card) => CardData.fromMap(card as Map<String, dynamic>))
+              .toList(),
+      isHost: m['isHost'] == "true" || m['isHost'] == true,
+      myTurn: m['myTurn'] ?? false,
+      isBot: m['isBot'] == "true" || m['isBot'] == true,
+      health: m['health'] ?? 20,
+      hasFunctionalKingdom: m['hasFunctionalKingdom'] ?? false,
+      isPoisoned: m['isPoisoned'] ?? false,
+      isDefending: m['isDefending'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'hand': hand.map((c) => c.toMap()).toList(),
+      'isHost': isHost,
+      'myTurn': myTurn,
+      'type': type.toString(),
+      'isBot': isBot,
+      'health': health,
+      'hasFunctionalKingdom': hasFunctionalKingdom,
+      'isPoisoned': isPoisoned,
+      'isDefending': isDefending,
+    };
+  }
+}
+
 List<CardData> fullDeck = [
   for (var suit in CardSuit.values)
     for (var value = 1; value <= 13; value++)
@@ -539,6 +646,19 @@ List<CardData> fullDeck = [
         suit: suit,
         isFaceUp: true,
       ),
+];
+
+List<CardData> fullKalamattackDeck = [
+  for (var suit in CardSuit.values)
+    for (var value = 1; value <= 13; value++)
+      CardData(
+        id: '${suit.toString()}_$value',
+        value: value,
+        suit: suit,
+        isFaceUp: true,
+      ),
+  CardData(id: "red_joker", value: 0, suit: CardSuit.hearts, isFaceUp: true),
+  CardData(id: "black_joker", value: 0, suit: CardSuit.spades, isFaceUp: true),
 ];
 
 List<CardData> fullBlitzDeck = [
@@ -584,9 +704,23 @@ enum EuchreGameState {
 
 enum EuchreGamePhase { decidingTrump, discardingCard, playing }
 
+enum CrazyEightsGameState { waitingForPlayers, playing, gameOver, paused }
+
+enum KalamattackGameState { waitingForPlayers, playing, gameOver, paused }
+
+enum KalamattackGamePhase {
+  selectingMove,
+  attacking,
+  defending,
+  discardingCard,
+  othersAttacking,
+}
+
 enum Game {
   nertz,
   euchre,
+  crazyEights,
+  kalamattack,
   dash;
 
   @override
@@ -598,6 +732,10 @@ enum Game {
         return 'Nordic Dash';
       case Game.euchre:
         return 'Euchre';
+      case Game.crazyEights:
+        return 'Crazy Eights';
+      case Game.kalamattack:
+        return 'Kalamattack';
     }
   }
 
@@ -899,6 +1037,135 @@ List<Widget> solitaireRules = [
   ),
 ];
 
+List<Widget> crazy8Rules = [
+  Padding(
+    padding: const EdgeInsets.all(8.0),
+    child: Text(
+      "How to Play Crazy Eights",
+      style: TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.bold,
+        color: styling.primary,
+      ),
+    ),
+  ),
+  Divider(color: styling.primary, thickness: 1.5),
+  sectionTitle('🎯 Goal'),
+  sectionText('Be the first player to get rid of all cards in your hand.'),
+  sectionTitle('🧰 Setup'),
+  sectionText(
+    'Players: 2-5\n'
+    'Deck: Standard 52-card deck\n'
+    'Deal:\n'
+    '\t\t- 2 players: 7 cards each; 3+ players: 5 cards each.\n'
+    '\t\t- Rest of the cards in the center as the draw pile\n'
+    '\t\t- Top card of the draw pile is turned face up to start the discard pile.',
+  ),
+  sectionTitle('🃏 Gameplay'),
+  sectionText(
+    'Turns are taken clockwise, starting left of the dealer automatically for each round.',
+  ),
+  sectionHeader('1. Playing Cards'),
+  sectionText(
+    '- You may play a card that matches the rank (number/face) or suit of the top discard card.\n'
+    '- All 8s are wild: play an 8 anytime and declare the next suit.',
+  ),
+  sectionHeader('2. Drawing Cards'),
+  sectionText(
+    '- If you can’t play, draw one card at a time until you get a playable card',
+  ),
+  sectionTitle('🏁 Ending the Game'),
+  sectionText('The game ends as soon as someone plays their last card.'),
+];
+
+List<Widget> kalamatackRules = [
+  Padding(
+    padding: const EdgeInsets.all(8.0),
+    child: Text(
+      "How to Play Kalamatack",
+      style: TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.bold,
+        color: styling.primary,
+      ),
+    ),
+  ),
+  Divider(color: styling.primary, thickness: 1.5),
+  sectionTitle('🎯 Goal'),
+  sectionText(
+    'Be the last player standing with health above 0 by attacking others and defending yourself using smart card combinations.',
+  ),
+  sectionTitle('🧰 Setup'),
+  sectionText(
+    'Players: 2-5\n'
+    'Deck: Standard 54-card deck with Jokers\n'
+    'Each player starts with 4 cards.\n'
+    'Place the rest face-down as the draw pile. Turn 3 cards face-up next to it.\n'
+    'Each player starts with 20 health points.',
+  ),
+  sectionTitle('🃏 Gameplay'),
+  sectionText('Turns are taken clockwise'),
+  sectionHeader('1. Drawing Cards'),
+  sectionText(
+    '- On your turn, you may draw from the draw pile or one of the 3 face-up cards.\n'
+    '- If a face-up card is taken, it will be replaced with a new one from the draw pile.\n'
+    '- You can hold up to 6 cards in your hand.\n'
+    '\t\t- If you already have 6 cards, you can swap: draw one card, then choose any card to discard.',
+  ),
+  sectionHeader('2. Attacking'),
+  sectionText(
+    '- You can attack once per turn using one of these:\n'
+    '\t\tSingle card (2–10 only): damage = card value\n'
+    '\t\tPair (two of the same value): damage = sum + 2\n'
+    '\t\tThree of a kind (three of the same value): damage = sum + 3\n'
+    '\t\tRun (3 or 4 cards in sequence, suit doesn\'t matter): damage = sum\n'
+    '- No Aces or face cards in attacks.\n'
+    '- Players can only be attacked once between their own turns.\n'
+    '- After attacking, discard used cards.\n'
+    '- Attack takes up your whole turn.',
+  ),
+  sectionHeader('3. Defending'),
+  sectionText(
+    '- After being attacked, you can defend using one of these:\n'
+    '\t\tSingle card: block damage = card value\n'
+    '\t\tPair: block damage = sum + 2\n'
+    '\t\tRun: block damage = sum\n'
+    '\t\tAce:\n'
+    '\t\t\t\t1 Ace: blocks 50%\n'
+    '\t\t\t\t2 Aces: blocks 100%\n'
+    '\t\tJoker:\n'
+    '\t\t\t\t1 Joker: Reflects 50% of damage (attacker receives 50% damage, defender receives 50% damage)\n'
+    '\t\t\t\t2 Jokers: Reflects 100% of damage (attacker receives 100% damage, defender receives 0% damage)\n'
+    '- Discard all defense cards after use.\n'
+    '- Defending does not skip your next turn.',
+  ),
+  sectionTitle('✨ Special Cards'),
+  sectionHeader('🛡️ Shield'),
+  sectionText(
+    '- Play Jacks to gain 5 shield points each (max 4).\n'
+    '- Shields absorb damage before HP.\n'
+    '- Shields last 2 full turns after being played.\n'
+    '- Playing shields uses up your turn.',
+  ),
+  sectionHeader('👑 Functional Kingdom'),
+  sectionText(
+    '- If a player holds a Jack, Queen, and King, they can’t take more than half their max HP in a single hit.\n'
+    '- To fully defend large attacks (10+ damage), use a face card as defense (Jack, Queen, or King).\n'
+    '\t\tThis only works if after defending, you will no longer have the Functional Kingdom.',
+  ),
+  sectionHeader('☠️ Kalamattack'),
+  sectionText(
+    '- Play a King and Queen of opposite colors to poison any player.\n'
+    '- Poison lasts 3 turns, dealing 5 damage at the start of each of their turns.\n'
+    '- Poison can’t kill—it leaves them at 1 HP minimum.\n'
+    '- Poison does not deal damage right away.\n'
+    '- Poisoned players can’t defend against Kalamattack.\n'
+    '- Playing a kalamattack uses up your turn.',
+  ),
+  sectionTitle('🏁 Ending the Game'),
+  sectionText('The game ends when only one player has health above 0.'),
+];
+
 Widget sectionTitle(String title) {
   return Padding(
     padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
@@ -1043,4 +1310,11 @@ class RateAppHelper {
       }
     }
   }
+}
+
+class GameJoinResult {
+  final List<GamePlayer> players;
+  final Game game;
+
+  GameJoinResult({required this.players, required this.game});
 }

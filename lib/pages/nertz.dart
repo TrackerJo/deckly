@@ -8,8 +8,8 @@ import 'package:deckly/main.dart';
 import 'package:deckly/widgets/action_button.dart';
 import 'package:deckly/widgets/blitz_deck.dart';
 import 'package:deckly/widgets/custom_app_bar.dart';
+
 import 'package:deckly/widgets/deck.dart';
-import 'package:deckly/widgets/deck_anim.dart';
 import 'package:deckly/widgets/drop_zone.dart';
 import 'package:deckly/widgets/fancy_widget.dart';
 import 'package:deckly/widgets/fancy_border.dart';
@@ -39,7 +39,7 @@ class _NertzState extends State<Nertz> {
   bool couldBeStuck = false;
   bool hasMovedCards = false;
 
-  final CardDeckAnimController deckController = CardDeckAnimController();
+  final CardDeckController deckController = CardDeckController();
   final BlitzDeckController blitzDeckController = BlitzDeckController();
   final ScrollController scrollController = ScrollController();
   Map<String, DropZoneController> dropZoneControllers = {};
@@ -67,6 +67,7 @@ class _NertzState extends State<Nertz> {
     _dataSub = connectionService.gameDataStream.listen((dataMap) {
       print("Type of data: ${dataMap['type']}");
       if (dataMap['type'] == 'update_zone') {
+        print("Updating zone with data: $dataMap");
         final zoneId = dataMap['zoneId'] as String;
         final cardsData = dataMap['cards'] as List;
         final cards =
@@ -317,6 +318,9 @@ class _NertzState extends State<Nertz> {
 
   void fixZone(String zoneId, List<CardData> cards) {
     final targetZone = dropZones.firstWhere((zone) => zone.id == zoneId);
+    print(
+      "Fixing zone: $zoneId with cards: ${cards.map((c) => c.toString()).join(', ')}",
+    );
     final card = cards.first;
     if (card.value == 1 && targetZone.cards.isNotEmpty) {
       print("Card is an Ace and zone is not empty, moving to a new zone");
@@ -1205,17 +1209,10 @@ class _NertzState extends State<Nertz> {
                                       height: 40,
                                       width: 100,
                                       onTap: () async {
-                                        setState(() {
-                                          gameState = NertzGameState.gameOver;
-                                        });
                                         if (currentPlayer!.getIsHost()) {
                                           for (var bot in bots) {
                                             bot.dispose();
                                           }
-                                          await connectionService
-                                              .broadcastMessage({
-                                                'type': 'host_left',
-                                              }, currentPlayer!.id);
                                         }
                                         connectionService.dispose();
                                         Navigator.of(context).pop();
@@ -1464,7 +1461,7 @@ class _NertzState extends State<Nertz> {
                       onDragCompleted: onPlayedFromBlitzDeck,
                       onTapBlitz: onBlitz,
                     ),
-                    CardDeckAnim(
+                    CardDeck(
                       cards: deckCards,
                       onDragStarted: _onDragStarted,
                       onDragEnd: _onDragEnd,

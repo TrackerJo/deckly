@@ -194,11 +194,15 @@ class CardFlip extends StatefulWidget {
   final CardData card;
   final double scale; // Default scale, can be adjusted
   final bool isDutchBlitz;
+  final bool isCrazyEights;
+  final double handScale; // Optional parameter for Crazy Eights
   const CardFlip({
     super.key,
     required this.card,
     required this.scale,
     this.isDutchBlitz = false,
+    this.isCrazyEights = false, // Optional parameter for Crazy Eights
+    this.handScale = 1.0, // Default to 1.0 if not provided
   });
 
   @override
@@ -214,7 +218,7 @@ class _CardFlipState extends State<CardFlip> with TickerProviderStateMixin {
     // TODO: implement initState
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 250),
+      duration: Duration(milliseconds: widget.isCrazyEights ? 550 : 200),
       vsync: this,
     );
     _controller.forward();
@@ -226,18 +230,53 @@ class _CardFlipState extends State<CardFlip> with TickerProviderStateMixin {
       animation: _controller,
       builder: (context, child) {
         final angle = _controller.value * pi;
-        final translateX =
-            -(12 * widget.scale + 100 * widget.scale) +
-            (100 * widget.scale * 2 + 12 * widget.scale) * _controller.value;
 
-        final transform =
-            Matrix4.identity()
-              ..setEntry(3, 2, 0.001) // Perspective
-              ..translate(translateX, 0.0, 0.0) // Move right as it flips
-              ..rotateY(angle); // Flip on Y axis
+        print("HAND SCALE: ${widget.handScale}");
+
+        Matrix4 transform;
+        if (widget.isCrazyEights) {
+          //Calculate the vertical translation based on distance from card to bottom of screen
+          final screenHeight = MediaQuery.of(context).size.height;
+          final cardHeight = 150 * widget.scale;
+
+          // // Get the current widget's position on screen
+          // final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+          // double cardTopPosition = 0.0;
+
+          // if (renderBox != null) {
+          //   final position = renderBox.localToGlobal(Offset.zero);
+          //   cardTopPosition = position.dy;
+          // }
+
+          // // Calculate distance from bottom of card to bottom of screen
+          // final cardBottomPosition = cardTopPosition + cardHeight;
+          // final distanceToBottom = screenHeight - cardBottomPosition + 75;
+
+          // // Use distance to calculate translateY
+          // // You can adjust this formula based on desired animation effect
+          // double translateY = distanceToBottom * _controller.value;
+
+          transform =
+              Matrix4.identity()
+                ..setEntry(3, 2, 0.001) // Perspective
+                ..translate(
+                  -(12 * widget.scale + 100 * widget.scale),
+                ) // Move down as it flips
+                ..rotateX(-angle);
+        } else {
+          final translateX =
+              -(12 * widget.scale + 100 * widget.scale) +
+              (100 * widget.scale * 2 + 12 * widget.scale) * _controller.value;
+          transform =
+              Matrix4.identity()
+                ..setEntry(3, 2, 0.001) // Perspective
+                ..translate(translateX, 0.0, 0.0) // Move right as it flips
+                ..rotateY(angle); // Flip on Y axis
+        }
 
         return Transform(
           transform: transform,
+          alignment: widget.isCrazyEights ? Alignment.center : null,
           child:
               !isFrontImage(angle.abs())
                   ? Transform(
@@ -247,8 +286,13 @@ class _CardFlipState extends State<CardFlip> with TickerProviderStateMixin {
                     child: CardContent(
                       card: widget.card,
                       scale: widget.scale,
-                      flipCenter: true,
+                      flipCenter:
+                          !widget
+                              .isCrazyEights, // Flip center for player's hand
                       isDutchBlitz: widget.isDutchBlitz,
+                      flipX:
+                          widget
+                              .isCrazyEights, // Flip horizontally for Crazy Eights
                     ),
                   )
                   : CardContent(
@@ -282,6 +326,7 @@ class CardContent extends StatelessWidget {
   final Function(CardData)? onTap;
   final bool isCardPlayable;
   final bool flipCenter;
+  final bool flipX;
 
   const CardContent({
     Key? key,
@@ -291,6 +336,7 @@ class CardContent extends StatelessWidget {
     this.isDutchBlitz = false,
     this.onTap,
     this.isCardPlayable = true,
+    this.flipX = false, // Default to false for normal cards
     this.flipCenter = false, // Default to true for player's hand
   }) : super(key: key);
 
@@ -360,6 +406,7 @@ class CardContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print("FLIP X: $flipX");
     return isDutchBlitz
         ? scale < 0.5
             ? nordicDashCardMini(context)
@@ -419,30 +466,48 @@ class CardContent extends StatelessWidget {
                         direction: Axis.vertical,
                         spacing: -6, // Reduced spacing
                         children: [
-                          Text(
-                            cardNumberToString(card.value),
-                            style: TextStyle(
-                              color:
-                                  card.suit == CardSuit.clubs ||
-                                          card.suit == CardSuit.spades
-                                      ? Colors.black
-                                      : Colors.red[700],
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                          if (card.value > 0)
+                            Text(
+                              cardNumberToString(card.value),
+                              style: TextStyle(
+                                color:
+                                    card.suit == CardSuit.clubs ||
+                                            card.suit == CardSuit.spades
+                                        ? Colors.black
+                                        : Colors.red[700],
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
                             ),
-                          ),
-                          // Reduced spacing
-                          Text(
-                            card.suit.toIcon(),
-                            style: TextStyle(
-                              color:
-                                  card.suit == CardSuit.clubs ||
-                                          card.suit == CardSuit.spades
-                                      ? Colors.black
-                                      : Colors.red[700],
-                              fontSize: 14,
+                          if (card.value > 0)
+                            // Reduced spacing
+                            Text(
+                              card.suit.toIcon(),
+                              style: TextStyle(
+                                color:
+                                    card.suit == CardSuit.clubs ||
+                                            card.suit == CardSuit.spades
+                                        ? Colors.black
+                                        : Colors.red[700],
+                                fontSize: 14,
+                              ),
                             ),
-                          ),
+                          if (card.value == 0)
+                            SizedBox(
+                              width: 2,
+                              child: Text(
+                                "Joker",
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color:
+                                      card.suit == CardSuit.clubs ||
+                                              card.suit == CardSuit.spades
+                                          ? Colors.black
+                                          : Colors.red[700],
+                                ),
+                              ), // Adjust height as needed
+                            ),
                         ],
                       ),
                     ),
@@ -458,35 +523,56 @@ class CardContent extends StatelessWidget {
                           spacing: -6,
 
                           children: [
-                            Text(
-                              cardNumberToString(card.value),
-                              style: TextStyle(
-                                color:
-                                    card.suit == CardSuit.clubs ||
-                                            card.suit == CardSuit.spades
-                                        ? Colors.black
-                                        : Colors.red[700],
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                            if (card.value > 0)
+                              Text(
+                                cardNumberToString(card.value),
+                                style: TextStyle(
+                                  color:
+                                      card.suit == CardSuit.clubs ||
+                                              card.suit == CardSuit.spades
+                                          ? Colors.black
+                                          : Colors.red[700],
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
                               ),
-                            ),
-                            Text(
-                              card.suit.toIcon(),
-                              style: TextStyle(
-                                color:
-                                    card.suit == CardSuit.clubs ||
-                                            card.suit == CardSuit.spades
-                                        ? Colors.black
-                                        : Colors.red[700],
-                                fontSize: 14,
+                            if (card.value > 0)
+                              Text(
+                                card.suit.toIcon(),
+                                style: TextStyle(
+                                  color:
+                                      card.suit == CardSuit.clubs ||
+                                              card.suit == CardSuit.spades
+                                          ? Colors.black
+                                          : Colors.red[700],
+                                  fontSize: 14,
+                                ),
                               ),
-                            ),
+                            if (card.value == 0)
+                              SizedBox(
+                                width: 2,
+                                child: Text(
+                                  "Joker",
+
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    letterSpacing: 0,
+                                    fontWeight: FontWeight.bold,
+
+                                    color:
+                                        card.suit == CardSuit.clubs ||
+                                                card.suit == CardSuit.spades
+                                            ? Colors.black
+                                            : Colors.red[700],
+                                  ),
+                                ), // Adjust height as needed
+                              ),
                           ],
                         ),
                       ),
                     ),
                     // Center suit symbol (large, faded)
-                    if (flipCenter)
+                    if (flipCenter && card.value > 0)
                       Transform.flip(
                         flipY: true,
                         child: Center(
@@ -506,7 +592,27 @@ class CardContent extends StatelessWidget {
                           ),
                         ),
                       )
-                    else
+                    else if (card.value > 0 && flipX)
+                      Transform.flip(
+                        flipX: true,
+                        child: Center(
+                          child: Opacity(
+                            opacity: 0.15,
+                            child: Text(
+                              card.suit.toIcon(),
+                              style: TextStyle(
+                                color:
+                                    card.suit == CardSuit.clubs ||
+                                            card.suit == CardSuit.spades
+                                        ? Colors.black
+                                        : Colors.red[700],
+                                fontSize: 40 * scale,
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                    else if (card.value > 0)
                       Center(
                         child: Opacity(
                           opacity: 0.15,
@@ -520,6 +626,37 @@ class CardContent extends StatelessWidget {
                                       : Colors.red[700],
                               fontSize: 40 * scale,
                             ),
+                          ),
+                        ),
+                      ),
+                    if (flipCenter && card.value == 0)
+                      Transform.flip(
+                        flipY: true,
+                        child: Center(
+                          child: Image.asset(
+                            'assets/joker.png',
+                            scale: 0.5, // Replace with your joker image
+                          ),
+                        ),
+                      )
+                    else if (card.value == 0 && flipX)
+                      Transform.flip(
+                        flipX: true,
+                        child: Center(
+                          child: Image.asset(
+                            'assets/joker.png',
+                            scale: 0.5, // Replace with your joker image
+                          ),
+                        ),
+                      )
+                    else if (card.value == 0)
+                      Center(
+                        child: SizedBox(
+                          width: 120 * scale,
+                          height: 120 * scale,
+                          child: Image.asset(
+                            'assets/joker.png',
+                            scale: 0.5, // Replace with your joker image
                           ),
                         ),
                       ),

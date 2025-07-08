@@ -29,6 +29,9 @@ class _StatsPageState extends State<StatsPage> {
   int euchreGamesWon = 0;
 
   int solitaireGamesWon = 0;
+
+  int crazyEightsGamesPlayed = 0;
+  int crazyEightsGamesWon = 0;
   void getStats() async {
     nertzRoundsPlayed = await SharedPrefs.getNertzRoundsPlayed();
     nertzRoundsNertzed = await SharedPrefs.getNertzRoundsNertzed();
@@ -44,6 +47,9 @@ class _StatsPageState extends State<StatsPage> {
     euchreGamesWon = await SharedPrefs.getEuchreGamesWon();
 
     solitaireGamesWon = await SharedPrefs.getSolitaireGamesWon();
+
+    crazyEightsGamesPlayed = await SharedPrefs.getCrazyEightsGamesPlayed();
+    crazyEightsGamesWon = await SharedPrefs.getCrazyEightsGamesWon();
 
     // You can use these values to update your UI or perform other actions
 
@@ -79,7 +85,7 @@ class _StatsPageState extends State<StatsPage> {
         ),
         backgroundColor: styling.background,
         body: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.only(left: 24, right: 24),
           child: SingleChildScrollView(
             child: Column(
               children: [
@@ -183,6 +189,33 @@ class _StatsPageState extends State<StatsPage> {
                       ),
                       subtitle: Text(
                         "Games Won: $solitaireGamesWon",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: FancyBorder(
+                    child: ListTile(
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(10)),
+                      ),
+                      title: FancyWidget(
+                        child: const Text(
+                          "Crazy Eights Stats",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      subtitle: Text(
+                        "Games Played: $crazyEightsGamesPlayed\nGames Won: $crazyEightsGamesWon",
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 14,

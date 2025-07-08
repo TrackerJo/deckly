@@ -42,7 +42,98 @@ class WhatsNew extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      "v1.0.3 (Current Version)",
+                      "v1.0.5 (Current Version)",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.start,
+                    ),
+                    const SizedBox(height: 8.0),
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width,
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                          left: 16.0,
+                          right: 16.0,
+                          bottom: 16.0,
+                        ),
+                        child: Text(
+                          "• New Card Game: Crazy Eights\n\t\t\t- 2-5 Player Classic Card Game\n\t\t\t- Play with friends or bots\n\t\t\t- Rules included in game screen",
+                          style: TextStyle(color: Colors.white, fontSize: 18),
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width,
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                          left: 16.0,
+                          right: 16.0,
+                          bottom: 16.0,
+                        ),
+                        child: Text(
+                          "• New Online Mode\n\t\t\t- Create and Join Online Games\n\t\t\t- Requires an Internet Connection",
+                          style: TextStyle(color: Colors.white, fontSize: 18),
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width,
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                          left: 16.0,
+                          right: 16.0,
+                          bottom: 16.0,
+                        ),
+                        child: Text(
+                          "• Added New Indicator for new games",
+                          style: TextStyle(color: Colors.white, fontSize: 18),
+                        ),
+                      ),
+                    ),
+                    Text(
+                      "v1.0.4",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.start,
+                    ),
+                    const SizedBox(height: 8.0),
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width,
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                          left: 16.0,
+                          right: 16.0,
+                          bottom: 16.0,
+                        ),
+                        child: Text(
+                          "• Fixed major bug when asking permissions",
+                          style: TextStyle(color: Colors.white, fontSize: 18),
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width,
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                          left: 16.0,
+                          right: 16.0,
+                          bottom: 16.0,
+                        ),
+                        child: Text(
+                          "• Added Google Analytics\n\t\t\t- Track app usage anonymously\n\t\t\t- Helps improve future updates\n\t\t\t- You can opt out anytime by going to the settings page and toggling \"Allow Anonymous Analytics Tracking\"\n\t\t\t- See privacy policy for details",
+                          style: TextStyle(color: Colors.white, fontSize: 18),
+                        ),
+                      ),
+                    ),
+
+                    Text(
+                      "v1.0.3",
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 20,

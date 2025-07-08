@@ -9,7 +9,7 @@ import 'package:deckly/widgets/action_button.dart';
 import 'package:deckly/widgets/blitz_deck.dart';
 import 'package:deckly/widgets/custom_app_bar.dart';
 
-import 'package:deckly/widgets/deck_anim.dart';
+import 'package:deckly/widgets/deck.dart';
 import 'package:deckly/widgets/drop_zone.dart';
 import 'package:deckly/widgets/fancy_widget.dart';
 import 'package:deckly/widgets/fancy_border.dart';
@@ -36,7 +36,7 @@ class _SolitareState extends State<Solitare> {
   bool couldBeStuck = false;
   bool hasMovedCards = false;
 
-  final CardDeckAnimController deckController = CardDeckAnimController();
+  final CardDeckController deckController = CardDeckController();
 
   final ScrollController scrollController = ScrollController();
   Map<String, DropZoneController> dropZoneControllers = {};
@@ -658,7 +658,7 @@ class _SolitareState extends State<Solitare> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CardDeckAnim(
+              CardDeck(
                 cards: deckCards,
                 onDragStarted: _onDragStarted,
                 onDragEnd: _onDragEnd,
@@ -822,7 +822,7 @@ class _SolitareState extends State<Solitare> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      CardDeckAnim(
+                      CardDeck(
                         cards: deckCards,
                         onDragStarted: _onDragStarted,
                         onDragEnd: _onDragEnd,

@@ -4,7 +4,9 @@ import 'package:deckly/main.dart';
 import 'package:deckly/widgets/custom_app_bar.dart';
 import 'package:deckly/widgets/fancy_border.dart';
 import 'package:deckly/widgets/orientation_checker.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -142,7 +144,41 @@ class _SettingsPageState extends State<SettingsPage> {
                         analytics.setAnalyticsEnabled(value);
                       },
                       activeColor: styling.primary,
+                      activeTrackColor: styling.primary.withOpacity(0.5),
+                      inactiveTrackColor: Colors.white.withOpacity(0.2),
+                      inactiveThumbColor: styling.primary.withOpacity(0.5),
                     ),
+                  ),
+                ),
+              ),
+              //Rich text for privacy policy and terms of service
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: RichText(
+                  textAlign: TextAlign.center,
+                  text: TextSpan(
+                    text: "By using this app, you agree to our ",
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+
+                    children: [
+                      TextSpan(
+                        text: "Privacy Policy",
+                        style: TextStyle(
+                          color: styling.primary,
+                          decoration: TextDecoration.underline,
+                        ),
+                        recognizer:
+                            TapGestureRecognizer()
+                              ..onTap = () {
+                                // Open privacy policy link
+                                launchUrl(
+                                  Uri.parse(
+                                    'https://trackerjo.github.io/DecklyPrivacy/',
+                                  ),
+                                );
+                              },
+                      ),
+                    ],
                   ),
                 ),
               ),

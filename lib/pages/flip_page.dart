@@ -7,9 +7,10 @@ import 'package:deckly/constants.dart';
 import 'package:deckly/main.dart';
 import 'package:deckly/widgets/action_button.dart';
 import 'package:deckly/widgets/blitz_deck.dart';
+import 'package:deckly/widgets/crazy_eights_deck.dart';
 import 'package:deckly/widgets/custom_app_bar.dart';
+
 import 'package:deckly/widgets/deck.dart';
-import 'package:deckly/widgets/deck_anim.dart';
 import 'package:deckly/widgets/drop_zone.dart';
 import 'package:deckly/widgets/fancy_widget.dart';
 import 'package:deckly/widgets/fancy_border.dart';
@@ -24,8 +25,18 @@ class FlipPage extends StatefulWidget {
 }
 
 class _FlipPageState extends State<FlipPage> {
-  final CardDeckAnimController deckController = CardDeckAnimController();
+  final CrazyEightsDeckController deckController = CrazyEightsDeckController();
   List<CardData> deckCards = [];
+  List<CardData> pileCards = [
+    CardData(suit: CardSuit.hearts, value: 1, id: 'heart_1', isFaceUp: true),
+    CardData(
+      suit: CardSuit.diamonds,
+      value: 2,
+      id: 'diamond_2',
+      isFaceUp: true,
+    ),
+    CardData(suit: CardSuit.clubs, value: 3, id: 'club_3', isFaceUp: true),
+  ];
 
   @override
   void initState() {
@@ -260,18 +271,18 @@ class _FlipPageState extends State<FlipPage> {
                 // Right side - Deck area
                 Column(
                   children: [
-                    CardDeckAnim(
+                    CrazyEightsDeck(
                       cards: deckCards,
-                      onDragStarted: (s) {},
-                      onDragEnd: () {},
-                      currentDragData: DragData(
-                        cards: [],
-                        sourceZoneId: "",
-                        sourceIndex: -1,
-                      ),
+
                       deckId: 'deck',
                       controller: deckController,
-                      onReachEndOfDeck: () {},
+                      onCardDrawn: (d) {},
+                      onReachEndOfDeck: () {
+                        pileCards.shuffle();
+                        deckCards.addAll(pileCards);
+                        pileCards.clear();
+                        setState(() {});
+                      },
                       scale: calculatedScale,
                     ),
                     SizedBox(height: 16.0),

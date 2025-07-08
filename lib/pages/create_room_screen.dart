@@ -6,8 +6,10 @@ import 'dart:math';
 import 'package:deckly/api/connection_service.dart' as blue;
 import 'package:deckly/api/connection_service.dart';
 import 'package:deckly/api/shared_prefs.dart';
+import 'package:deckly/pages/crazy_eights.dart';
 import 'package:deckly/pages/dutch_blitz.dart';
 import 'package:deckly/pages/euchre.dart';
+import 'package:deckly/pages/kalamattack.dart';
 import 'package:deckly/pages/nertz.dart';
 import 'package:deckly/pages/nertz.dart';
 import 'package:deckly/widgets/action_button.dart';
@@ -29,6 +31,7 @@ class CreateRoomScreen extends StatefulWidget {
   final int? maxPlayers;
   final int? minPlayers;
   final int? requiredPlayers;
+  final bool isOnline;
   const CreateRoomScreen({
     super.key,
     required this.userName,
@@ -36,6 +39,7 @@ class CreateRoomScreen extends StatefulWidget {
     this.maxPlayers,
     this.minPlayers,
     this.requiredPlayers,
+    this.isOnline = false,
   });
   final String userName;
   @override
@@ -47,6 +51,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
   late StreamSubscription<blue.ConnectionState> _stateSubscription;
 
   List<GamePlayer> _players = [];
+  bool loading = false;
 
   void initConnection() async {
     connectionService.maxPlayerCount =
@@ -63,79 +68,90 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
           context: context,
           barrierDismissible: false,
           builder: (BuildContext context) {
-            return Dialog(
-              backgroundColor: Colors.transparent,
+            return StatefulBuilder(
+              builder: (context, setState) {
+                return Dialog(
+                  backgroundColor: Colors.transparent,
 
-              child: Container(
-                width: 400,
+                  child: Container(
+                    width: 400,
 
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [styling.primary, styling.secondary],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Container(
-                  margin: EdgeInsets.all(2), // Creates the border thickness
-                  decoration: BoxDecoration(
-                    color: styling.background,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text(
-                        "Important! Permission Required!",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [styling.primary, styling.secondary],
                       ),
-                      Text(
-                        "After this dialog, you will be prompted to allow local network permissions. Please allow this permission to allow other players to join your game, this is required for the app to work!",
-                        style: TextStyle(color: Colors.white, fontSize: 16),
-                        textAlign: TextAlign.center,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Container(
+                      margin: EdgeInsets.all(2), // Creates the border thickness
+                      decoration: BoxDecoration(
+                        color: styling.background,
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          ActionButton(
-                            height: 50,
-                            width: 200,
-                            onTap: () async {
-                              Navigator.of(context).pop();
-                              await SharedPrefs.setFirstUse(false);
-                              await connectionService.requestPermissions();
-
-                              _initSubscriptions();
-
-                              _initService();
-                            },
-                            text: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Text(
-                                "Okay",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                ),
-                              ),
+                          Text(
+                            "Important! Permission Required!",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
                             ),
+                            textAlign: TextAlign.center,
+                          ),
+                          Text(
+                            "After this dialog, you will be prompted to allow local network permissions. Please allow this permission to allow other players to join your game, this is required for the app to work!",
+                            style: TextStyle(color: Colors.white, fontSize: 16),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              if (loading)
+                                CircularProgressIndicator(color: Colors.white)
+                              else
+                                ActionButton(
+                                  height: 50,
+                                  width: 200,
+                                  onTap: () async {
+                                    setState(() {
+                                      loading = true;
+                                    });
+                                    await SharedPrefs.setFirstUse(false);
+                                    await connectionService
+                                        .requestPermissions();
+                                    Navigator.of(context).pop();
+
+                                    _initSubscriptions();
+
+                                    _initService();
+                                  },
+                                  text: Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Text(
+                                      "Okay",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             );
           },
         );
@@ -157,6 +173,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
 
   @override
   void initState() {
+    connectionService.isOnline = widget.isOnline;
     super.initState();
     initConnection();
   }
@@ -228,6 +245,33 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                 ),
           ),
         );
+        break;
+      case Game.crazyEights:
+        // Handle Crazy Eights game type if needed
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder:
+                (context) => CrazyEights(
+                  players: _players,
+                  player: _players.firstWhere((p) => p.isHost),
+                ),
+          ),
+        );
+
+        break;
+      case Game.kalamattack:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder:
+                (context) => Kalamattack(
+                  players: _players,
+                  player: _players.firstWhere((p) => p.isHost),
+                ),
+          ),
+        );
+        break;
       default:
         // Handle other game types if needed
         break;
@@ -243,7 +287,9 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     );
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       bool allowedAllowed = await connectionService.allowedAllPermissions();
-      if (!allowedAllowed) {
+      bool firstUse = await SharedPrefs.getFirstUse();
+      if (!allowedAllowed && !firstUse) {
+        await connectionService.requestPermissions();
         if (Platform.isIOS) {
           showDialog(
             context: context,
@@ -382,6 +428,10 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                                           ? dutchBlitzRules
                                           : widget.game == Game.euchre
                                           ? euchreRules
+                                          : widget.game == Game.crazyEights
+                                          ? crazy8Rules
+                                          : widget.game == Game.kalamattack
+                                          ? kalamatackRules
                                           : [
                                             Text(
                                               'No rules available for this game.',
@@ -550,7 +600,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                if ((widget.maxPlayers == null ||
+                if (widget.game != Game.kalamattack &&
+                    (widget.maxPlayers == null ||
                         _players.length < widget.maxPlayers!) &&
                     (widget.requiredPlayers != null
                         ? _players.length < widget.requiredPlayers!

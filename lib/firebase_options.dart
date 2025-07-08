@@ -44,6 +44,7 @@ class DefaultFirebaseOptions {
     appId: '1:254542560195:android:ba9dddb5a2413a5b02db76',
     messagingSenderId: '254542560195',
     projectId: 'kazoom-deckly',
+    databaseURL: 'https://kazoom-deckly-default-rtdb.firebaseio.com',
     storageBucket: 'kazoom-deckly.firebasestorage.app',
   );
 
@@ -52,6 +53,7 @@ class DefaultFirebaseOptions {
     appId: '1:254542560195:ios:59f9741070fe452102db76',
     messagingSenderId: '254542560195',
     projectId: 'kazoom-deckly',
+    databaseURL: 'https://kazoom-deckly-default-rtdb.firebaseio.com',
     storageBucket: 'kazoom-deckly.firebasestorage.app',
     iosBundleId: 'com.kazoom.deckly',
   );
