@@ -14,7 +14,7 @@ class Analytics {
 
   Future<void> logSelectGameEvent(String gameName) async {
     await _analytics.logEvent(
-      name: 'select_game',
+      name: 'select_$gameName',
       parameters: {'game_name': gameName},
     );
   }
@@ -32,13 +32,21 @@ class Analytics {
     String botDifficulty,
   ) async {
     await _analytics.logEvent(
-      name: '${gameName}_bot',
+      name: '${gameName}_bot_${botDifficulty.toString()}',
       parameters: {'difficulty': botDifficulty},
     );
   }
 
   Future<void> logViewStatsEvent() async {
     await _analytics.logEvent(name: 'view_stats');
+  }
+
+  Future<void> logClickSuggestionEvent() async {
+    await _analytics.logEvent(name: 'click_suggestion');
+  }
+
+  Future<void> logGiveSuggestionEvent() async {
+    await _analytics.logEvent(name: 'give_suggestion');
   }
 
   Future<void> logViewSettingsEvent() async {

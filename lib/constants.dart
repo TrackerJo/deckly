@@ -84,6 +84,10 @@ class GamePlayer {
           isBot: m['isBot'] == "true" || m['isBot'] == true,
           type: playerType,
         );
+      case PlayerType.ohHell:
+        return OhHellPlayer.fromMap(m);
+      case PlayerType.kalamattack:
+        return KalamattackPlayer.fromMap(m);
       // Default to GamePlayer if no specific type is found
     }
   }
@@ -389,6 +393,8 @@ enum PlayerType {
   euchre,
   bot,
   crazyEight,
+  ohHell,
+  kalamattack,
   game;
 
   @override
@@ -404,6 +410,10 @@ enum PlayerType {
         return 'Game';
       case PlayerType.crazyEight:
         return 'Crazy Eight';
+      case PlayerType.ohHell:
+        return 'Oh Hell';
+      case PlayerType.kalamattack:
+        return 'Kalamattack';
     }
   }
 
@@ -580,13 +590,29 @@ class CrazyEightsPlayer extends GamePlayer {
   }
 }
 
+class Shield {
+  int health;
+  int roundsLeft;
+
+  Shield({required this.health, required this.roundsLeft});
+  factory Shield.fromMap(Map<String, dynamic> m) {
+    return Shield(health: m['health'] ?? 0, roundsLeft: m['roundsLeft'] ?? 0);
+  }
+
+  Map<String, dynamic> toMap() {
+    return {'health': health, 'roundsLeft': roundsLeft};
+  }
+}
+
 class KalamattackPlayer extends GamePlayer {
   List<CardData> hand;
   bool myTurn;
   int health;
   bool hasFunctionalKingdom;
   bool isPoisoned;
+  int poisonedRoundsLeft; // Default to 0, can be set later
   bool isDefending;
+  List<Shield> shields;
 
   KalamattackPlayer({
     required super.id,
@@ -599,8 +625,10 @@ class KalamattackPlayer extends GamePlayer {
     this.hasFunctionalKingdom = false,
     this.isPoisoned = false,
     this.isDefending = false,
-    super.type = PlayerType.crazyEight,
-  });
+    this.poisonedRoundsLeft = 0, // Default to 0, can be set later
+    List<Shield>? shields,
+    super.type = PlayerType.kalamattack,
+  }) : shields = shields ?? <Shield>[];
 
   factory KalamattackPlayer.fromMap(Map<String, dynamic> m) {
     return KalamattackPlayer(
@@ -617,6 +645,12 @@ class KalamattackPlayer extends GamePlayer {
       hasFunctionalKingdom: m['hasFunctionalKingdom'] ?? false,
       isPoisoned: m['isPoisoned'] ?? false,
       isDefending: m['isDefending'] ?? false,
+      shields:
+          (m['shields'] as List<dynamic>?)
+              ?.map((s) => Shield.fromMap(s as Map<String, dynamic>))
+              .toList() ??
+          [],
+      poisonedRoundsLeft: m['poisonedRoundsLeft'] ?? 0, // Default to 0
     );
   }
 
@@ -633,7 +667,79 @@ class KalamattackPlayer extends GamePlayer {
       'hasFunctionalKingdom': hasFunctionalKingdom,
       'isPoisoned': isPoisoned,
       'isDefending': isDefending,
+      'shields': shields.map((s) => s.toMap()).toList(),
+      'poisonedRoundsLeft': poisonedRoundsLeft, // Include poisoned rounds left
     };
+  }
+
+  int get totalShieldHealth {
+    return shields.fold(0, (total, shield) => total + shield.health);
+  }
+
+  void damage(int amount) {
+    List<Shield> remainingShields = [...shields];
+    int remainingAmount = amount;
+    for (var shield in remainingShields) {
+      if (remainingAmount <= 0) break;
+      if (shield.health > 0) {
+        if (shield.health >= remainingAmount) {
+          shield.health -= remainingAmount;
+          remainingAmount = 0;
+        } else {
+          remainingAmount -= shield.health;
+          shield.health = 0;
+        }
+      }
+      if (shield.health <= 0) {
+        shields.remove(shield);
+      }
+    }
+    if (remainingAmount > 0) {
+      health -= remainingAmount;
+      if (health < 0) {
+        health = 0; // Prevent negative health
+      }
+    }
+  }
+}
+
+class OhHellPlayer extends GamePlayer {
+  int score;
+  int bid;
+  int tricksTaken;
+  List<CardData> hand;
+  bool myTurn;
+  bool isDealer;
+  OhHellPlayer({
+    required super.id,
+    required super.name,
+    this.score = 0,
+    this.bid = 0,
+    this.tricksTaken = 0,
+    this.hand = const [],
+    super.isHost = false,
+    this.myTurn = false,
+    this.isDealer = false,
+    super.isBot = false,
+    super.type = PlayerType.ohHell,
+  });
+
+  factory OhHellPlayer.fromMap(Map<String, dynamic> m) {
+    return OhHellPlayer(
+      id: m['id'],
+      name: m['name'],
+      score: m['score'] ?? 0,
+      bid: m['bid'] ?? 0,
+      tricksTaken: m['tricksTaken'] ?? 0,
+      isDealer: m['isDealer'] == "true" || m['isDealer'] == true,
+      hand:
+          (m['hand'] as List<dynamic>)
+              .map((card) => CardData.fromMap(card as Map<String, dynamic>))
+              .toList(),
+      isHost: m['isHost'] == "true" || m['isHost'] == true,
+      myTurn: m['myTurn'] ?? false,
+      isBot: m['isBot'] == "true" || m['isBot'] == true,
+    );
   }
 }
 
@@ -706,7 +812,7 @@ enum EuchreGamePhase { decidingTrump, discardingCard, playing }
 
 enum CrazyEightsGameState { waitingForPlayers, playing, gameOver, paused }
 
-enum KalamattackGameState { waitingForPlayers, playing, gameOver, paused }
+enum KalamattackGameState { waitingForPlayers, playing, gameOver, paused, dead }
 
 enum KalamattackGamePhase {
   selectingMove,
@@ -714,13 +820,19 @@ enum KalamattackGamePhase {
   defending,
   discardingCard,
   othersAttacking,
+  choosingKalamattack,
 }
+
+enum OhHellGameState { waitingForPlayers, playing, gameOver, paused }
+
+enum OhHellGamePhase { bidding, playing }
 
 enum Game {
   nertz,
   euchre,
   crazyEights,
   kalamattack,
+  ohHell,
   dash;
 
   @override
@@ -736,6 +848,8 @@ enum Game {
         return 'Crazy Eights';
       case Game.kalamattack:
         return 'Kalamattack';
+      case Game.ohHell:
+        return 'Oh Hell';
     }
   }
 
@@ -1147,11 +1261,11 @@ List<Widget> kalamatackRules = [
     '- Shields last 2 full turns after being played.\n'
     '- Playing shields uses up your turn.',
   ),
-  sectionHeader('👑 Functional Kingdom'),
+  sectionHeader('🏰 Functional Kingdom'),
   sectionText(
-    '- If a player holds a Jack, Queen, and King, they can’t take more than half their max HP in a single hit.\n'
-    '- To fully defend large attacks (10+ damage), use a face card as defense (Jack, Queen, or King).\n'
-    '\t\tThis only works if after defending, you will no longer have the Functional Kingdom.',
+    '- If a player holds a Jack, Queen, and King, they can’t take more than 10 HP in a single hit.\n'
+    '- This cap applies after defense cards are played.\n'
+    '- You can fully defend attacks by playing one of the functional kingdom cards (Jack, Queen, King) as a defense card.',
   ),
   sectionHeader('☠️ Kalamattack'),
   sectionText(
@@ -1164,6 +1278,60 @@ List<Widget> kalamatackRules = [
   ),
   sectionTitle('🏁 Ending the Game'),
   sectionText('The game ends when only one player has health above 0.'),
+];
+
+List<Widget> ohHellRules = [
+  Padding(
+    padding: const EdgeInsets.all(8.0),
+    child: Text(
+      "How to Play Oh Hell",
+      style: TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.bold,
+        color: styling.primary,
+      ),
+    ),
+  ),
+  Divider(color: styling.primary, thickness: 1.5),
+  sectionTitle('🎯 Goal'),
+  sectionText(
+    'End the game with the most points by correctly predicting how many tricks you’ll win in each round.',
+  ),
+  sectionTitle('🧰 Setup'),
+  sectionText(
+    'Players: 3-8\n'
+    'Deck: Standard 52-card deck\n'
+    'Deal: The first round everyone gets 10 cards (or 8 cards for 6 players, 7 cards for 7 players, and 6 cards for 8 players) then after each round the number of cards everyone gets goes down by one, ending at everyone getting 1 card.',
+  ),
+  sectionTitle('🃏 Gameplay'),
+  sectionHeader('1. Bidding'),
+  sectionText(
+    '- Starting with the player left of the dealer, each player says how many tricks they think they’ll win\n'
+    '- Dealer bids last, but their bid cannot make total bids equal total tricks (someone must fail)',
+  ),
+  sectionHeader('2. Playing Tricks'),
+  sectionText(
+    '- The player to the left of the dealer starts.\n'
+    '- Players must follow the suit led if they can.\n'
+    '- If not, they can play any card.\n'
+    '- The highest trump card wins the trick. If no trump is played, the highest card in the lead suit wins.\n'
+    '- The winner of the trick leads the next one.',
+  ),
+
+  sectionTitle('🧮 Scoring'),
+  sectionText(
+    '- Scoring is based on how many tricks you took and if your bid was correct:\n'
+    '\t\tCorrect Bid:\n'
+    '\t\t\t\t10 points + number of tricks taken\n'
+    '\t\tIncorrect Bid:\n'
+    '\t\t\t\tjust the number of tricks taken',
+  ),
+
+  sectionTitle('🏁 Ending the Game'),
+  sectionText(
+    '- Play continues until the last round where everyone gets 1 card.\n'
+    '- The player with the most points at the end wins.',
+  ),
 ];
 
 Widget sectionTitle(String title) {

@@ -12,6 +12,7 @@ import 'package:deckly/pages/dutch_blitz.dart';
 import 'package:deckly/pages/euchre.dart';
 import 'package:deckly/pages/kalamattack.dart';
 import 'package:deckly/pages/nertz.dart';
+import 'package:deckly/pages/oh_hell.dart';
 
 import 'package:deckly/widgets/action_button.dart';
 import 'package:deckly/widgets/custom_app_bar.dart';
@@ -176,6 +177,20 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
               MaterialPageRoute(
                 builder:
                     (context) => Kalamattack(
+                      players: _players,
+                      player: _players.firstWhere(
+                        (p) => p.name == _nameCtrl.text,
+                      ),
+                    ),
+              ),
+            );
+            break;
+          case Game.ohHell:
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder:
+                    (context) => OhHell(
                       players: _players,
                       player: _players.firstWhere(
                         (p) => p.name == _nameCtrl.text,
@@ -540,6 +555,8 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
                                             ? crazy8Rules
                                             : game == Game.kalamattack
                                             ? kalamatackRules
+                                            : game == Game.ohHell
+                                            ? ohHellRules
                                             : [
                                               Text(
                                                 'No rules available for this game.',

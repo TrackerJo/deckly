@@ -8,9 +8,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:254542560195:android:ba9dddb5a2413a5b02db76",
+        "mobilesdk_app_id": "1:254542560195:android:a4cb7d7ee6ce5eaa02db76",
         "android_client_info": {
-          "package_name": "com.example.deckly"
+          "package_name": "com.kazoom.deckly"
         }
       },
       "oauth_client": [],

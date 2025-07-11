@@ -42,7 +42,45 @@ class WhatsNew extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      "v1.0.5 (Current Version)",
+                      "v1.0.6 (Current Version)",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.start,
+                    ),
+                    const SizedBox(height: 8.0),
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width,
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                          left: 16.0,
+                          right: 16.0,
+                          bottom: 16.0,
+                        ),
+                        child: Text(
+                          "• New Card Game: Kalamattack\n\t\t\t- 2-5 Player Classic Card Game\n\t\t\t- Brand new card game made by my friends and I\n\t\t\t- Play with friends\n\t\t\t- Rules included in game screen",
+                          style: TextStyle(color: Colors.white, fontSize: 18),
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width,
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                          left: 16.0,
+                          right: 16.0,
+                          bottom: 16.0,
+                        ),
+                        child: Text(
+                          "• Added Suggestion System\n\t\t\t- Suggest new features or report bugs\n\t\t\t- Access from home screen",
+                          style: TextStyle(color: Colors.white, fontSize: 18),
+                        ),
+                      ),
+                    ),
+                    Text(
+                      "v1.0.5",
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 20,

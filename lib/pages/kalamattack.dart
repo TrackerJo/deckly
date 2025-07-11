@@ -58,7 +58,7 @@ class _KalamattackState extends State<Kalamattack> {
   bool waitingForAttack =
       false; // Whether the game is waiting for an attack action
   int damageAsDefense = 0; // Damage dealt by the defending player
-
+  List<String> playersAttackedInRound = [];
   @override
   void initState() {
     super.initState();
@@ -91,7 +91,10 @@ class _KalamattackState extends State<Kalamattack> {
       } else if (dataMap['type'] == 'game_over') {
         final winnerId = dataMap['winnerId'] as String;
         final winner = players.firstWhere((p) => p.id == winnerId);
-        SharedPrefs.addCrazyEightsGamesPlayed(1);
+        SharedPrefs.addKalamattackGamesPlayed(1);
+        if (winner.id == widget.player.id) {
+          SharedPrefs.addKalamattackGamesWon(1);
+        }
         setState(() {
           gameState = KalamattackGameState.gameOver;
           winningPlayer = winner;
@@ -407,10 +410,17 @@ class _KalamattackState extends State<Kalamattack> {
         if (playerAttackingId == currentPlayer!.id) {
           showDialog(
             context: context,
-            barrierDismissible: false,
-            builder: (BuildContext context) {
+            barrierDismissible: true,
+            builder: (BuildContext dialogContext) {
               Timer(Duration(seconds: 2), () {
-                Navigator.of(context).pop(); // Close the game screen
+                try {
+                  if (dialogContext.mounted)
+                    Navigator.of(dialogContext).pop();
+                  else
+                    print("Dialog context is not mounted, cannot pop dialog.");
+                } catch (e) {
+                  print("Error popping dialog: $e");
+                }
               });
               return Dialog(
                 backgroundColor: Colors.transparent,
@@ -456,6 +466,7 @@ class _KalamattackState extends State<Kalamattack> {
         }
       } else if (dataMap['type'] == "attack_player") {
         final playerAttackingId = dataMap['attackingPlayerId'] as String;
+        playersAttackedInRound.add(playerAttackingId);
         if (playerAttackingId != currentPlayer!.id) {
           // If the player attacking is not the current player, ignore this message
           return;
@@ -469,10 +480,17 @@ class _KalamattackState extends State<Kalamattack> {
         });
         showDialog(
           context: context,
-          barrierDismissible: false,
-          builder: (BuildContext context) {
+          barrierDismissible: true,
+          builder: (BuildContext dialogContext) {
             Timer(Duration(seconds: 2), () {
-              Navigator.of(context).pop(); // Close the game screen
+              try {
+                if (dialogContext.mounted)
+                  Navigator.of(dialogContext).pop();
+                else
+                  print("Dialog context is not mounted, cannot pop dialog.");
+              } catch (e) {
+                print("Error popping dialog: $e");
+              }
             });
             return Dialog(
               backgroundColor: Colors.transparent,
@@ -518,6 +536,23 @@ class _KalamattackState extends State<Kalamattack> {
       } else if (dataMap['type'] == "update_defense_cards") {
         final playerThatIsAttackingId =
             dataMap['playerThatIsAttackingId'] as String;
+        final playerAttackingId = dataMap['playerAttackingId'] as String;
+        final handCards =
+            dataMap['handCards'] != null ? dataMap['handCards'] as List : [];
+        players[players.indexWhere((p) => p.id == playerAttackingId)].hand
+            .clear();
+        players[players.indexWhere((p) => p.id == playerAttackingId)].hand
+            .addAll(
+              handCards
+                  .map((c) => CardData.fromMap(c as Map<String, dynamic>))
+                  .toList(),
+            );
+        playerAttacking!.hand.clear();
+        playerAttacking!.hand.addAll(
+          handCards
+              .map((c) => CardData.fromMap(c as Map<String, dynamic>))
+              .toList(),
+        );
         print("Player that is attacking: $playerThatIsAttackingId");
 
         final cardsData =
@@ -534,11 +569,11 @@ class _KalamattackState extends State<Kalamattack> {
         });
       } else if (dataMap['type'] == "defend_player") {
         final playerDefendingId = dataMap['defendingPlayerId'] as String;
-        final playerDefending = players.firstWhere(
+        KalamattackPlayer playerDefending = players.firstWhere(
           (p) => p.id == playerDefendingId,
         );
         final playerAttackingId = dataMap['attackingPlayerId'] as String;
-        final playerAttacking = players.firstWhere(
+        KalamattackPlayer playerAttacking = players.firstWhere(
           (p) => p.id == playerAttackingId,
         );
         final damageAsDefense = dataMap['damageAsDefense'] as int;
@@ -557,6 +592,8 @@ class _KalamattackState extends State<Kalamattack> {
             players[index] = player;
           }
         }
+        playerAttacking = players.firstWhere((p) => p.id == playerAttackingId);
+        playerDefending = players.firstWhere((p) => p.id == playerDefendingId);
         currentPlayer = players.firstWhere((p) => p.id == widget.player.id);
         final discardCards =
             discardCardsData
@@ -578,10 +615,17 @@ class _KalamattackState extends State<Kalamattack> {
         if (playerAttacking.id == currentPlayer!.id) {
           showDialog(
             context: context,
-            barrierDismissible: false,
-            builder: (BuildContext context) {
+            barrierDismissible: true,
+            builder: (BuildContext dialogContext) {
               Timer(Duration(seconds: 2), () {
-                Navigator.of(context).pop(); // Close the game screen
+                try {
+                  if (dialogContext.mounted)
+                    Navigator.of(dialogContext).pop();
+                  else
+                    print("Dialog context is not mounted, cannot pop dialog.");
+                } catch (e) {
+                  print("Error popping dialog: $e");
+                }
               });
               return Dialog(
                 backgroundColor: Colors.transparent,
@@ -623,14 +667,214 @@ class _KalamattackState extends State<Kalamattack> {
                 ),
               );
             },
-          );
+          ).then((_) {
+            if (playerDefending.health <= 0) {
+              // If the defending player has no health left, they are defeated
+              showDialog(
+                context: context,
+                barrierDismissible: true,
+                builder: (BuildContext dialogContext) {
+                  Timer(Duration(seconds: 2), () {
+                    try {
+                      if (dialogContext.mounted)
+                        Navigator.of(dialogContext).pop();
+                      else
+                        print(
+                          "Dialog context is not mounted, cannot pop dialog.",
+                        );
+                    } catch (e) {
+                      print("Error popping dialog: $e");
+                    }
+                  });
+                  return Dialog(
+                    backgroundColor: Colors.transparent,
+
+                    child: Container(
+                      width: 400,
+                      height: 200,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [styling.primary, styling.secondary],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Container(
+                        margin: EdgeInsets.all(
+                          2,
+                        ), // Creates the border thickness
+                        decoration: BoxDecoration(
+                          color: styling.background,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              "${playerDefending.name} has been defeated!",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ).then((_) {
+                if (playerAttacking.health <= 0) {
+                  // If the attacking player has no health left, they are defeated
+                  setState(() {
+                    gameState = KalamattackGameState.dead;
+                  });
+                  showDialog(
+                    context: context,
+                    barrierDismissible: true,
+                    builder: (BuildContext dialogContext) {
+                      Timer(Duration(seconds: 2), () {
+                        try {
+                          if (dialogContext.mounted)
+                            Navigator.of(dialogContext).pop();
+                          else
+                            print(
+                              "Dialog context is not mounted, cannot pop dialog.",
+                            );
+                        } catch (e) {
+                          print("Error popping dialog: $e");
+                        }
+                      });
+                      return Dialog(
+                        backgroundColor: Colors.transparent,
+
+                        child: Container(
+                          width: 400,
+                          height: 200,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [styling.primary, styling.secondary],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Container(
+                            margin: EdgeInsets.all(
+                              2,
+                            ), // Creates the border thickness
+                            decoration: BoxDecoration(
+                              color: styling.background,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Text(
+                                  "You have been defeated!",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                }
+              });
+            } else if (playerAttacking.health <= 0) {
+              // If the attacking player has no health left, they are defeated
+              setState(() {
+                gameState = KalamattackGameState.dead;
+              });
+              showDialog(
+                context: context,
+                barrierDismissible: true,
+                builder: (BuildContext dialogContext) {
+                  Timer(Duration(seconds: 2), () {
+                    try {
+                      if (dialogContext.mounted)
+                        Navigator.of(dialogContext).pop();
+                      else
+                        print(
+                          "Dialog context is not mounted, cannot pop dialog.",
+                        );
+                    } catch (e) {
+                      print("Error popping dialog: $e");
+                    }
+                  });
+                  return Dialog(
+                    backgroundColor: Colors.transparent,
+
+                    child: Container(
+                      width: 400,
+                      height: 200,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [styling.primary, styling.secondary],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Container(
+                        margin: EdgeInsets.all(
+                          2,
+                        ), // Creates the border thickness
+                        decoration: BoxDecoration(
+                          color: styling.background,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              "You have been defeated!",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            }
+          });
         } else {
           showDialog(
             context: context,
-            barrierDismissible: false,
-            builder: (BuildContext context) {
+            barrierDismissible: true,
+            builder: (BuildContext dialogContext) {
               Timer(Duration(seconds: 2), () {
-                Navigator.of(context).pop(); // Close the game screen
+                try {
+                  if (dialogContext.mounted)
+                    Navigator.of(dialogContext).pop();
+                  else
+                    print("Dialog context is not mounted, cannot pop dialog.");
+                } catch (e) {
+                  print("Error popping dialog: $e");
+                }
               });
               return Dialog(
                 backgroundColor: Colors.transparent,
@@ -672,7 +916,196 @@ class _KalamattackState extends State<Kalamattack> {
                 ),
               );
             },
-          );
+          ).then((_) {
+            if (playerDefending.health <= 0) {
+              // If the defending player has no health left, they are defeated
+              showDialog(
+                context: context,
+                barrierDismissible: true,
+                builder: (BuildContext dialogContext) {
+                  Timer(Duration(seconds: 2), () {
+                    try {
+                      if (dialogContext.mounted)
+                        Navigator.of(dialogContext).pop();
+                      else
+                        print(
+                          "Dialog context is not mounted, cannot pop dialog.",
+                        );
+                    } catch (e) {
+                      print("Error popping dialog: $e");
+                    }
+                  });
+                  return Dialog(
+                    backgroundColor: Colors.transparent,
+
+                    child: Container(
+                      width: 400,
+                      height: 200,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [styling.primary, styling.secondary],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Container(
+                        margin: EdgeInsets.all(
+                          2,
+                        ), // Creates the border thickness
+                        decoration: BoxDecoration(
+                          color: styling.background,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              "${playerDefending.name} has been defeated!",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ).then((_) {
+                if (playerAttacking.health <= 0) {
+                  // If the attacking player has no health left, they are defeated
+
+                  showDialog(
+                    context: context,
+                    barrierDismissible: true,
+                    builder: (BuildContext dialogContext) {
+                      Timer(Duration(seconds: 2), () {
+                        try {
+                          if (dialogContext.mounted)
+                            Navigator.of(dialogContext).pop();
+                          else
+                            print(
+                              "Dialog context is not mounted, cannot pop dialog.",
+                            );
+                        } catch (e) {
+                          print("Error popping dialog: $e");
+                        }
+                      });
+                      return Dialog(
+                        backgroundColor: Colors.transparent,
+
+                        child: Container(
+                          width: 400,
+                          height: 200,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [styling.primary, styling.secondary],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Container(
+                            margin: EdgeInsets.all(
+                              2,
+                            ), // Creates the border thickness
+                            decoration: BoxDecoration(
+                              color: styling.background,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Text(
+                                  "${playerAttacking.name} has been defeated!",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                }
+              });
+            } else if (playerAttacking.health <= 0) {
+              // If the attacking player has no health left, they are defeated
+
+              showDialog(
+                context: context,
+                barrierDismissible: true,
+                builder: (BuildContext dialogContext) {
+                  Timer(Duration(seconds: 2), () {
+                    try {
+                      if (dialogContext.mounted)
+                        Navigator.of(dialogContext).pop();
+                      else
+                        print(
+                          "Dialog context is not mounted, cannot pop dialog.",
+                        );
+                    } catch (e) {
+                      print("Error popping dialog: $e");
+                    }
+                  });
+                  return Dialog(
+                    backgroundColor: Colors.transparent,
+
+                    child: Container(
+                      width: 400,
+                      height: 200,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [styling.primary, styling.secondary],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Container(
+                        margin: EdgeInsets.all(
+                          2,
+                        ), // Creates the border thickness
+                        decoration: BoxDecoration(
+                          color: styling.background,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              "${playerAttacking.name} has been defeated!",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            }
+          });
         }
       } else if (dataMap['type'] == "back_from_attack") {
         final playerId = dataMap['playerId'] as String;
@@ -683,10 +1116,17 @@ class _KalamattackState extends State<Kalamattack> {
             playerAttacking!.id == currentPlayer!.id) {
           showDialog(
             context: context,
-            barrierDismissible: false,
-            builder: (BuildContext context) {
+            barrierDismissible: true,
+            builder: (BuildContext dialogContext) {
               Timer(Duration(seconds: 2), () {
-                Navigator.of(context).pop(); // Close the game screen
+                try {
+                  if (dialogContext.mounted)
+                    Navigator.of(dialogContext).pop();
+                  else
+                    print("Dialog context is not mounted, cannot pop dialog.");
+                } catch (e) {
+                  print("Error popping dialog: $e");
+                }
               });
               return Dialog(
                 backgroundColor: Colors.transparent,
@@ -738,6 +1178,215 @@ class _KalamattackState extends State<Kalamattack> {
           waitingForDefense = false;
           attackDamage = 0;
           dropZones[3].cards.clear();
+        });
+      } else if (dataMap['type'] == "update_players_attacked_in_round") {
+        final playersAttackedData =
+            dataMap['playersAttacked'] != null
+                ? dataMap['playersAttacked'] as String
+                : '';
+        playersAttackedInRound = playersAttackedData.split(',');
+        print("Players attacked in round: $playersAttackedInRound");
+
+        setState(() {});
+      } else if (dataMap['type'] == "update_players") {
+        final playersData = dataMap['players'] as List;
+        final playersList =
+            playersData
+                .map(
+                  (p) => KalamattackPlayer.fromMap(p as Map<String, dynamic>),
+                )
+                .toList();
+        for (var player in playersList) {
+          final index = players.indexWhere((p) => p.id == player.id);
+          if (index != -1) {
+            players[index] = player;
+          }
+        }
+        currentPlayer = players.firstWhere((p) => p.id == widget.player.id);
+        setState(() {});
+      } else if (dataMap["type"] == "next_turn") {
+        final currentPlayerId = dataMap['currentPlayerId'] as String;
+        final nextPlayerId = dataMap['nextPlayerId'] as String;
+        final indexOfCurrentPlayer = players.indexWhere(
+          (p) => p.id == currentPlayerId,
+        );
+        final indexOfNextPlayer = players.indexWhere(
+          (p) => p.id == nextPlayerId,
+        );
+        setState(() {
+          players[indexOfCurrentPlayer].myTurn = false;
+          players[indexOfNextPlayer].myTurn = true;
+          currentPlayer = players.firstWhere((p) => p.id == widget.player.id);
+          gamePhase = KalamattackGamePhase.selectingMove;
+          playerAttacking = null;
+          playerThatIsAttacking = null;
+          waitingForAttack = false;
+          waitingForDefense = false;
+          attackDamage = 0;
+          damageAsDefense = 0;
+          dropZones[3].cards.clear();
+          dropZones[4].cards.clear();
+        });
+      } else if (dataMap['type'] == "kalamattack") {
+        final selectedKingCardData =
+            dataMap['kingCard'] as Map<String, dynamic>;
+        final selectedQueenCardData =
+            dataMap['queenCard'] as Map<String, dynamic>;
+        final attackingPlayerId = dataMap['attackingPlayerId'] as String;
+        final targetPlayerId = dataMap['targetPlayerId'] as String;
+        final nextPlayerId = dataMap['nextPlayerId'] as String;
+        final discardCardsData = dataMap['discardedCards'] as List<dynamic>;
+        final selectedKingCard = CardData.fromMap(selectedKingCardData);
+        final selectedQueenCard = CardData.fromMap(selectedQueenCardData);
+        final discardCards =
+            discardCardsData
+                .map((c) => CardData.fromMap(c as Map<String, dynamic>))
+                .toList();
+        final attackingPlayer = players.firstWhere(
+          (p) => p.id == attackingPlayerId,
+        );
+        setState(() {
+          // Update the current player and their turn
+          players.forEach((p) => p.myTurn = false);
+          players[players.indexWhere((p) => p.id == attackingPlayerId)].hand
+              .removeWhere((c) => c.id == selectedKingCard.id);
+          players[players.indexWhere((p) => p.id == attackingPlayerId)].hand
+              .removeWhere((c) => c.id == selectedQueenCard.id);
+
+          players[players.indexWhere((p) => p.id == targetPlayerId)]
+              .poisonedRoundsLeft = 3;
+          players[players.indexWhere((p) => p.id == targetPlayerId)]
+              .isPoisoned = true;
+
+          players[players.indexWhere((p) => p.id == nextPlayerId)].myTurn =
+              true;
+          currentPlayer = players.firstWhere((p) => p.id == widget.player.id);
+          gamePhase = KalamattackGamePhase.selectingMove;
+          discard.clear();
+          discard.addAll(discardCards);
+        });
+        if (currentPlayer!.id == targetPlayerId) {
+          showDialog(
+            context: context,
+            barrierDismissible: true,
+            builder: (BuildContext dialogContext) {
+              Timer(Duration(seconds: 2), () {
+                try {
+                  if (dialogContext.mounted)
+                    Navigator.of(dialogContext).pop();
+                  else
+                    print("Dialog context is not mounted, cannot pop dialog.");
+                } catch (e) {
+                  print("Error popping dialog: $e");
+                }
+              });
+              return Dialog(
+                backgroundColor: Colors.transparent,
+
+                child: Container(
+                  width: 400,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [styling.primary, styling.secondary],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Container(
+                    margin: EdgeInsets.all(2), // Creates the border thickness
+                    decoration: BoxDecoration(
+                      color: styling.background,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          "${attackingPlayer.name} has kalamattacked you!",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        } else {
+          showDialog(
+            context: context,
+            barrierDismissible: true,
+            builder: (BuildContext dialogContext) {
+              Timer(Duration(seconds: 2), () {
+                try {
+                  if (dialogContext.mounted)
+                    Navigator.of(dialogContext).pop();
+                  else
+                    print("Dialog context is not mounted, cannot pop dialog.");
+                } catch (e) {
+                  print("Error popping dialog: $e");
+                }
+              });
+              return Dialog(
+                backgroundColor: Colors.transparent,
+
+                child: Container(
+                  width: 400,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [styling.primary, styling.secondary],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Container(
+                    margin: EdgeInsets.all(2), // Creates the border thickness
+                    decoration: BoxDecoration(
+                      color: styling.background,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          "${attackingPlayer.name} has kalamattacked ${players.firstWhere((p) => p.id == targetPlayerId).name}!",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        }
+      } else if (dataMap['type'] == "update_discard") {
+        final discardData = dataMap['discard'] as List;
+        final discardCards =
+            discardData
+                .map((c) => CardData.fromMap(c as Map<String, dynamic>))
+                .toList();
+        setState(() {
+          discard.clear();
+          discard.addAll(discardCards);
         });
       }
     });
@@ -872,12 +1521,19 @@ class _KalamattackState extends State<Kalamattack> {
     return damage;
   }
 
-  int calculateDefense(List<CardData> cards) {
+  int calculateDefense(
+    List<CardData> cards,
+    KalamattackPlayer defendingPlayer,
+  ) {
     int damage = 0;
     damageAsDefense = 0;
     setState(() {});
     if (cards.isEmpty) return damage;
 
+    if (defendingPlayer.hasFunctionalKingdom &&
+        !hasFunctionalKingdom(defendingPlayer.hand)) {
+      return attackDamage;
+    }
     // Calculate damage based on the type of cards played
     if (cards.length == 1) {
       if (cards.first.value == 1) {
@@ -1251,6 +1907,8 @@ class _KalamattackState extends State<Kalamattack> {
             'type': 'update_defense_cards',
             'playerThatIsAttackingId': playerThatIsAttacking!.id,
             'cards': targetZone.cards.map((c) => c.toMap()).toList(),
+            'playerAttackingId': playerAttacking!.id,
+            'handCards': handCards.map((c) => c.toMap()).toList(),
           }, currentPlayer!.id);
         },
       ),
@@ -1369,6 +2027,8 @@ class _KalamattackState extends State<Kalamattack> {
       'type': 'update_defense_cards',
       'playerThatIsAttackingId': playerThatIsAttacking!.id,
       'cards': targetZone.cards.map((c) => c.toMap()).toList(),
+      'playerAttackingId': playerAttacking!.id,
+      'handCards': handCards.map((c) => c.toMap()).toList(),
     }, currentPlayer!.id);
     setState(() {});
   }
@@ -1435,18 +2095,6 @@ class _KalamattackState extends State<Kalamattack> {
     }
 
     // Check if the bot has no cards left
-    if (players[indexOfBot].hand.isEmpty) {
-      // Game over, bot has no cards left
-      winningPlayer = players[indexOfBot];
-      gameState = KalamattackGameState.gameOver;
-      SharedPrefs.addCrazyEightsGamesPlayed(1);
-      setState(() {});
-      connectionService.broadcastMessage({
-        'type': 'game_over',
-        'winnerId': botId,
-      }, currentPlayer!.id);
-      return;
-    }
 
     int nextPlayerIndex = (indexOfBot + 1) % players.length;
 
@@ -1583,12 +2231,13 @@ class _KalamattackState extends State<Kalamattack> {
     } else {
       players[0].myTurn = false;
       currentPlayer!.myTurn = false;
-      players[1].myTurn = true;
+      players[getIndexOfNextPlayer(0)].myTurn = true;
+      onChangeTurn(players[getIndexOfNextPlayer(0)], players[0]);
       gamePhase = KalamattackGamePhase.selectingMove;
       connectionService.broadcastMessage({
         'type': 'card_picked_from_pile_end_turn',
         'playerId': currentPlayer!.id,
-        'nextPlayerId': players[1].id,
+        'nextPlayerId': players[getIndexOfNextPlayer(0)].id,
         'deck': deckCards.map((c) => c.toMap()).toList(),
         'cardPicked': cardPicked.toMap(),
         'newCard': newCard.toMap(),
@@ -1611,7 +2260,8 @@ class _KalamattackState extends State<Kalamattack> {
     // handCards = sortHand(currentPlayer!.hand);
     players[0].myTurn = false;
     currentPlayer!.myTurn = false;
-    players[1].myTurn = true;
+    players[getIndexOfNextPlayer(0)].myTurn = true;
+    onChangeTurn(players[getIndexOfNextPlayer(0)], players[0]);
     setState(() {
       deckCards.add(card);
       gamePhase = KalamattackGamePhase.selectingMove;
@@ -1619,7 +2269,7 @@ class _KalamattackState extends State<Kalamattack> {
     connectionService.broadcastMessage({
       'type': 'card_discarded',
       'playerId': currentPlayer!.id,
-      'nextPlayerId': players[1].id,
+      'nextPlayerId': players[getIndexOfNextPlayer(0)].id,
       'card': card.toMap(),
       'discardCards': discard.map((c) => c.toMap()).toList(),
     }, currentPlayer!.id);
@@ -1630,6 +2280,141 @@ class _KalamattackState extends State<Kalamattack> {
     //     bot.playCard([], null, players);
     //   });
     // }
+  }
+
+  void onChangeTurn(
+    KalamattackPlayer nextPlayer,
+    KalamattackPlayer previousPlayer,
+  ) {
+    if (playersAttackedInRound.contains(nextPlayer.id)) {
+      // If the next player has already attacked in this round, skip them
+      playersAttackedInRound.remove(nextPlayer.id);
+      connectionService.broadcastMessage({
+        'type': 'update_players_attacked_in_round',
+        'playersAttackedInRound': playersAttackedInRound.join(','),
+      }, currentPlayer!.id);
+    }
+    if (nextPlayer.totalShieldHealth > 0) {
+      List<Shield> shields = [...nextPlayer.shields];
+      for (var shield in shields) {
+        if (shield.health <= 0) {
+          nextPlayer.shields.remove(shield);
+        }
+        if (shield.roundsLeft == 0) {
+          nextPlayer.shields.remove(shield);
+        } else {
+          shield.roundsLeft--;
+        }
+      }
+      players[players.indexWhere((p) => p.id == nextPlayer.id)] = nextPlayer;
+      connectionService.broadcastMessage({
+        'type': 'update_players',
+        'players': players.map((p) => p.toMap()).toList(),
+      }, currentPlayer!.id);
+    }
+    if (nextPlayer.isPoisoned) {
+      nextPlayer.damage(5);
+      if (nextPlayer.health <= 0) {
+        nextPlayer.health = 1;
+      }
+      nextPlayer.poisonedRoundsLeft--;
+      if (nextPlayer.poisonedRoundsLeft <= 0) {
+        nextPlayer.isPoisoned = false;
+      }
+      players[players.indexWhere((p) => p.id == nextPlayer.id)] = nextPlayer;
+      connectionService.broadcastMessage({
+        'type': 'update_players',
+        'players': players.map((p) => p.toMap()).toList(),
+      }, currentPlayer!.id);
+    }
+    for (var player in players) {
+      // Reset all players' turn status
+      if (hasFunctionalKingdom(player.hand)) {
+        player.hasFunctionalKingdom = true;
+      } else {
+        player.hasFunctionalKingdom = false;
+      }
+    }
+    connectionService.broadcastMessage({
+      'type': 'update_players',
+      'players': players.map((p) => p.toMap()).toList(),
+    }, currentPlayer!.id);
+
+    setState(() {});
+  }
+
+  bool canUseKalamattack() {
+    if (handCards.length < 2) {
+      return false; // Not enough cards to use Kalamattack
+    }
+    //check if player has king and queen in hand
+    bool hasKing = handCards.any((card) => card.value == 13);
+    bool hasQueen = handCards.any((card) => card.value == 12);
+    if (!hasKing || !hasQueen) {
+      return false; // Player must have both King and Queen to use Kalamattack
+    }
+    List<CardData> kingCards =
+        handCards.where((card) => card.value == 13).toList();
+    for (var kingCard in kingCards) {
+      //Check if has queen of opposite color
+      bool hasOppositeColorQueen = handCards.any(
+        (card) =>
+            card.value == 12 &&
+            kingCard.suit != card.suit &&
+            kingCard.suit.alternateSuit != card.suit,
+      );
+      if (hasOppositeColorQueen) {
+        return true; // Player can use Kalamattack
+      }
+    }
+    return false; // Player cannot use Kalamattack
+  }
+
+  int getIndexOfNextPlayer(int currentIndex) {
+    int nextIndex = (currentIndex + 1) % players.length;
+    while (players[nextIndex].health <= 0) {
+      nextIndex = (nextIndex + 1) % players.length;
+    }
+    return nextIndex;
+  }
+
+  bool hasFunctionalKingdom(List<CardData> cards) {
+    bool hasKing = cards.any((card) => card.value == 13);
+    bool hasQueen = cards.any((card) => card.value == 12);
+    bool hasJack = cards.any((card) => card.value == 11);
+    return hasKing && hasQueen && hasJack;
+  }
+
+  void checkForGameOver() {
+    // Check if any player has no cards left
+    KalamattackPlayer? winningPlayer;
+    bool allPlayersDead = true;
+    for (var player in players) {
+      if (player.health > 0) {
+        if (winningPlayer == null) {
+          winningPlayer = player;
+        } else {
+          // If there is more than one player with cards, the game is not over
+          allPlayersDead = false;
+          break;
+        }
+      }
+    }
+    if (allPlayersDead) {
+      // If all players are dead, the game is over
+      gameState = KalamattackGameState.gameOver;
+      SharedPrefs.addKalamattackGamesPlayed(1);
+      if (winningPlayer!.id == currentPlayer!.id) {
+        SharedPrefs.addKalamattackGamesWon(1);
+      }
+      setState(() {
+        this.winningPlayer = winningPlayer;
+      });
+      connectionService.broadcastMessage({
+        'type': 'game_over',
+        'winnerId': winningPlayer.id,
+      }, currentPlayer!.id);
+    }
   }
 
   @override
@@ -1817,7 +2602,8 @@ class _KalamattackState extends State<Kalamattack> {
             padding: EdgeInsets.only(left: 8.0, right: 8.0),
 
             child:
-                gameState == KalamattackGameState.playing
+                gameState == KalamattackGameState.playing ||
+                        gameState == KalamattackGameState.dead
                     ? buildPlayingScreen(calculatedScale, context, handScale)
                     : gameState == KalamattackGameState.gameOver
                     ? buildGameOverScreen()
@@ -1867,13 +2653,23 @@ class _KalamattackState extends State<Kalamattack> {
                             ),
                             SizedBox(height: 4.0),
                             Text(
-                              '${player.health} HP',
+                              '${player.health} HP${player.totalShieldHealth > 0 ? ' + ${player.totalShieldHealth} 🛡️' : ''}${player.isPoisoned ? '\n${player.poisonedRoundsLeft} ☠️' : ''}',
                               style: TextStyle(
                                 fontSize: 14.0,
                                 color: Colors.white,
                               ),
                               textAlign: TextAlign.center,
                             ),
+                            SizedBox(height: 4.0),
+                            if (player.hasFunctionalKingdom)
+                              Text(
+                                '🏰',
+                                style: TextStyle(
+                                  fontSize: 14.0,
+                                  color: Colors.white,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
                           ],
                         ),
                       ),
@@ -1882,40 +2678,42 @@ class _KalamattackState extends State<Kalamattack> {
               ),
             ),
           ),
-          Positioned(
-            bottom: 10,
+          if (gameState != KalamattackGameState.dead)
+            Positioned(
+              bottom: 10,
 
-            child: SizedBox(
-              width: MediaQuery.of(context).size.width,
+              child: SizedBox(
+                width: MediaQuery.of(context).size.width,
 
-              child: Hand(
-                handCards: handCards,
-                currentDragData: currentDragData,
-                onDragCompleted: onPlayedFromBlitzDeck,
-                onDragStarted: _onDragStarted,
-                onDragEnd: _onDragEnd,
-                scale: handScale,
-                onTapBlitz: () {},
-                controller: handController,
-                draggableCards:
-                    (players[0].myTurn &&
-                        gamePhase == KalamattackGamePhase.attacking) ||
-                    (gamePhase == KalamattackGamePhase.defending &&
-                        playerAttacking!.id == currentPlayer!.id &&
-                        !waitingForAttack),
-                onTapCard:
-                    players[0].myTurn &&
-                            gamePhase == KalamattackGamePhase.discardingCard
-                        ? selectCardToDiscard
-                        : null,
-                isCardPlayable:
-                    players[0].myTurn ||
-                            gamePhase == KalamattackGamePhase.defending
-                        ? customDropZoneValidator
-                        : null,
+                child: Hand(
+                  handCards: handCards,
+                  currentDragData: currentDragData,
+                  onDragCompleted: onPlayedFromBlitzDeck,
+                  onDragStarted: _onDragStarted,
+                  onDragEnd: _onDragEnd,
+                  scale: handScale,
+                  onTapBlitz: () {},
+                  controller: handController,
+                  draggableCards:
+                      (players[0].myTurn &&
+                          gamePhase == KalamattackGamePhase.attacking &&
+                          !waitingForDefense) ||
+                      (gamePhase == KalamattackGamePhase.defending &&
+                          playerAttacking!.id == currentPlayer!.id &&
+                          !waitingForAttack),
+                  onTapCard:
+                      players[0].myTurn &&
+                              gamePhase == KalamattackGamePhase.discardingCard
+                          ? selectCardToDiscard
+                          : null,
+                  isCardPlayable:
+                      (players[0].myTurn && !waitingForDefense) ||
+                              gamePhase == KalamattackGamePhase.defending
+                          ? customDropZoneValidator
+                          : null,
+                ),
               ),
             ),
-          ),
           if (gamePhase == KalamattackGamePhase.discardingCard ||
               gamePhase == KalamattackGamePhase.selectingMove) ...[
             Positioned(
@@ -1969,11 +2767,12 @@ class _KalamattackState extends State<Kalamattack> {
                     gamePhase = KalamattackGamePhase.selectingMove;
                     players[0].myTurn = false;
                     currentPlayer!.myTurn = false;
-                    players[1].myTurn = true;
+                    players[getIndexOfNextPlayer(0)].myTurn = true;
+                    onChangeTurn(players[getIndexOfNextPlayer(0)], players[0]);
                     connectionService.broadcastMessage({
                       'type': 'drew_card_end_turn',
                       'playerId': currentPlayer!.id,
-                      'nextPlayerId': players[1].id,
+                      'nextPlayerId': players[getIndexOfNextPlayer(0)].id,
                       'deck': deckCards.map((c) => c.toMap()).toList(),
                       'cardPicked': card.toMap(),
                     }, currentPlayer!.id);
@@ -2091,7 +2890,10 @@ class _KalamattackState extends State<Kalamattack> {
                     Wrap(
                       children: [
                         for (var player in players.where(
-                          (p) => p.id != currentPlayer!.id,
+                          (p) =>
+                              p.id != currentPlayer!.id &&
+                              p.health > 0 &&
+                              !playersAttackedInRound.contains(p.id),
                         ))
                           Padding(
                             padding: const EdgeInsets.all(8.0),
@@ -2130,7 +2932,7 @@ class _KalamattackState extends State<Kalamattack> {
                 child: Column(
                   children: [
                     if (!waitingForDefense) const SizedBox(height: 250),
-                    if (waitingForDefense) const SizedBox(height: 65),
+                    if (waitingForDefense) const SizedBox(height: 85),
                     if (waitingForDefense)
                       FancyWidget(
                         child: Text(
@@ -2141,7 +2943,7 @@ class _KalamattackState extends State<Kalamattack> {
                     if (waitingForDefense) const SizedBox(height: 8),
                     if (waitingForDefense)
                       Text(
-                        "Defense: ${calculateDefense(dropZones[4].cards)}",
+                        "Defense: ${calculateDefense(dropZones[4].cards, playerAttacking!)}",
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 18 * handScale,
@@ -2234,6 +3036,8 @@ class _KalamattackState extends State<Kalamattack> {
                         onTap: () {
                           attackDamage = calculateDamage(dropZones[3].cards);
                           waitingForDefense = true;
+                          playersAttackedInRound.add(playerAttacking!.id);
+
                           setState(() {});
                           connectionService.broadcastMessage({
                             'type': 'attack_player',
@@ -2251,7 +3055,7 @@ class _KalamattackState extends State<Kalamattack> {
               alignment: Alignment.topCenter,
               child: Column(
                 children: [
-                  const SizedBox(height: 75),
+                  const SizedBox(height: 85),
 
                   FancyWidget(
                     child: Text(
@@ -2296,7 +3100,7 @@ class _KalamattackState extends State<Kalamattack> {
                   if (!waitingForAttack) const SizedBox(height: 8),
                   if (!waitingForAttack)
                     Text(
-                      "Defense: ${calculateDefense(dropZones[4].cards)}",
+                      "Defense: ${calculateDefense(dropZones[4].cards, currentPlayer!)}",
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 18 * handScale,
@@ -2348,7 +3152,7 @@ class _KalamattackState extends State<Kalamattack> {
                     const SizedBox(height: 16),
                   if (!waitingForAttack && damageAsDefense > 0)
                     const SizedBox(height: 4),
-                  if (canSubmitDefense() && !waitingForAttack)
+                  if (!waitingForAttack)
                     ActionButton(
                       width: 100,
                       text: Text(
@@ -2358,17 +3162,25 @@ class _KalamattackState extends State<Kalamattack> {
                       onTap: () {
                         // attackDamage = calculateDamage(dropZones[4].cards);
                         // waitingForDefense = true;
-                        int defense = calculateDefense(dropZones[4].cards);
+                        int defense = calculateDefense(
+                          dropZones[4].cards,
+                          currentPlayer!,
+                        );
                         int totalDamage = attackDamage - defense;
                         if (totalDamage <= 0) {
                           totalDamage = 0;
                         }
-                        players[0].health -= totalDamage;
+                        if (players[0].hasFunctionalKingdom &&
+                            totalDamage > 10) {
+                          // If the player has a functional kingdom, they can only take 10 damage
+                          totalDamage = 10;
+                        }
+                        players[0].damage(totalDamage);
                         if (damageAsDefense > 0) {
                           players[players.indexWhere(
                                 (p) => p.id == playerThatIsAttacking!.id,
                               )]
-                              .health -= damageAsDefense;
+                              .damage(damageAsDefense);
                         }
 
                         //next player's turn
@@ -2376,9 +3188,13 @@ class _KalamattackState extends State<Kalamattack> {
                           (p) => p.myTurn,
                         );
                         players[indexOfPlayersTurn].myTurn = false;
-                        int nextPlayerIndex =
-                            (indexOfPlayersTurn + 1) % players.length;
-                        players[nextPlayerIndex].myTurn = true;
+
+                        players[getIndexOfNextPlayer(indexOfPlayersTurn)]
+                            .myTurn = true;
+                        onChangeTurn(
+                          players[getIndexOfNextPlayer(indexOfPlayersTurn)],
+                          players[indexOfPlayersTurn],
+                        );
                         currentPlayer = players.firstWhere(
                           (p) => p.id == currentPlayer!.id,
                         );
@@ -2389,12 +3205,19 @@ class _KalamattackState extends State<Kalamattack> {
                         final defenseDamage = damageAsDefense;
                         showDialog(
                           context: context,
-                          barrierDismissible: false,
-                          builder: (BuildContext context) {
+                          barrierDismissible: true,
+                          builder: (BuildContext dialogContext) {
                             Timer(Duration(seconds: 2), () {
-                              Navigator.of(
-                                context,
-                              ).pop(); // Close the game screen
+                              try {
+                                if (dialogContext.mounted)
+                                  Navigator.of(dialogContext).pop();
+                                else
+                                  print(
+                                    "Dialog context is not mounted, cannot pop dialog.",
+                                  );
+                              } catch (e) {
+                                print("Error popping dialog: $e");
+                              }
                             });
                             return Dialog(
                               backgroundColor: Colors.transparent,
@@ -2442,7 +3265,154 @@ class _KalamattackState extends State<Kalamattack> {
                               ),
                             );
                           },
-                        );
+                        ).then((_) {
+                          if (currentPlayer!.health <= 0) {
+                            gameState = KalamattackGameState.dead;
+                            setState(() {});
+                            showDialog(
+                              context: context,
+                              barrierDismissible: true,
+                              builder: (BuildContext dialogContext) {
+                                Timer(Duration(seconds: 2), () {
+                                  try {
+                                    if (dialogContext.mounted)
+                                      Navigator.of(dialogContext).pop();
+                                    else
+                                      print(
+                                        "Dialog context is not mounted, cannot pop dialog.",
+                                      );
+                                  } catch (e) {
+                                    print("Error popping dialog: $e");
+                                  } // Close the game screen
+                                });
+                                return Dialog(
+                                  backgroundColor: Colors.transparent,
+
+                                  child: Container(
+                                    width: 400,
+                                    height: 200,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          styling.primary,
+                                          styling.secondary,
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Container(
+                                      margin: EdgeInsets.all(
+                                        2,
+                                      ), // Creates the border thickness
+                                      decoration: BoxDecoration(
+                                        color: styling.background,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            "You have been defeated!",
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ).then((_) {
+                              // Close the game screen
+                              if (attackingPlayer.health <= 0) {
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible: true,
+                                  builder: (BuildContext dialogContext) {
+                                    Timer(Duration(seconds: 2), () {
+                                      try {
+                                        if (dialogContext.mounted)
+                                          Navigator.of(dialogContext).pop();
+                                        else
+                                          print(
+                                            "Dialog context is not mounted, cannot pop dialog.",
+                                          );
+                                      } catch (e) {
+                                        print("Error popping dialog: $e");
+                                      } // Close the game screen
+                                    });
+                                    return Dialog(
+                                      backgroundColor: Colors.transparent,
+
+                                      child: Container(
+                                        width: 400,
+                                        height: 200,
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: [
+                                              styling.primary,
+                                              styling.secondary,
+                                            ],
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                        child: Container(
+                                          margin: EdgeInsets.all(
+                                            2,
+                                          ), // Creates the border thickness
+                                          decoration: BoxDecoration(
+                                            color: styling.background,
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
+                                          ),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.center,
+                                            children: [
+                                              Text(
+                                                "${attackingPlayer.name} has been defeated!",
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 24,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ).then((_) {
+                                  // Close the game screen
+
+                                  checkForGameOver();
+                                });
+                              } else {
+                                checkForGameOver();
+                              }
+                            });
+                          }
+                        });
                         waitingForDefense = false;
                         waitingForAttack = false;
                         attackDamage = 0;
@@ -2525,7 +3495,7 @@ class _KalamattackState extends State<Kalamattack> {
                   const SizedBox(height: 8),
 
                   Text(
-                    "Defense: ${calculateDefense(dropZones[4].cards)}",
+                    "Defense: ${calculateDefense(dropZones[4].cards, playerAttacking!)}",
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18 * handScale,
@@ -2561,8 +3531,121 @@ class _KalamattackState extends State<Kalamattack> {
                 ],
               ),
             ),
+          ] else if (gamePhase == KalamattackGamePhase.choosingKalamattack) ...[
+            Align(
+              alignment: Alignment.topCenter,
+              child: Column(
+                children: [
+                  const SizedBox(height: 100),
+                  FancyWidget(
+                    child: Text(
+                      "Select a player to kalamattack",
+                      style: TextStyle(color: Colors.white, fontSize: 20),
+                    ),
+                  ),
+                  Wrap(
+                    children: [
+                      for (var player in players.where(
+                        (p) => p.id != currentPlayer!.id && p.health > 0,
+                      ))
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: ActionButton(
+                            text: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text(
+                                player.name,
+                                style: TextStyle(
+                                  fontSize: 16.0,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            onTap: () {
+                              SharedPrefs.hapticButtonPress();
+                              //Get the kalamattack cards for the player
+                              List<CardData> kingCards =
+                                  handCards
+                                      .where((c) => c.value == 13)
+                                      .toList();
+                              CardData? selectedKingCard;
+                              CardData? selectedQueenCard;
+                              for (var kingCard in kingCards) {
+                                //Check if has queen of opposite color
+                                bool hasOppositeColorQueen = handCards.any(
+                                  (card) =>
+                                      card.value == 12 &&
+                                      kingCard.suit != card.suit &&
+                                      kingCard.suit.alternateSuit != card.suit,
+                                );
+                                if (hasOppositeColorQueen) {
+                                  selectedQueenCard = handCards.firstWhere(
+                                    (card) =>
+                                        card.value == 12 &&
+                                        kingCard.suit != card.suit &&
+                                        kingCard.suit.alternateSuit !=
+                                            card.suit,
+                                  );
+                                  selectedKingCard =
+                                      kingCard; // Player can use Kalamattack
+                                }
+                                player.poisonedRoundsLeft = 3;
+                                player.isPoisoned = true;
+                                players[players.indexWhere(
+                                      (p) => p.id == player.id,
+                                    )] =
+                                    player;
+                                discard.add(selectedQueenCard!);
+                                discard.add(selectedKingCard!);
+                                players[0].myTurn = false;
+                                currentPlayer!.myTurn = false;
+                                players[getIndexOfNextPlayer(0)].myTurn = true;
+                                onChangeTurn(
+                                  players[getIndexOfNextPlayer(0)],
+                                  players[0],
+                                );
+                                gamePhase = KalamattackGamePhase.selectingMove;
+                                connectionService.broadcastMessage({
+                                  'type': 'kalamattack',
+                                  'attackingPlayerId': currentPlayer!.id,
+                                  'targetPlayerId': player.id,
+                                  'nextPlayerId':
+                                      players[getIndexOfNextPlayer(0)].id,
+                                  'kingCard': selectedKingCard.toMap(),
+                                  'queenCard': selectedQueenCard.toMap(),
+                                  'discardedCards':
+                                      discard.map((c) => c.toMap()).toList(),
+                                }, currentPlayer!.id);
+                                currentPlayer!.hand.removeWhere(
+                                  (c) => c.id == selectedKingCard!.id,
+                                );
+                                currentPlayer!.hand.removeWhere(
+                                  (c) => c.id == selectedQueenCard!.id,
+                                );
+                                handCards.removeWhere(
+                                  (c) => c.id == selectedKingCard!.id,
+                                );
+                                handCards.removeWhere(
+                                  (c) => c.id == selectedQueenCard!.id,
+                                );
+                                handCards = sortHand(handCards);
+                                currentPlayer!.hand = sortHand(
+                                  currentPlayer!.hand,
+                                );
+                                handController.updateHand(currentPlayer!.hand);
+                              }
+                              setState(() {});
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ],
-          ...buildBottomBar(calculatedScale, context, handScale),
+          if (gameState != KalamattackGameState.dead)
+            ...buildBottomBar(calculatedScale, context, handScale),
         ],
       ),
     );
@@ -2598,11 +3681,61 @@ class _KalamattackState extends State<Kalamattack> {
                     fontSize: 16 * calculatedScale,
                   ),
                 ),
+                if (currentPlayer!.totalShieldHealth > 0)
+                  Text(
+                    "${currentPlayer!.totalShieldHealth} 🛡️",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16 * calculatedScale,
+                    ),
+                  ),
+                if (currentPlayer!.isPoisoned)
+                  Text(
+                    "${currentPlayer!.poisonedRoundsLeft} ☠️",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16 * calculatedScale,
+                    ),
+                  ),
+                if (currentPlayer!.hasFunctionalKingdom)
+                  Text(
+                    "🏰",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16 * calculatedScale,
+                    ),
+                  ),
               ],
             ),
           ),
         ),
       ),
+      if (currentPlayer!.myTurn &&
+          gamePhase == KalamattackGamePhase.selectingMove &&
+          canUseKalamattack())
+        Positioned(
+          bottom: 150 * handScale + (40 * handScale) + 45,
+          left: 24,
+
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ActionButton(
+                text: Text(
+                  'Kalamattack',
+                  style: TextStyle(fontSize: 16.0, color: Colors.white),
+                ),
+                onTap: () {
+                  setState(() {
+                    gamePhase = KalamattackGamePhase.choosingKalamattack;
+                  });
+                },
+                width: 120.0,
+                height: 40.0,
+              ),
+            ],
+          ),
+        ),
       if (currentPlayer!.myTurn &&
           gamePhase == KalamattackGamePhase.selectingMove)
         Positioned(
@@ -2615,16 +3748,74 @@ class _KalamattackState extends State<Kalamattack> {
               ActionButton(
                 text: Text(
                   'Attack',
-                  style: TextStyle(fontSize: 18.0, color: Colors.white),
+                  style: TextStyle(fontSize: 16.0, color: Colors.white),
                 ),
                 onTap: () {
+                  print(
+                    "Players attacked in round: "
+                    "${playersAttackedInRound.join(', ')}",
+                  );
                   setState(() {
                     gamePhase = KalamattackGamePhase.attacking;
                   });
                 },
-                width: 100.0,
-                height: 50.0,
+                width: 75.0,
+                height: 40.0,
               ),
+              if (handCards.any((c) => c.value == 11))
+                const SizedBox(width: 8.0),
+              if (handCards.any((c) => c.value == 11))
+                ActionButton(
+                  text: Text(
+                    'Shield',
+                    style: TextStyle(fontSize: 16.0, color: Colors.white),
+                  ),
+                  onTap: () {
+                    //remove one jack from the hand
+                    final shieldCard = handCards.firstWhere(
+                      (c) => c.value == 11,
+                    );
+                    handCards.removeWhere((c) => c.id == shieldCard.id);
+                    currentPlayer!.hand.removeWhere(
+                      (c) => c.id == shieldCard.id,
+                    );
+                    players[0].hand.removeWhere((c) => c.id == shieldCard.id);
+                    handCards = sortHand(handCards);
+                    currentPlayer!.hand = sortHand(currentPlayer!.hand);
+                    handController.updateHand(currentPlayer!.hand);
+
+                    currentPlayer!.shields.add(
+                      Shield(health: 5, roundsLeft: 2),
+                    );
+                    discard.add(shieldCard);
+                    connectionService.broadcastMessage({
+                      'type': 'update_discard',
+                      'discard': discard.map((c) => c.toMap()).toList(),
+                    }, currentPlayer!.id);
+                    connectionService.broadcastMessage({
+                      'type': 'update_players',
+                      'players': players.map((p) => p.toMap()).toList(),
+                    }, currentPlayer!.id);
+
+                    setState(() {
+                      gamePhase = KalamattackGamePhase.selectingMove;
+                      players[0].myTurn = false;
+                      currentPlayer!.myTurn = false;
+                      players[getIndexOfNextPlayer(0)].myTurn = true;
+                      onChangeTurn(
+                        players[getIndexOfNextPlayer(0)],
+                        players[0],
+                      );
+                    });
+                    connectionService.broadcastMessage({
+                      'type': 'next_turn',
+                      'currentPlayerId': currentPlayer!.id,
+                      'nextPlayerId': players[getIndexOfNextPlayer(0)].id,
+                    }, currentPlayer!.id);
+                  },
+                  width: 75.0,
+                  height: 40.0,
+                ),
               Text(" or Draw", style: TextStyle(color: Colors.white)),
             ],
           ),

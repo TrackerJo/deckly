@@ -32,6 +32,9 @@ class _StatsPageState extends State<StatsPage> {
 
   int crazyEightsGamesPlayed = 0;
   int crazyEightsGamesWon = 0;
+
+  int kalamattackGamesPlayed = 0;
+  int kalamattackGamesWon = 0;
   void getStats() async {
     nertzRoundsPlayed = await SharedPrefs.getNertzRoundsPlayed();
     nertzRoundsNertzed = await SharedPrefs.getNertzRoundsNertzed();
@@ -50,6 +53,9 @@ class _StatsPageState extends State<StatsPage> {
 
     crazyEightsGamesPlayed = await SharedPrefs.getCrazyEightsGamesPlayed();
     crazyEightsGamesWon = await SharedPrefs.getCrazyEightsGamesWon();
+
+    kalamattackGamesPlayed = await SharedPrefs.getKalamattackGamesPlayed();
+    kalamattackGamesWon = await SharedPrefs.getKalamattackGamesWon();
 
     // You can use these values to update your UI or perform other actions
 
@@ -216,6 +222,33 @@ class _StatsPageState extends State<StatsPage> {
                       ),
                       subtitle: Text(
                         "Games Played: $crazyEightsGamesPlayed\nGames Won: $crazyEightsGamesWon",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: FancyBorder(
+                    child: ListTile(
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(10)),
+                      ),
+                      title: FancyWidget(
+                        child: const Text(
+                          "Kalamattack Stats",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      subtitle: Text(
+                        "Games Played: $kalamattackGamesPlayed\nGames Won: $kalamattackGamesPlayed",
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 14,

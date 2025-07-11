@@ -12,6 +12,7 @@ import 'package:deckly/pages/euchre.dart';
 import 'package:deckly/pages/kalamattack.dart';
 import 'package:deckly/pages/nertz.dart';
 import 'package:deckly/pages/nertz.dart';
+import 'package:deckly/pages/oh_hell.dart';
 import 'package:deckly/widgets/action_button.dart';
 import 'package:deckly/constants.dart';
 import 'package:deckly/main.dart';
@@ -272,6 +273,18 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
           ),
         );
         break;
+      case Game.ohHell:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder:
+                (context) => OhHell(
+                  players: _players,
+                  player: _players.firstWhere((p) => p.isHost),
+                ),
+          ),
+        );
+        break;
       default:
         // Handle other game types if needed
         break;
@@ -432,6 +445,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                                           ? crazy8Rules
                                           : widget.game == Game.kalamattack
                                           ? kalamatackRules
+                                          : widget.game == Game.ohHell
+                                          ? ohHellRules
                                           : [
                                             Text(
                                               'No rules available for this game.',
@@ -474,10 +489,10 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
 
                 const SizedBox(height: 12),
                 Text(
-                  'Players${widget.requiredPlayers != null
+                  'Players${widget.minPlayers != null && widget.maxPlayers == null ? " (Min: ${widget.minPlayers})" : ""}${widget.requiredPlayers != null
                       ? " (${_players.length}/${widget.requiredPlayers})"
                       : widget.maxPlayers != null
-                      ? " (Max: ${widget.maxPlayers})"
+                      ? " (${widget.minPlayers != null ? "Min: ${widget.minPlayers}, " : ""}Max: ${widget.maxPlayers})"
                       : ""}:',
                   style: const TextStyle(fontSize: 24, color: Colors.white),
                 ),
@@ -630,7 +645,9 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                 if (_players.length < 2 ||
                     (widget.requiredPlayers != null
                         ? (_players.length < widget.requiredPlayers!)
-                        : false))
+                        : false) ||
+                    (widget.minPlayers != null &&
+                        _players.length < widget.minPlayers!))
                   FancyWidget(
                     child: const Text(
                       'Waiting for more players to join...',

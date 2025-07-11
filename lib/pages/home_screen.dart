@@ -1,3 +1,4 @@
+import 'package:deckly/api/database.dart';
 import 'package:deckly/api/shared_prefs.dart';
 import 'package:deckly/pages/settings_page.dart';
 import 'package:deckly/pages/solitare.dart';
@@ -14,6 +15,7 @@ import 'package:deckly/pages/create_room_screen.dart';
 import 'package:deckly/pages/join_room_screen.dart';
 import 'package:deckly/widgets/whats_new.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:overlay_support/overlay_support.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -114,6 +116,143 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void showSuggestionDialog(BuildContext context) {
+    bool loading = false;
+    String suggestion = "";
+    showDialog(
+      context: context,
+
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              backgroundColor: Colors.transparent,
+
+              child: Container(
+                width: 400,
+
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [styling.primary, styling.secondary],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Container(
+                  margin: EdgeInsets.all(2), // Creates the border thickness
+                  decoration: BoxDecoration(
+                    color: styling.background,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: EdgeInsets.all(10), // ,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        "Do you have a suggestion for Deckly?",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        "We'd love to hear it! Please share below.",
+                        style: TextStyle(color: Colors.white, fontSize: 18),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: GradientInputField(
+                          textField: TextField(
+                            maxLines: null,
+                            style: TextStyle(color: Colors.white),
+                            decoration: styling
+                                .gradientInputDecoration()
+                                .copyWith(hintText: "Your Suggestion"),
+                            onTap: () {
+                              SharedPrefs.hapticInputSelect();
+                            },
+                            onChanged: (value) {
+                              setState(() {
+                                suggestion = value;
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            child: Text(
+                              "Cancel",
+                              style: TextStyle(color: styling.secondary),
+                            ),
+                            onPressed: () {
+                              SharedPrefs.hapticButtonPress();
+                              Navigator.of(dialogContext).pop();
+                            },
+                          ),
+
+                          const SizedBox(width: 8),
+                          if (loading)
+                            CircularProgressIndicator(color: styling.secondary)
+                          else
+                            SolidActionButton(
+                              width: 100,
+                              height: 40,
+
+                              text: Text(
+                                "Submit",
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              onTap: () async {
+                                SharedPrefs.hapticButtonPress();
+                                if (suggestion.isEmpty) {
+                                  showSnackBar(
+                                    context,
+                                    Colors.red,
+                                    "Please enter a suggestion",
+                                  );
+                                  return;
+                                }
+                                setState(() {
+                                  loading = true;
+                                });
+                                await Database().submitSuggestion(suggestion);
+                                analytics.logGiveSuggestionEvent();
+                                setState(() {
+                                  loading = false;
+                                });
+                                Navigator.of(dialogContext).pop();
+                                showSnackBar(
+                                  context,
+                                  Colors.green,
+                                  "Thank you for your suggestion! We appreciate your feedback.",
+                                );
+                              },
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   double calculateButtonWidth(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final availableScreenWidth =
@@ -123,9 +262,93 @@ class _HomeScreenState extends State<HomeScreen> {
     return buttonWidth.clamp(100.0, 300.0); // Ensure width
   }
 
+  void showKalamattackInfoDialog(BuildContext context) {
+    showDialog(
+      context: context,
+
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              backgroundColor: Colors.transparent,
+
+              child: Container(
+                width: 400,
+
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [styling.primary, styling.secondary],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Container(
+                  margin: EdgeInsets.all(2), // Creates the border thickness
+                  decoration: BoxDecoration(
+                    color: styling.background,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: EdgeInsets.all(10), // ,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        "Brand New Game: Kalamattack",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        "Kalamattack is a card game that my friends and I created. It combines elements of strategy, luck, and player interaction. The goal is to defeat your opponents by attacking them with cards while defending yourself.",
+                        style: TextStyle(color: Colors.white, fontSize: 18),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        "The game features unique mechanics so players can strategize and outsmart their opponents. You can play with up to 5 players.",
+                        style: TextStyle(color: Colors.white, fontSize: 18),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      ActionButton(
+                        text: Text(
+                          "Okay!",
+                          style: TextStyle(color: Colors.white, fontSize: 18),
+                        ),
+                        onTap: () {
+                          SharedPrefs.hapticButtonPress();
+                          Navigator.of(dialogContext).pop();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     double buttonWidth = calculateButtonWidth(context);
+    //Run after build
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      bool seenKalamattackDialog = await SharedPrefs.getSeenKalamattackDialog();
+      if (!seenKalamattackDialog) {
+        showKalamattackInfoDialog(context);
+        SharedPrefs.setSeenKalamattackDialog(true);
+      }
+    });
     return Scaffold(
       backgroundColor: styling.background,
       body: OrientationChecker(
@@ -1678,6 +1901,292 @@ class _HomeScreenState extends State<HomeScreen> {
                         ActionButton(
                           height: 60,
                           width: buttonWidth,
+                          showNewIndicator: true,
+                          game: Game.ohHell,
+                          text: Text(
+                            'Oh Hell',
+                            style: TextStyle(
+                              color:
+                                  Colors
+                                      .white, // This will be masked by the gradient
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                final myController = TextEditingController();
+                                if (lastUsedName.isNotEmpty) {
+                                  myController.text = lastUsedName;
+                                }
+                                return Dialog(
+                                  backgroundColor: Colors.transparent,
+
+                                  child: Container(
+                                    width: 400,
+
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          styling.primary,
+                                          styling.secondary,
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Container(
+                                      margin: EdgeInsets.all(
+                                        2,
+                                      ), // Creates the border thickness
+                                      decoration: BoxDecoration(
+                                        color: styling.background,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: [
+                                          const SizedBox(height: 12),
+                                          Text(
+                                            "Enter Your Name",
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Padding(
+                                            padding: const EdgeInsets.all(8.0),
+                                            child: GradientInputField(
+                                              textField: TextField(
+                                                controller: myController,
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                ),
+                                                decoration: styling
+                                                    .gradientInputDecoration()
+                                                    .copyWith(
+                                                      hintText: "Your Name",
+                                                    ),
+                                                onTap: () {
+                                                  SharedPrefs.hapticInputSelect();
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.end,
+                                            children: [
+                                              TextButton(
+                                                child: Text(
+                                                  "Cancel",
+                                                  style: TextStyle(
+                                                    color: styling.secondary,
+                                                  ),
+                                                ),
+                                                onPressed: () {
+                                                  SharedPrefs.hapticButtonPress();
+                                                  Navigator.of(context).pop();
+                                                },
+                                              ),
+                                              Column(
+                                                children: [
+                                                  SizedBox(
+                                                    width: 128,
+
+                                                    child: Padding(
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                            8.0,
+                                                          ),
+                                                      child: SolidActionButton(
+                                                        text: Padding(
+                                                          padding:
+                                                              const EdgeInsets.all(
+                                                                8.0,
+                                                              ),
+                                                          child: Text(
+                                                            "Create Local Game",
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors
+                                                                      .white, // This will be masked by the gradient
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+
+                                                            textAlign:
+                                                                TextAlign
+                                                                    .center,
+                                                          ),
+                                                        ),
+                                                        onTap: () {
+                                                          if (myController
+                                                              .text
+                                                              .isEmpty) {
+                                                            showSnackBar(
+                                                              context,
+                                                              Colors.red,
+                                                              "Please enter a name",
+                                                            );
+                                                            return;
+                                                          }
+                                                          analytics
+                                                              .logSelectGameEvent(
+                                                                "Oh Hell Local",
+                                                              );
+                                                          SharedPrefs.setLastUsedName(
+                                                            myController.text,
+                                                          );
+                                                          SharedPrefs.addNewGamesSeen(
+                                                            Game.ohHell,
+                                                          );
+                                                          setState(() {
+                                                            lastUsedName =
+                                                                myController
+                                                                    .text;
+                                                          });
+                                                          Navigator.of(
+                                                            context,
+                                                          ).pop();
+                                                          // Navigate to the browser screen with the room code
+                                                          Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder:
+                                                                  (
+                                                                    _,
+                                                                  ) => CreateRoomScreen(
+                                                                    userName:
+                                                                        myController
+                                                                            .text,
+                                                                    game:
+                                                                        Game.ohHell,
+                                                                    maxPlayers:
+                                                                        8,
+                                                                    minPlayers:
+                                                                        3,
+                                                                  ),
+                                                            ),
+                                                          );
+                                                        },
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  SizedBox(
+                                                    width: 128,
+
+                                                    child: Padding(
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                            8.0,
+                                                          ),
+                                                      child: SolidActionButton(
+                                                        text: Padding(
+                                                          padding:
+                                                              const EdgeInsets.all(
+                                                                8.0,
+                                                              ),
+                                                          child: Text(
+                                                            "Create Online Game",
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors
+                                                                      .white, // This will be masked by the gradient
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+
+                                                            textAlign:
+                                                                TextAlign
+                                                                    .center,
+                                                          ),
+                                                        ),
+                                                        onTap: () {
+                                                          if (myController
+                                                              .text
+                                                              .isEmpty) {
+                                                            showSnackBar(
+                                                              context,
+                                                              Colors.red,
+                                                              "Please enter a name",
+                                                            );
+                                                            return;
+                                                          }
+                                                          analytics
+                                                              .logSelectGameEvent(
+                                                                "Oh Hell Online",
+                                                              );
+                                                          SharedPrefs.setLastUsedName(
+                                                            myController.text,
+                                                          );
+                                                          SharedPrefs.addNewGamesSeen(
+                                                            Game.ohHell,
+                                                          );
+                                                          setState(() {
+                                                            lastUsedName =
+                                                                myController
+                                                                    .text;
+                                                          });
+                                                          Navigator.of(
+                                                            context,
+                                                          ).pop();
+                                                          // Navigate to the browser screen with the room code
+                                                          Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder:
+                                                                  (
+                                                                    _,
+                                                                  ) => CreateRoomScreen(
+                                                                    userName:
+                                                                        myController
+                                                                            .text,
+                                                                    game:
+                                                                        Game.ohHell,
+                                                                    minPlayers:
+                                                                        3,
+                                                                    maxPlayers:
+                                                                        8,
+                                                                    isOnline:
+                                                                        true,
+                                                                  ),
+                                                            ),
+                                                          );
+                                                        },
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                        ActionButton(
+                          height: 60,
+                          width: buttonWidth,
                           text: Text(
                             'Solitaire',
                             style: TextStyle(
@@ -1793,6 +2302,35 @@ class _HomeScreenState extends State<HomeScreen> {
                             Icons.leaderboard_outlined,
                             color: styling.primary,
                             size: 32,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: 48,
+                        height: 48,
+
+                        child: IconButton(
+                          style: IconButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24),
+                              side: BorderSide(
+                                color: styling.primary,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                          padding: const EdgeInsets.all(4.0),
+                          onPressed: () {
+                            analytics.logClickSuggestionEvent();
+                            SharedPrefs.hapticButtonPress();
+                            showSuggestionDialog(context);
+                          },
+
+                          icon: SFIcon(
+                            SFIcons.sf_text_bubble,
+                            color: styling.primary,
+                            fontSize: 24,
                           ),
                         ),
                       ),

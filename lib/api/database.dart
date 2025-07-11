@@ -272,4 +272,15 @@ class Database {
     }
     return newList;
   }
+
+  Future<void> submitSuggestion(String suggestion) async {
+    final suggestionsRef = _database.ref('suggestions');
+    final suggestionId = DateTime.now().millisecondsSinceEpoch.toString();
+    await suggestionsRef.child(suggestionId).set({
+      'id': suggestionId,
+      'suggestion': suggestion,
+
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+  }
 }
