@@ -283,12 +283,12 @@ class CardData {
     return MiniCard(value: value, suit: suit);
   }
 
-  int toSortingValue({CardSuit? trumpSuit}) {
+  int toSortingValue({CardSuit? trumpSuit, bool isEuchre = false}) {
     // Convert card to value for scoring
     if (value == 1) {
       return 14; // Ace is third highest
     }
-    if (value == 11 && suit.alternateSuit == trumpSuit) {
+    if (value == 11 && suit.alternateSuit == trumpSuit && isEuchre) {
       return 15; // Jack of alternate trump suit is second highest
     }
     if (value == 11 && suit == trumpSuit) {
@@ -733,13 +733,29 @@ class OhHellPlayer extends GamePlayer {
       tricksTaken: m['tricksTaken'] ?? 0,
       isDealer: m['isDealer'] == "true" || m['isDealer'] == true,
       hand:
-          (m['hand'] as List<dynamic>)
+          ((m['hand'] ?? []) as List<dynamic>)
               .map((card) => CardData.fromMap(card as Map<String, dynamic>))
               .toList(),
       isHost: m['isHost'] == "true" || m['isHost'] == true,
       myTurn: m['myTurn'] ?? false,
       isBot: m['isBot'] == "true" || m['isBot'] == true,
     );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'score': score,
+      'bid': bid,
+      'tricksTaken': tricksTaken,
+      'hand': hand.map((c) => c.toMap()).toList(),
+      'isHost': isHost,
+      'myTurn': myTurn,
+      'isDealer': isDealer,
+      'type': type.toString(),
+      'isBot': isBot,
+    };
   }
 }
 

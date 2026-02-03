@@ -89,11 +89,26 @@ class _CrazyEightsState extends State<CrazyEights> {
         final nextPlayerId = dataMap['nextPlayerId'] as String;
         final player = players.firstWhere((p) => p.id == playerId);
         final nextPlayer = players.firstWhere((p) => p.id == nextPlayerId);
+        final deckData = dataMap['deckCards'] as List;
         setState(() {
           players[players.indexOf(player)].myTurn = false;
 
           players[players.indexOf(nextPlayer)].myTurn = true;
           currentPlayer = players.firstWhere((p) => p.id == currentPlayer!.id);
+          deckCards.clear();
+          deckCards.addAll(
+            deckData
+                .map((c) => CardData.fromMap(c as Map<String, dynamic>))
+                .toList(),
+          );
+
+          print(
+            "Deck cards updated: ${deckCards.map((e) => e.displayValue()).toList()}",
+          );
+
+          print(
+            "Last few cards in deck: ${deckCards.reversed.take(5).map((e) => e.displayValue()).toList()}",
+          );
         });
 
         // if (nextPlayer.isBot && currentPlayer!.getIsHost()) {
@@ -117,6 +132,7 @@ class _CrazyEightsState extends State<CrazyEights> {
         CardSuit crazyEightSuit = CardSuit.fromString(crazyEightSuitString);
         final player = players.firstWhere((p) => p.id == playerId);
         final nextPlayer = players.firstWhere((p) => p.id == nextPlayerId);
+        final deckData = dataMap['deckCards'] as List;
         setState(() {
           this.crazyEightSuit = crazyEightSuit;
           dropZones.first.cards.last.suit = crazyEightSuit;
@@ -126,6 +142,13 @@ class _CrazyEightsState extends State<CrazyEights> {
           currentPlayer = players.firstWhere((p) => p.id == currentPlayer!.id);
 
           player.myTurn = false;
+          deckCards.clear();
+          deckCards.addAll(
+            deckData
+                .map((c) => CardData.fromMap(c as Map<String, dynamic>))
+                .toList(),
+          );
+
           nextPlayer.myTurn = true;
         });
 
@@ -608,6 +631,7 @@ class _CrazyEightsState extends State<CrazyEights> {
       'type': 'player_played',
       'playerId': currentPlayer!.id,
       'nextPlayerId': nextPlayer.id,
+      'deckCards': deckCards.map((c) => c.toMap()).toList(),
     }, currentPlayer!.id);
     if (nextPlayer.isBot) {
       final bot = bots.firstWhere((b) => b.id == nextPlayer.id);
@@ -678,6 +702,7 @@ class _CrazyEightsState extends State<CrazyEights> {
       'type': 'player_played',
       'playerId': botId,
       'nextPlayerId': nextPlayer.id,
+      'deckCards': deckCards.map((c) => c.toMap()).toList(),
     }, currentPlayer!.id);
     if (players[players.indexWhere((p) => p.id == nextPlayer.id)].isBot) {
       Future.delayed(Duration(seconds: 1), () {
@@ -712,6 +737,7 @@ class _CrazyEightsState extends State<CrazyEights> {
       'playerId': currentPlayer!.id,
       'nextPlayerId': nextPlayer.id,
       'suit': suit.toString(),
+      'deckCards': deckCards.map((c) => c.toMap()).toList(),
     }, currentPlayer!.id);
 
     if (nextPlayer.isBot) {
@@ -1258,7 +1284,6 @@ class _CrazyEightsState extends State<CrazyEights> {
               style: TextStyle(fontSize: 18.0, color: Colors.white),
             ),
             onTap: () async {
-              SharedPrefs.hapticButtonPress();
               await connectionService.broadcastMessage({
                 "type": "play_again",
               }, currentPlayer!.id);

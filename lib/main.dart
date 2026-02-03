@@ -11,6 +11,7 @@ import 'package:deckly/api/shared_prefs.dart';
 import 'package:deckly/constants.dart';
 
 import 'package:deckly/pages/home_screen.dart';
+import 'package:deckly/pages/kalamattack.dart';
 import 'package:deckly/pages/update_page.dart';
 
 import 'package:deckly/styling.dart';
@@ -675,14 +676,18 @@ class _MyAppState extends State<MyApp> {
           debugShowCheckedModeBanner: false,
           navigatorObservers: [analytics.observer],
           home: requiresUpdate ? UpdatePage(onUpdate: onUpdate) : HomeScreen(),
-          // home: NertzWithBot(
+          // home: Kalamattack(
           //   player: GamePlayer(
           //     id: "Deckly-test-1704-host",
           //     name: "test",
           //     isHost: true,
           //   ),
           //   players: [
-          //     GamePlayer(id: "Deckly-test-1704-host", name: "test", isHost: true),
+          //     GamePlayer(
+          //       id: "Deckly-test-1704-host",
+          //       name: "test",
+          //       isHost: true,
+          //     ),
           //     BotPlayer(
           //       id: "Deckly-test3-1704",
           //       name: "Test Bot",

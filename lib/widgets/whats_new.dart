@@ -60,7 +60,21 @@ class WhatsNew extends StatelessWidget {
                           bottom: 16.0,
                         ),
                         child: Text(
-                          "• New Card Game: Kalamattack\n\t\t\t- 2-5 Player Classic Card Game\n\t\t\t- Brand new card game made by my friends and I\n\t\t\t- Play with friends\n\t\t\t- Rules included in game screen",
+                          "• New Card Game: Kalamattack\n\t\t\t- 2-5 Player Card Game\n\t\t\t- Brand new card game made by my friends and me\n\t\t\t- Play with friends\n\t\t\t- Rules included in game screen",
+                          style: TextStyle(color: Colors.white, fontSize: 18),
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width,
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                          left: 16.0,
+                          right: 16.0,
+                          bottom: 16.0,
+                        ),
+                        child: Text(
+                          "• New Card Game: Oh Hell\n\t\t\t- 3-8 Player Classic Card Game\n\t\t\t- Play with friends\n\t\t\t- Rules included in game screen",
                           style: TextStyle(color: Colors.white, fontSize: 18),
                         ),
                       ),

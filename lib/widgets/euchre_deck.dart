@@ -26,6 +26,7 @@ class EuchreDeck extends StatefulWidget {
   final double scale;
   final EuchreDeckController? controller;
   final bool showTopCard;
+  final bool linkDeck;
 
   const EuchreDeck({
     Key? key,
@@ -34,6 +35,7 @@ class EuchreDeck extends StatefulWidget {
     required this.scale,
 
     this.controller,
+    this.linkDeck = false, // Link deck by default
     this.showTopCard = true, // Show top card by default
   }) : super(key: key);
 
@@ -48,7 +50,14 @@ class _EuchreDeckState extends State<EuchreDeck> {
   void initState() {
     // TODO: implement initState
     super.initState();
-    blitzDeck = List.from(widget.euchreDeck);
+    if (widget.linkDeck) {
+      // If linking deck, use the provided euchreDeck
+      blitzDeck = widget.euchreDeck;
+    } else {
+      // Otherwise, create a new empty deck
+      blitzDeck = List.from(widget.euchreDeck);
+    }
+
     widget.controller?._attach(this);
   }
 

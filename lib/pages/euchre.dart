@@ -914,23 +914,23 @@ class _EuchreState extends State<Euchre> {
 
     heartCards.sort(
       (b, a) => a
-          .toSortingValue(trumpSuit: trumpSuit)
-          .compareTo(b.toSortingValue(trumpSuit: trumpSuit)),
+          .toSortingValue(trumpSuit: trumpSuit, isEuchre: true)
+          .compareTo(b.toSortingValue(trumpSuit: trumpSuit, isEuchre: true)),
     );
     clubCards.sort(
       (b, a) => a
-          .toSortingValue(trumpSuit: trumpSuit)
-          .compareTo(b.toSortingValue(trumpSuit: trumpSuit)),
+          .toSortingValue(trumpSuit: trumpSuit, isEuchre: true)
+          .compareTo(b.toSortingValue(trumpSuit: trumpSuit, isEuchre: true)),
     );
     diamondCards.sort(
       (b, a) => a
-          .toSortingValue(trumpSuit: trumpSuit)
-          .compareTo(b.toSortingValue(trumpSuit: trumpSuit)),
+          .toSortingValue(trumpSuit: trumpSuit, isEuchre: true)
+          .compareTo(b.toSortingValue(trumpSuit: trumpSuit, isEuchre: true)),
     );
     spadeCards.sort(
       (b, a) => a
-          .toSortingValue(trumpSuit: trumpSuit)
-          .compareTo(b.toSortingValue(trumpSuit: trumpSuit)),
+          .toSortingValue(trumpSuit: trumpSuit, isEuchre: true)
+          .compareTo(b.toSortingValue(trumpSuit: trumpSuit, isEuchre: true)),
     );
 
     List<String> sortPlan = ["hearts", "clubs", "diamonds", "spades"];
@@ -1260,7 +1260,9 @@ class _EuchreState extends State<Euchre> {
       }
     } else {
       //Score the played cards
-      scorePlayedCards();
+      Future.delayed(Duration(seconds: 2), () {
+        scorePlayedCards();
+      });
     }
   }
 
@@ -1815,7 +1817,7 @@ class _EuchreState extends State<Euchre> {
         });
       }
     } else {
-      Future.delayed(Duration(seconds: 1), () {
+      Future.delayed(Duration(seconds: 2), () {
         scorePlayedCards();
       });
       //Score the played cards
@@ -1856,8 +1858,8 @@ class _EuchreState extends State<Euchre> {
               .toList();
       CardData highestTrumpCard = trumpCards.reduce(
         (a, b) =>
-            a.toSortingValue(trumpSuit: trumpSuit) >
-                    b.toSortingValue(trumpSuit: trumpSuit)
+            a.toSortingValue(trumpSuit: trumpSuit, isEuchre: true) >
+                    b.toSortingValue(trumpSuit: trumpSuit, isEuchre: true)
                 ? a
                 : b,
       );
@@ -1869,8 +1871,8 @@ class _EuchreState extends State<Euchre> {
       // No trump played
       CardData highestCard = playedCards.reduce(
         (a, b) =>
-            a.toSortingValue(trumpSuit: trumpSuit) >
-                    b.toSortingValue(trumpSuit: trumpSuit)
+            a.toSortingValue(trumpSuit: trumpSuit, isEuchre: true) >
+                    b.toSortingValue(trumpSuit: trumpSuit, isEuchre: true)
                 ? a
                 : b,
       );
@@ -2506,7 +2508,7 @@ class _EuchreState extends State<Euchre> {
       trumpSuit = null;
       upCardTurnedDown = false;
       gamePhase = EuchreGamePhase.decidingTrump;
-      if (currentPlayer!.isHost) {
+      if (currentPlayer!.getIsHost()) {
         List<CardData> shuffledDeck = [...fullEuchreDeck];
         print("Shuffled deck: ${shuffledDeck.length}");
         shuffledDeck.shuffle();
@@ -2581,6 +2583,10 @@ class _EuchreState extends State<Euchre> {
 
     // Hand width is 5 cards + 4 gaps (8px each)
     final handWidth = 100 + (5 * 50); // 116 is card width + padding
+    //Cap scale to 0.8
+    if (availableWidth / handWidth > 2) {
+      return 2;
+    }
 
     return availableWidth / handWidth;
   }
@@ -4344,7 +4350,6 @@ class _EuchreState extends State<Euchre> {
               style: TextStyle(fontSize: 18.0, color: Colors.white),
             ),
             onTap: () async {
-              SharedPrefs.hapticButtonPress();
               await connectionService.broadcastMessage({
                 "type": "play_again",
               }, currentPlayer!.id);

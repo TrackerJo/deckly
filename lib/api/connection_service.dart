@@ -540,7 +540,7 @@ class ConnectionService {
 
   Future<void> requestPermissions() async {
     if (Platform.isAndroid) {
-      await requestAndroidPermissions();
+      // await requestAndroidPermissions();
     } else {
       print("Requesting iOS permissions...");
       bool hasBluetoothPermission = await Permission.bluetooth.isGranted;
@@ -557,6 +557,7 @@ class ConnectionService {
 
       return await Permission.bluetooth.isGranted;
     } else {
+      return true;
       // Android permissions check
       bool hasLocationPermission = await Permission.location.isGranted;
       bool locationSeriveEnabled =

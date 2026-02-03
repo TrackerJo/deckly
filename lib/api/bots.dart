@@ -493,7 +493,7 @@ class EuchreBot {
     List<EuchrePlayer>? players,
   }); // ✅ Create modifiable lists
 
-  CardData getWinningCard(List<CardData> trick, CardSuit leadSuit) {
+  CardData getWinningCard(List<CardData> trick, CardSuit leadSuit, CardSuit trumpSuit) {
     CardData? highCard;
     List<CardData> playedCards = [...trick];
     //filter out the played cards that weren't of the lead suit or trump suit
@@ -1120,7 +1120,7 @@ class EuchreBot {
         // Otherwise, we can play any card
         playableCards = List.from(botPlayer.hand);
       }
-      CardData winningCard = getWinningCard(currentTrick, leadSuit);
+      CardData winningCard = getWinningCard(currentTrick, leadSuit, trumpSuit!);
       String partnerId =
           players
               .firstWhere(
@@ -1402,7 +1402,7 @@ class EuchreBot {
         // Otherwise, we can play any card
         playableCards = List.from(botPlayer.hand);
       }
-      CardData winningCard = getWinningCard(currentTrick, leadSuit);
+      CardData winningCard = getWinningCard(currentTrick, leadSuit, trumpSuit!);
       String partnerId =
           players
               .firstWhere(

@@ -616,6 +616,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                 ),
                 const SizedBox(height: 16),
                 if (widget.game != Game.kalamattack &&
+                    widget.game != Game.ohHell &&
                     (widget.maxPlayers == null ||
                         _players.length < widget.maxPlayers!) &&
                     (widget.requiredPlayers != null

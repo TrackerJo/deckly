@@ -1848,6 +1848,7 @@ class _KalamattackState extends State<Kalamattack> {
         isPublic: false,
         isDropArea: true,
         stackMode: StackMode.spacedHorizontal,
+        cards: [],
         rules: DropZoneRules(
           startingCards: [],
           bannedCards: [],
@@ -1915,21 +1916,21 @@ class _KalamattackState extends State<Kalamattack> {
     );
     //Start at the next player after the current player and add a drop zone for them, if reaches the end of the list, wrap around, till reached the current player again
 
-    playOrder = generatePlayOrder();
-
-    //sort players based on play order but keep the current player at the start
-    players.sort((a, b) {
-      return playOrder.indexOf(a.id).compareTo(playOrder.indexOf(b.id));
-    });
-    players[0].myTurn = true; // Set the first player as current player
-    //rotate the players so that the current player is first
-    players = [
-      ...players.skipWhile((p) => p.id != currentPlayer!.id),
-      ...players.takeWhile((p) => p.id != currentPlayer!.id),
-    ];
     setState(() {});
 
     if (widget.player.getIsHost()) {
+      playOrder = generatePlayOrder();
+
+      //sort players based on play order but keep the current player at the start
+      players.sort((a, b) {
+        return playOrder.indexOf(a.id).compareTo(playOrder.indexOf(b.id));
+      });
+      players[0].myTurn = true; // Set the first player as current player
+      //rotate the players so that the current player is first
+      players = [
+        ...players.skipWhile((p) => p.id != currentPlayer!.id),
+        ...players.takeWhile((p) => p.id != currentPlayer!.id),
+      ];
       // If the current player is the host, deal cards
       List<CardData> shuffledDeck = [...fullKalamattackDeck];
       print("Shuffled deck: ${shuffledDeck.length}");
@@ -2025,9 +2026,9 @@ class _KalamattackState extends State<Kalamattack> {
 
     connectionService.broadcastMessage({
       'type': 'update_defense_cards',
-      'playerThatIsAttackingId': playerThatIsAttacking!.id,
+      'playerThatIsAttackingId': playerThatIsAttacking?.id,
       'cards': targetZone.cards.map((c) => c.toMap()).toList(),
-      'playerAttackingId': playerAttacking!.id,
+      'playerAttackingId': playerAttacking?.id,
       'handCards': handCards.map((c) => c.toMap()).toList(),
     }, currentPlayer!.id);
     setState(() {});
@@ -2176,6 +2177,10 @@ class _KalamattackState extends State<Kalamattack> {
 
     final ratio =
         785.0 / (150 * 0.8); // 120 is card width + padding, 0.8 is scale factor
+    final newRatio = 709.0 / (175 * 0.7);
+    print("availableHeigh: ${availableHeight}");
+    print(availableHeight / (newRatio * 150));
+    return availableHeight / (newRatio * 175);
 
     return availableHeight / (ratio * 150); // 116 is card width + padding
   }
@@ -2714,6 +2719,7 @@ class _KalamattackState extends State<Kalamattack> {
                 ),
               ),
             ),
+
           if (gamePhase == KalamattackGamePhase.discardingCard ||
               gamePhase == KalamattackGamePhase.selectingMove) ...[
             Positioned(
@@ -2931,8 +2937,8 @@ class _KalamattackState extends State<Kalamattack> {
                 alignment: Alignment.topCenter,
                 child: Column(
                   children: [
-                    if (!waitingForDefense) const SizedBox(height: 250),
-                    if (waitingForDefense) const SizedBox(height: 85),
+                    if (!waitingForDefense) const SizedBox(height: 150),
+                    if (waitingForDefense) const SizedBox(height: 65),
                     if (waitingForDefense)
                       FancyWidget(
                         child: Text(
@@ -3055,15 +3061,14 @@ class _KalamattackState extends State<Kalamattack> {
               alignment: Alignment.topCenter,
               child: Column(
                 children: [
-                  const SizedBox(height: 85),
+                  const SizedBox(height: 60),
 
                   FancyWidget(
                     child: Text(
-                      "${playerThatIsAttacking!.name}'s Attack",
+                      "${playerThatIsAttacking?.name}'s Attack",
                       style: TextStyle(color: Colors.white, fontSize: 20),
                     ),
                   ),
-                  const SizedBox(height: 8),
 
                   Text(
                     "Damage: ${calculateDamage(dropZones[3].cards)}",
@@ -3089,15 +3094,15 @@ class _KalamattackState extends State<Kalamattack> {
                           currentDragData.cards.first,
                         ),
                   ),
-                  const SizedBox(height: 10),
+
                   if (!waitingForAttack)
                     FancyWidget(
                       child: Text(
-                        "Defending from ${playerThatIsAttacking!.name}",
+                        "Defending from ${playerThatIsAttacking?.name}",
                         style: TextStyle(color: Colors.white, fontSize: 20),
                       ),
                     ),
-                  if (!waitingForAttack) const SizedBox(height: 8),
+
                   if (!waitingForAttack)
                     Text(
                       "Defense: ${calculateDefense(dropZones[4].cards, currentPlayer!)}",
@@ -3154,7 +3159,8 @@ class _KalamattackState extends State<Kalamattack> {
                     const SizedBox(height: 4),
                   if (!waitingForAttack)
                     ActionButton(
-                      width: 100,
+                      width: 120 * dropZones[0].scale,
+                      height: 80 * dropZones[0].scale,
                       text: Text(
                         "Defend",
                         style: TextStyle(color: Colors.white),
@@ -3454,7 +3460,7 @@ class _KalamattackState extends State<Kalamattack> {
 
                   FancyWidget(
                     child: Text(
-                      "${playerThatIsAttacking!.name}'s Attack",
+                      "${playerThatIsAttacking?.name}'s Attack",
                       style: TextStyle(color: Colors.white, fontSize: 20),
                     ),
                   ),
@@ -3488,14 +3494,14 @@ class _KalamattackState extends State<Kalamattack> {
 
                   FancyWidget(
                     child: Text(
-                      "${playerAttacking!.name}'s Defense",
+                      "${playerAttacking?.name}'s Defense",
                       style: TextStyle(color: Colors.white, fontSize: 20),
                     ),
                   ),
                   const SizedBox(height: 8),
 
                   Text(
-                    "Defense: ${calculateDefense(dropZones[4].cards, playerAttacking!)}",
+                    "Defense: ${calculateDefense(dropZones[4].cards, playerAttacking ?? players.first)}",
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18 * handScale,
@@ -3961,7 +3967,6 @@ class _KalamattackState extends State<Kalamattack> {
               style: TextStyle(fontSize: 18.0, color: Colors.white),
             ),
             onTap: () async {
-              SharedPrefs.hapticButtonPress();
               await connectionService.broadcastMessage({
                 "type": "play_again",
               }, currentPlayer!.id);

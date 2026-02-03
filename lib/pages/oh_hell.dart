@@ -85,18 +85,231 @@ class _OhHellState extends State<OhHell> {
 
           if (leadSuit == null && cards.isNotEmpty) {
             final playedCard = cards.first;
-            if (playedCard.value == 11 &&
-                playedCard.suit.alternateSuit == trumpSuit &&
-                leadSuit == null) {
-              leadSuit =
-                  trumpSuit; // If a Jack of trump suit is played, set lead suit to trump suit
-            } else if (leadSuit == null) {
-              leadSuit =
-                  playedCard
-                      .suit; // Otherwise, set lead suit to the suit of the played card
-            }
+
+            leadSuit =
+                playedCard
+                    .suit; // Otherwise, set lead suit to the suit of the played card
           }
         });
+      } else if (dataMap['type'] == 'deal_cards') {
+        final playersData = dataMap['players'] as List;
+        final deckData = dataMap['deckCards'] as List;
+        final round = dataMap['round'] as int;
+        final trumpSuitString = dataMap['trumpSuit'] as String?;
+        final trumpSuit =
+            trumpSuitString != null
+                ? CardSuit.fromString(trumpSuitString)
+                : null;
+        final playOrderString = dataMap['playOrder'] as String;
+        print("Received deal cards data: $playersData");
+        // Update players
+        players =
+            playersData
+                .map((p) => OhHellPlayer.fromMap(p as Map<String, dynamic>))
+                .toList();
+
+        // Update deck cards
+        deckCards.addAll(
+          deckData
+              .map((c) => CardData.fromMap(c as Map<String, dynamic>))
+              .toList(),
+        );
+        playOrder = playOrderString.split(',');
+        // Sort players based on play order
+        players.sort((a, b) {
+          return playOrder.indexOf(a.id).compareTo(playOrder.indexOf(b.id));
+        });
+
+        players = [
+          ...players.skipWhile((p) => p.id != currentPlayer!.id),
+          ...players.takeWhile((p) => p.id != currentPlayer!.id),
+        ];
+
+        // Find the current player and update their hand
+        currentPlayer = players.firstWhere((p) => p.id == widget.player.id);
+
+        currentPlayer!.hand =
+            players.firstWhere((p) => p.id == widget.player.id).hand;
+        handCards = sortHand(currentPlayer!.hand, trumpSuit);
+        this.trumpSuit = trumpSuit;
+        this.round = round;
+        playOrder = playOrderString.split(',');
+        setState(() {});
+      } else if (dataMap['type'] == 'bid') {
+        final playerId = dataMap['playerId'] as String;
+        final bid = dataMap['bid'] as int;
+        final playerIndex = players.indexWhere((p) => p.id == playerId);
+        players[playerIndex].bid = bid;
+        players[playerIndex].myTurn = false; // End their turn after bidding
+        int nextPlayerIndex = (playerIndex + 1) % players.length;
+        players[nextPlayerIndex].myTurn = true; // Set next player to play
+        if (players[playerIndex].isDealer) {
+          gamePhase =
+              OhHellGamePhase.playing; // Start playing phase if dealer has bid
+        }
+        currentPlayer = players.firstWhere((p) => p.id == widget.player.id);
+        setState(() {});
+      } else if (dataMap['type'] == 'player_played') {
+        final playerId = dataMap['playerId'] as String;
+        final nextPlayerId = dataMap['nextPlayerId'] as String;
+        final playerIndex = players.indexWhere((p) => p.id == playerId);
+        players[playerIndex].myTurn = false; // End their turn
+        int nextPlayerIndex = players.indexWhere((p) => p.id == nextPlayerId);
+        players[nextPlayerIndex].myTurn = true; // Set next player to play
+        currentPlayer = players.firstWhere((p) => p.id == widget.player.id);
+        setState(() {});
+      } else if (dataMap['type'] == 'game_over') {
+        final playersData = dataMap['players'] as List;
+        players =
+            playersData
+                .map((p) => OhHellPlayer.fromMap(p as Map<String, dynamic>))
+                .toList();
+        gameState = OhHellGameState.gameOver;
+        setState(() {});
+      } else if (dataMap["type"] == "trick_ended") {
+        // Handle trick ended logic
+        final winningPlayerId = dataMap['winningPlayerId'] as String;
+        final winningPlayerIndex = players.indexWhere(
+          (p) => p.id == winningPlayerId,
+        );
+        final winningPlayer = players.firstWhere(
+          (p) => p.id == winningPlayerId,
+        );
+        final previousPlayerIndex = players.indexWhere((p) => p.myTurn);
+        setState(() {
+          // Reset lead suit for the next trick
+          leadSuit = null;
+          // Set the winning player as current turn
+          winningPlayer.myTurn = true;
+          players[previousPlayerIndex].myTurn = false;
+          players[winningPlayerIndex].myTurn = true;
+          currentPlayer = players.firstWhere((p) => p.id == currentPlayer!.id);
+
+          players[winningPlayerIndex].tricksTaken++;
+        });
+        showDialog(
+          context: context,
+
+          builder: (BuildContext dialogContext) {
+            Timer(Duration(seconds: 1), () {
+              try {
+                if (dialogContext.mounted)
+                  Navigator.of(dialogContext).pop();
+                else
+                  print("Dialog context is not mounted, cannot pop dialog.");
+              } catch (e) {
+                print("Error popping dialog: $e");
+              }
+            });
+            return Dialog(
+              backgroundColor: Colors.transparent,
+
+              child: Container(
+                width: 400,
+                height: 200,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [styling.primary, styling.secondary],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Container(
+                  margin: EdgeInsets.all(2), // Creates the border thickness
+                  decoration: BoxDecoration(
+                    color: styling.background,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        "${winningPlayer.name} won the trick",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      if (currentPlayer!.myTurn &&
+                          currentPlayer!.hand.isNotEmpty)
+                        Text(
+                          "It's your turn now!",
+                          style: TextStyle(color: Colors.white, fontSize: 18),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ).then((_) {
+          // Check if any player has no cards left, if so, end the round
+          if (currentPlayer!.hand.isEmpty && currentPlayer!.getIsHost()) {
+            scoreRound();
+          }
+        });
+        for (var dropZone in dropZones) {
+          dropZone.cards.clear(); // Clear all drop zones for the next trick
+        }
+        setState(() {});
+      } else if (dataMap['type'] == 'round_ended') {
+        final playersData = dataMap['players'] as List;
+        final deckData = dataMap['deckCards'] as List;
+        final round = dataMap['round'] as int;
+        final trumpSuitString = dataMap['trumpSuit'] as String?;
+        final trumpSuit =
+            trumpSuitString != null
+                ? CardSuit.fromString(trumpSuitString)
+                : null;
+        final playOrderString = dataMap['playOrder'] as String;
+        print("Received deal cards data: $playersData");
+        // Update players
+        players =
+            playersData
+                .map((p) => OhHellPlayer.fromMap(p as Map<String, dynamic>))
+                .toList();
+
+        // Update deck cards
+        deckCards.addAll(
+          deckData
+              .map((c) => CardData.fromMap(c as Map<String, dynamic>))
+              .toList(),
+        );
+        playOrder = playOrderString.split(',');
+        // Sort players based on play order
+        players.sort((a, b) {
+          return playOrder.indexOf(a.id).compareTo(playOrder.indexOf(b.id));
+        });
+
+        players = [
+          ...players.skipWhile((p) => p.id != currentPlayer!.id),
+          ...players.takeWhile((p) => p.id != currentPlayer!.id),
+        ];
+
+        // Find the current player and update their hand
+        currentPlayer = players.firstWhere((p) => p.id == widget.player.id);
+
+        currentPlayer!.hand =
+            players.firstWhere((p) => p.id == widget.player.id).hand;
+        handCards = sortHand(currentPlayer!.hand, trumpSuit);
+        this.trumpSuit = trumpSuit;
+        this.round = round;
+        playOrder = playOrderString.split(',');
+        gamePhase = OhHellGamePhase.bidding;
+        setState(() {});
+      } else if (dataMap['type'] == "play_again") {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder:
+                (context) =>
+                    OhHell(player: widget.player, players: widget.players),
+          ),
+        );
       }
     });
 
@@ -121,9 +334,7 @@ class _OhHellState extends State<OhHell> {
         value: card.value,
         playedBy: card.playedBy,
       );
-      if (cardCopy.value == 11 && cardCopy.suit.alternateSuit == trumpSuit) {
-        cardCopy.suit = trumpSuit!; // Jack of trump suit
-      }
+
       if (cardCopy.suit == CardSuit.hearts) {
         heartCards.add(card);
       } else if (cardCopy.suit == CardSuit.clubs) {
@@ -244,9 +455,6 @@ class _OhHellState extends State<OhHell> {
       return true; // No lead suit defined yet
     }
 
-    if (cardCopy.value == 11 && cardCopy.suit.alternateSuit == trumpSuit) {
-      cardCopy.suit = trumpSuit!; // Jack of trump suit is always valid
-    }
     if (cardCopy.suit == leadSuit) {
       return true; // Card matches the lead suit
     }
@@ -259,9 +467,7 @@ class _OhHellState extends State<OhHell> {
         value: c.value,
         playedBy: c.playedBy,
       );
-      if (cCopy.value == 11 && cCopy.suit.alternateSuit == trumpSuit) {
-        cCopy.suit = trumpSuit!; // Jack of trump suit is also valid
-      }
+
       if (cCopy.suit == leadSuit) {
         handHasLeadSuit = true;
         break;
@@ -315,6 +521,7 @@ class _OhHellState extends State<OhHell> {
     if (players.length == 6) round = 8;
     if (players.length == 7) round = 7;
     if (players.length == 8) round = 6;
+    round = 1;
     dropZones.add(
       DropZoneData(
         id: currentPlayer!.id,
@@ -351,7 +558,7 @@ class _OhHellState extends State<OhHell> {
             allowedSuits: [],
           ),
           cards: [],
-          playable: true,
+          playable: false,
         ),
       );
     }
@@ -377,56 +584,64 @@ class _OhHellState extends State<OhHell> {
       return aIndex.compareTo(bIndex);
     });
 
-    // // Update currentPlayer to reference the actual object in the sorted list
-    playOrder = generatePlayOrder();
-    print("Play order: $playOrder");
-    //sort players based on play order but keep the current player at the start
-    players.sort((a, b) {
-      return playOrder.indexOf(a.id).compareTo(playOrder.indexOf(b.id));
-    });
-    //rotate the players so that the current player is first
-    players = [
-      ...players.skipWhile((p) => p.id != currentPlayer!.id),
-      ...players.takeWhile((p) => p.id != currentPlayer!.id),
-    ];
-    dropZones.sort((a, b) {
-      final aIndex = players.indexWhere((p) => p.id == a.id);
-      final bIndex = players.indexWhere((p) => p.id == b.id);
-      return aIndex.compareTo(bIndex);
-    });
-    //decide randomly who is the dealer
-    final dealerIndex = math.Random().nextInt(players.length);
-    players[dealerIndex].isDealer = true;
-    final nextPlayerIndex =
-        (dealerIndex + 1) % players.length; // Next player after dealer
+    if (currentPlayer!.getIsHost()) {
+      // // Update currentPlayer to reference the actual object in the sorted list
+      playOrder = generatePlayOrder();
+      print("Play order: $playOrder");
+      //sort players based on play order but keep the current player at the start
+      players.sort((a, b) {
+        return playOrder.indexOf(a.id).compareTo(playOrder.indexOf(b.id));
+      });
+      //rotate the players so that the current player is first
+      players = [
+        ...players.skipWhile((p) => p.id != currentPlayer!.id),
+        ...players.takeWhile((p) => p.id != currentPlayer!.id),
+      ];
+      dropZones.sort((a, b) {
+        final aIndex = players.indexWhere((p) => p.id == a.id);
+        final bIndex = players.indexWhere((p) => p.id == b.id);
+        return aIndex.compareTo(bIndex);
+      });
+      //decide randomly who is the dealer
+      final dealerIndex = math.Random().nextInt(players.length);
+      players[dealerIndex].isDealer = true;
+      final nextPlayerIndex =
+          (dealerIndex + 1) % players.length; // Next player after dealer
 
-    players[nextPlayerIndex].myTurn = true;
+      players[nextPlayerIndex].myTurn = true;
+      List<CardData> shuffledDeck = [...fullDeck];
+      print("Shuffled deck: ${shuffledDeck.length}");
+      shuffledDeck.shuffle();
+
+      handCards = shuffledDeck.sublist(0, round);
+      shuffledDeck.removeRange(0, round);
+      currentPlayer!.hand = [...handCards];
+      players.forEach((player) {
+        if (player.id != currentPlayer!.id) {
+          player.hand = shuffledDeck.sublist(0, round);
+          shuffledDeck.removeRange(0, round);
+        } else {
+          player.hand = [...handCards];
+        }
+      });
+      // Initialize deck cards
+      deckCards.clear();
+      deckCards.addAll(shuffledDeck);
+      trumpSuit = deckCards.last.suit; // Last card's suit is trump suit
+      print("Deck cards: ${deckCards.length}");
+      handCards = sortHand(currentPlayer!.hand, trumpSuit);
+
+      setState(() {});
+      connectionService.broadcastMessage({
+        'type': 'deal_cards',
+        'players': players.map((p) => p.toMap()).toList(),
+        'deckCards': deckCards.map((c) => c.toMap()).toList(),
+        'round': round,
+        'playOrder': playOrder.join(','),
+        'trumpSuit': trumpSuit?.toString(),
+      }, currentPlayer!.id);
+    }
     currentPlayer = players.firstWhere((p) => p.id == currentPlayer!.id);
-    dealCards();
-
-    setState(() {});
-  }
-
-  void dealCards() {
-    List<CardData> shuffledDeck = [...fullDeck];
-    print("Shuffled deck: ${shuffledDeck.length}");
-    shuffledDeck.shuffle();
-
-    handCards = shuffledDeck.sublist(0, round);
-    shuffledDeck.removeRange(0, round);
-    currentPlayer!.hand = [...handCards];
-    players.forEach((player) {
-      if (player.id != currentPlayer!.id) {
-        player.hand = shuffledDeck.sublist(0, round);
-        shuffledDeck.removeRange(0, round);
-      } else {
-        player.hand = [...handCards];
-      }
-    });
-    // Initialize deck cards
-    deckCards = [...shuffledDeck];
-    print("Deck cards: ${deckCards.length}");
-    handCards = sortHand(currentPlayer!.hand, trumpSuit);
 
     setState(() {});
   }
@@ -453,12 +668,7 @@ class _OhHellState extends State<OhHell> {
         card.playedBy = currentPlayer!.id; // Set the player who played the card
       });
       final playedCard = dragData.cards.first;
-      if (playedCard.value == 11 &&
-          playedCard.suit.alternateSuit == trumpSuit &&
-          leadSuit == null) {
-        leadSuit =
-            trumpSuit; // If a Jack of trump suit is played, set lead suit to trump suit
-      } else if (leadSuit == null) {
+      if (leadSuit == null) {
         leadSuit =
             playedCard
                 .suit; // Otherwise, set lead suit to the suit of the played card
@@ -660,25 +870,12 @@ class _OhHellState extends State<OhHell> {
     //filter out the played cards that weren't of the lead suit or trump suit
     playedCards =
         playedCards.where((card) {
-          return card.suit == leadSuit ||
-              (card.value == 11 && card.suit.alternateSuit == trumpSuit) ||
-              card.suit == trumpSuit;
+          return card.suit == leadSuit || card.suit == trumpSuit;
         }).toList();
-    if (playedCards.any(
-      (card) =>
-          (card.value == 11 && card.suit.alternateSuit == trumpSuit) ||
-          card.suit == trumpSuit,
-    )) {
+    if (playedCards.any((card) => card.suit == trumpSuit)) {
       // Trump played in suit
       final trumpCards =
-          playedCards
-              .where(
-                (card) =>
-                    (card.value == 11 &&
-                        card.suit.alternateSuit == trumpSuit) ||
-                    card.suit == trumpSuit,
-              )
-              .toList();
+          playedCards.where((card) => card.suit == trumpSuit).toList();
       CardData highestTrumpCard = trumpCards.reduce(
         (a, b) =>
             a.toSortingValue(trumpSuit: trumpSuit) >
@@ -787,7 +984,7 @@ class _OhHellState extends State<OhHell> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  if (currentPlayer!.myTurn)
+                  if (currentPlayer!.myTurn && currentPlayer!.hand.isNotEmpty)
                     Text(
                       "It's your turn now!",
                       style: TextStyle(color: Colors.white, fontSize: 18),
@@ -798,7 +995,12 @@ class _OhHellState extends State<OhHell> {
           ),
         );
       },
-    ).then((_) {});
+    ).then((_) {
+      //Check if any player has no cards left, if so, end the round
+      if (currentPlayer!.hand.isEmpty && currentPlayer!.getIsHost()) {
+        scoreRound();
+      }
+    });
   }
 
   List<CardData> _getCardsFromIndex(String zoneId, int index) {
@@ -821,7 +1023,88 @@ class _OhHellState extends State<OhHell> {
     });
   }
 
-  void scoreRound() {}
+  void scoreRound() {
+    for (var player in players) {
+      if (player.tricksTaken == player.bid) {
+        player.score += 10 + player.bid;
+      } else {
+        player.score += player.tricksTaken;
+      }
+      player.tricksTaken = 0; // Reset tricks taken for the next round
+      player.bid = 0; // Reset bid for the next round
+      player.hand.clear(); // Clear hand for the next round
+      player.myTurn = false; // Reset turn status
+      player.isDealer = false; // Reset dealer status
+    }
+    // Reset the game state for the next round
+    round -= 1; // Decrease round count
+    if (round <= 0) {
+      gameState = OhHellGameState.gameOver;
+      setState(() {});
+      connectionService.broadcastMessage({
+        'type': 'game_over',
+        'players': players.map((p) => p.toMap()).toList(),
+      }, currentPlayer!.id);
+      return;
+    }
+    // // Update currentPlayer to reference the actual object in the sorted list
+    playOrder = generatePlayOrder();
+    print("Play order: $playOrder");
+    //sort players based on play order but keep the current player at the start
+    players.sort((a, b) {
+      return playOrder.indexOf(a.id).compareTo(playOrder.indexOf(b.id));
+    });
+    //rotate the players so that the current player is first
+    players = [
+      ...players.skipWhile((p) => p.id != currentPlayer!.id),
+      ...players.takeWhile((p) => p.id != currentPlayer!.id),
+    ];
+    dropZones.sort((a, b) {
+      final aIndex = players.indexWhere((p) => p.id == a.id);
+      final bIndex = players.indexWhere((p) => p.id == b.id);
+      return aIndex.compareTo(bIndex);
+    });
+    //decide randomly who is the dealer
+    final dealerIndex =
+        (players.indexWhere((p) => p.isDealer) + 1) %
+        players.length; // Next dealer index
+    players[dealerIndex].isDealer = true;
+    final nextPlayerIndex =
+        (dealerIndex + 1) % players.length; // Next player after dealer
+
+    players[nextPlayerIndex].myTurn = true;
+    List<CardData> shuffledDeck = [...fullDeck];
+    print("Shuffled deck: ${shuffledDeck.length}");
+    shuffledDeck.shuffle();
+
+    handCards = shuffledDeck.sublist(0, round);
+    shuffledDeck.removeRange(0, round);
+    currentPlayer!.hand = [...handCards];
+    players.forEach((player) {
+      if (player.id != currentPlayer!.id) {
+        player.hand = shuffledDeck.sublist(0, round);
+        shuffledDeck.removeRange(0, round);
+      } else {
+        player.hand = [...handCards];
+      }
+    });
+    // Initialize deck cards
+    deckCards.clear();
+    deckCards = [...shuffledDeck];
+    trumpSuit = deckCards.last.suit; // Last card's suit is trump suit
+    print("Deck cards: ${deckCards.length}");
+    handCards = sortHand(currentPlayer!.hand, trumpSuit);
+    gamePhase = OhHellGamePhase.bidding;
+    setState(() {});
+    connectionService.broadcastMessage({
+      'type': 'round_ended',
+      'players': players.map((p) => p.toMap()).toList(),
+      'deckCards': deckCards.map((c) => c.toMap()).toList(),
+      'round': round,
+      'playOrder': playOrder.join(','),
+      'trumpSuit': trumpSuit?.toString(),
+    }, currentPlayer!.id);
+  }
 
   void scoreGame() {}
 
@@ -833,7 +1116,8 @@ class _OhHellState extends State<OhHell> {
     final availableWidth = screenWidth - padding;
 
     // Hand width is 5 cards + 4 gaps (8px each)
-    final handWidth = 100 + (round * 50); // 116 is card width + padding
+    final handWidth =
+        100 + (round.clamp(5, 10) * 50); // 116 is card width + padding
 
     return availableWidth / handWidth;
   }
@@ -863,10 +1147,10 @@ class _OhHellState extends State<OhHell> {
     final screenWidth = MediaQuery.of(context).size.width;
     final padding = 32.0; // 16px padding on each side
     final availableWidth = screenWidth - padding;
-    double playersWidth = (82 * calculatedScale) * players.length;
+    double playersWidth = (90 * calculatedScale) * players.length;
     int overflow = -1;
     while (playersWidth > availableWidth) {
-      playersWidth -= (82 * calculatedScale);
+      playersWidth -= (90 * calculatedScale);
       overflow++;
     }
     return overflow;
@@ -1097,6 +1381,57 @@ class _OhHellState extends State<OhHell> {
         ),
       ),
     );
+  }
+
+  List<Widget> buildCenter2Players() {
+    return [
+      Positioned(
+        top:
+            (MediaQuery.of(context).size.height -
+                    kToolbarHeight -
+                    MediaQuery.of(context).padding.top -
+                    32) /
+                2 -
+            (175 * dropZones[1].scale) / 2 -
+            (200 * dropZones[1].scale),
+        left:
+            (MediaQuery.of(context).size.width - 32) / 2 -
+            (120 * dropZones[1].scale) / 2,
+        child: DropZoneWidget(
+          zone: dropZones[1],
+          currentDragData: currentDragData,
+          onMoveCards: _moveCards,
+          getCardsFromIndex: _getCardsFromIndex,
+          onDragStarted: _onDragStarted,
+          onDragEnd: _onDragEnd,
+        ),
+      ),
+
+      if ((gamePhase == OhHellGamePhase.playing && currentPlayer!.myTurn) ||
+          dropZones[0].cards.isNotEmpty)
+        Positioned(
+          top:
+              (MediaQuery.of(context).size.height -
+                      kToolbarHeight -
+                      MediaQuery.of(context).padding.top -
+                      32) /
+                  2 -
+              (175 * dropZones[0].scale) / 2,
+          left:
+              (MediaQuery.of(context).size.width - 32) / 2 -
+              (120 * dropZones[0].scale) / 2,
+          child: DropZoneWidget(
+            zone: dropZones[0],
+            currentDragData: currentDragData,
+            onMoveCards: _moveCards,
+            getCardsFromIndex: _getCardsFromIndex,
+            onDragStarted: _onDragStarted,
+            onDragEnd: _onDragEnd,
+            customWillAccept:
+                () => customDropZoneValidator(currentDragData.cards.first),
+          ),
+        ),
+    ];
   }
 
   List<Widget> buildCenter3Players() {
@@ -1980,6 +2315,7 @@ class _OhHellState extends State<OhHell> {
       width: MediaQuery.of(context).size.width,
       child: Stack(
         children: [
+          if (players.length == 2) ...buildCenter2Players(),
           if (players.length == 3) ...buildCenter3Players(),
           if (players.length == 4) ...buildCenter4Players(),
           if (players.length == 5) ...buildCenter5Players(),
@@ -1990,69 +2326,67 @@ class _OhHellState extends State<OhHell> {
             top: 0 * calculatedScale,
             left: 0 * calculatedScale,
             child: Container(
-              height: 70.0,
+              height: 85.0,
 
               width: MediaQuery.of(context).size.width + 20,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  spacing: 4.0,
-                  children: [
-                    for (var player in otherPlayers)
-                      FancyBorder(
-                        borderWidth:
-                            player.myTurn
-                                ? 1.0
-                                : player.isDealer &&
-                                    gamePhase == OhHellGamePhase.bidding
-                                ? 1.0
-                                : 0.0,
-                        borderColor:
-                            player.myTurn
-                                ? styling.primary
-                                : player.isDealer &&
-                                    gamePhase == OhHellGamePhase.bidding
-                                ? styling.secondary
-                                : Colors.transparent,
-                        child: SizedBox(
-                          width: 80 * calculatedScale,
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Text(
-                                  player.name,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16 * calculatedScale,
-                                  ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                spacing: 4.0,
+                children: [
+                  for (var player in otherPlayers)
+                    FancyBorder(
+                      borderWidth:
+                          player.myTurn
+                              ? 1.0
+                              : player.isDealer &&
+                                  gamePhase == OhHellGamePhase.bidding
+                              ? 1.0
+                              : 0.0,
+                      borderColor:
+                          player.myTurn
+                              ? styling.primary
+                              : player.isDealer &&
+                                  gamePhase == OhHellGamePhase.bidding
+                              ? styling.secondary
+                              : Colors.transparent,
+                      child: SizedBox(
+                        width: 90 * calculatedScale,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Text(
+                                player.name,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14 * calculatedScale,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
+                              ),
 
-                                Text(
-                                  "Bid: ${player.bid}\nTricks: ${player.tricksTaken}",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14 * calculatedScale,
-                                  ),
+                              Text(
+                                "Bid: ${player.bid}\nTricks: ${player.tricksTaken}\nScore: ${player.score}",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14 * calculatedScale,
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                    const SizedBox(width: 8.0),
-                  ],
-                ),
+                    ),
+                  const SizedBox(width: 8.0),
+                ],
               ),
             ),
           ),
           Positioned(
-            top: 90 * calculatedScale,
+            top: 105 * calculatedScale,
             left: 0 * calculatedScale,
             child: Container(
               height: 70.0,
@@ -2095,7 +2429,7 @@ class _OhHellState extends State<OhHell> {
                                 ),
 
                                 Text(
-                                  "Bid: ${player.bid}\nTricks: ${player.tricksTaken}",
+                                  "Bid: ${player.bid}\nTricks: ${player.tricksTaken}\nScore: ${player.score}",
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 14 * calculatedScale,
@@ -2142,13 +2476,56 @@ class _OhHellState extends State<OhHell> {
     );
   }
 
+  int getTotalBids() {
+    return players.fold(0, (sum, player) => sum + player.bid);
+  }
+
   List<Widget> buildBottomBar(
     double calculatedScale,
     BuildContext context,
     double handScale,
   ) {
-    CardSuit upCardSuit = deckCards.last.suit;
     return [
+      Positioned(
+        bottom:
+            150 * handScale +
+            (24 * handScale) +
+            (gamePhase == OhHellGamePhase.bidding && currentPlayer!.myTurn
+                ? 44
+                : 0),
+        left: 18,
+        child: FancyBorder(
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "Bid: ${currentPlayer!.bid}",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16 * calculatedScale,
+                  ),
+                ),
+                Text(
+                  "Tricks: ${currentPlayer!.tricksTaken}",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16 * calculatedScale,
+                  ),
+                ),
+                Text(
+                  "Score: ${currentPlayer!.score}",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16 * calculatedScale,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
       if (gamePhase == OhHellGamePhase.bidding && currentPlayer!.isDealer)
         Positioned(
           bottom: 150 * handScale + (40 * handScale) + 0.4 * 150,
@@ -2161,7 +2538,12 @@ class _OhHellState extends State<OhHell> {
       Positioned(
         bottom: 150 * handScale + (24 * handScale),
         left: MediaQuery.of(context).size.width - 100,
-        child: EuchreDeck(euchreDeck: deckCards, scale: 0.4, showTopCard: true),
+        child: EuchreDeck(
+          euchreDeck: deckCards,
+          scale: 0.4,
+          showTopCard: true,
+          linkDeck: true,
+        ),
       ),
       if (gamePhase == OhHellGamePhase.bidding && currentPlayer!.myTurn)
         Positioned(
@@ -2185,10 +2567,6 @@ class _OhHellState extends State<OhHell> {
                 onTap: () {
                   if (currentPlayer!.bid > 0) {
                     currentPlayer!.bid--;
-                    connectionService.broadcastMessage({
-                      "type": "bid",
-                      "bid": currentPlayer!.bid,
-                    }, currentPlayer!.id);
                   }
                   setState(() {});
                 },
@@ -2219,24 +2597,40 @@ class _OhHellState extends State<OhHell> {
                 onTap: () {
                   if (currentPlayer!.bid < round) {
                     currentPlayer!.bid++;
-                    connectionService.broadcastMessage({
-                      "type": "bid",
-                      "bid": currentPlayer!.bid,
-                    }, currentPlayer!.id);
                   }
                   setState(() {});
                 },
               ),
               const SizedBox(width: 8.0),
-              ActionButton(
-                width: 80,
-                height: 40,
-                text: Text(
-                  "Bid",
-                  style: TextStyle(fontSize: 16.0, color: Colors.white),
+              if (currentPlayer!.isDealer && getTotalBids() == round)
+                Text(
+                  "You can't bid ${currentPlayer!.bid}",
+                  style: TextStyle(fontSize: 12.0, color: Colors.white),
+                )
+              else
+                ActionButton(
+                  width: 80,
+                  height: 40,
+                  text: Text(
+                    "Bid",
+                    style: TextStyle(fontSize: 16.0, color: Colors.white),
+                  ),
+                  onTap: () async {
+                    players[0].bid = currentPlayer!.bid;
+                    players[0].myTurn = false;
+                    players[1].myTurn = true;
+                    if (players[0].isDealer) {
+                      gamePhase = OhHellGamePhase.playing;
+                    }
+                    setState(() {});
+
+                    connectionService.broadcastMessage({
+                      "type": "bid",
+                      "bid": currentPlayer!.bid,
+                      "playerId": currentPlayer!.id,
+                    }, currentPlayer!.id);
+                  },
                 ),
-                onTap: () async {},
-              ),
             ],
           ),
         ),
@@ -2312,7 +2706,6 @@ class _OhHellState extends State<OhHell> {
               style: TextStyle(fontSize: 18.0, color: Colors.white),
             ),
             onTap: () async {
-              SharedPrefs.hapticButtonPress();
               await connectionService.broadcastMessage({
                 "type": "play_again",
               }, currentPlayer!.id);
